@@ -1,9 +1,33 @@
+"use client";
+import { useEffect, useState } from "react";
 import NavBar from "@/components/NavBar";
 import ZeeWallFeed from "@/components/ZeeWallFeed"; // Add this line!
+import { syncUserSession } from "@/lib/supabase/queries";
 import { Play, Star, Flame, ShieldCheck } from "lucide-react";
 
 
 export default function Dashboard() {
+
+    //added by t start
+
+    // --- ADD THIS BLOCK ---
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    async function loadIdentity() {
+      const identity = await syncUserSession();
+      setUserData(identity);
+    }
+    loadIdentity();
+  }, []);
+  // ----------------------
+
+
+
+    //end
+
+
+
   return (
     <div className="min-h-screen bg-void flex flex-col">
       <NavBar />
@@ -23,8 +47,14 @@ export default function Dashboard() {
               </div>
               
               <div className="mt-2 pl-28">
-                <h2 className="text-2xl font-bold tracking-tight text-white">Neon_Hacker_99</h2>
-                <p className="text-sm font-mono text-cyan mt-1">ZID: Z-NOVA-8F2B</p>
+                {/* Show real name or "Loading..." if data isn't ready yet */}
+                <h2 className="text-2xl font-bold tracking-tight text-white">
+                    {userData ? userData.display_name : "Loading..."}
+                </h2>
+                {/* Show real ZID or "..." */}
+                <p className="text-sm font-mono text-cyan mt-1">
+                    ZID: {userData ? userData.zid : "..."}
+                </p>
                 <p className="text-sm text-gray-400 mt-4 leading-relaxed">
                   Just coding in the dark. Leave a Zap on my wall!
                 </p>
