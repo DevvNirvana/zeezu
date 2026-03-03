@@ -159,15 +159,36 @@ export async function getCoreEight(userId: string) {
 }
 
 export async function searchUsers(query: string) {
-  if (!query) return [];
+  if (!query || query.trim().length < 1) return [];
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const trimmed = query.trim();
 
   const { data } = await supabase
     .from("users")
-    .select("id, display_name, zid")
-    .ilike("display_name", `%${query}%`)
-    .limit(5);
+    .select("id, display_name, zid, avatar_url, status_message, created_at")
+    .or(`display_name.ilike.%${trimmed}%,zid.ilike.%${trimmed}%`)
+    .limit(20);
 
-  return data || [];
+  // Filter out self
+  return (data || []).filter(u => u.id !== user?.id);
+}
+
+/** Discover users — browse all users (paginated), excluding self */
+export async function discoverUsers(page = 0, limit = 20) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const from = page * limit;
+  const to = from + limit - 1;
+
+  const { data, count } = await supabase
+    .from("users")
+    .select("id, display_name, zid, avatar_url, status_message, created_at", { count: "exact" })
+    .neq("id", user?.id || "")
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  return { users: data || [], total: count || 0 };
 }
 
 export async function addToCoreEight(friendId: string, position: number) {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Disc3 } from "lucide-react";
+import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Disc3, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import NotificationBell from "./NotificationBell";
 
@@ -83,7 +83,7 @@ export default function NavBar() {
           {/* ── NAV LINKS (Desktop only) ── */}
           <div className="hidden md:flex items-center gap-2">
             <NavButton href="/dashboard" icon={<LayoutDashboard size={18} />} text="Home" />
-            <NavButton href="/profile" icon={<UserCircle size={18} />} text="Profile" />
+            <NavButton href="/search" icon={<Search size={18} />} text="Search" />
             <NavButton href="/friends" icon={<Users size={18} />} text="Friends" />
             <NavButton href="/messages" icon={<MessageSquare size={18} />} text="Messages" badge={unreadMsgCount} />
             <NavButton href="/zeewall" icon={<MessageSquare size={18} />} text="ZeeWall" />
@@ -124,7 +124,7 @@ function MobileBottomNav({ unreadMsgCount }: { unreadMsgCount: number }) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="flex items-center justify-around h-16 px-2">
         <MobileNavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Home" active={pathname === "/dashboard"} />
-        <MobileNavItem href="/friends" icon={<Users size={20} />} label="Friends" active={pathname?.startsWith("/friends") ?? false} />
+        <MobileNavItem href="/search" icon={<Search size={20} />} label="Search" active={pathname === "/search"} />
         <MobileNavItem href="/messages" icon={<MessageSquare size={20} />} label="Messages" active={pathname?.startsWith("/messages") ?? false} badge={unreadMsgCount} />
         <MobileNavItem href="/zeewall" icon={<Zap size={20} />} label="Wall" active={pathname === "/zeewall"} />
         <MobileNavItem href="/profile" icon={<UserCircle size={20} />} label="Profile" active={pathname === "/profile"} />

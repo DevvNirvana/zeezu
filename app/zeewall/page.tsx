@@ -8,18 +8,18 @@ import { Loader2, MessageCircle, Zap, Send, Trash2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Post = {
-  id:         number;
-  content:    string;
+  id: number;
+  content: string;
   created_at: string;
-  zaps:       number;
+  zaps: number;
   author: { display_name: string; zid: string; avatar_url: string | null } | null;
 };
 
 type UserData = {
-  id:          string;
-  zid:         string;
-  display_name:string;
-  avatar_url:  string | null;
+  id: string;
+  zid: string;
+  display_name: string;
+  avatar_url: string | null;
   primary_color?: string;
 };
 
@@ -55,13 +55,13 @@ export default function MyZeeWall() {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [loading,  setLoading]  = useState(true);
+  const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [posts,    setPosts]    = useState<Post[]>([]);
-  const [newPost,  setNewPost]  = useState("");
-  const [posting,  setPosting]  = useState(false);
-  const [primary,  setPrimary]  = useState("#8A2EFF");
-  const [secondary,setSecondary]= useState("#00F7FF");
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [newPost, setNewPost] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [primary, setPrimary] = useState("#8A2EFF");
+  const [secondary, setSecondary] = useState("#00F7FF");
 
   // ── Realtime subscription ────────────────────────────────────────
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function MyZeeWall() {
       ]);
 
       if (userData) setUserData(userData);
-      if (postsData) setPosts(postsData as Post[]);
+      if (postsData) setPosts(postsData as unknown as Post[]);
       if (customData) {
         setPrimary(customData.primary_color ?? "#8A2EFF");
         setSecondary(customData.secondary_color ?? "#00F7FF");
@@ -98,9 +98,9 @@ export default function MyZeeWall() {
         channel = supabase
           .channel(`wall:${userData.id}`)
           .on("postgres_changes", {
-            event:  "INSERT",
+            event: "INSERT",
             schema: "public",
-            table:  "zeewall",
+            table: "zeewall",
             filter: `owner_id=eq.${userData.id}`,
           }, async (payload) => {
             // Fetch with author join
@@ -109,7 +109,7 @@ export default function MyZeeWall() {
               .select("id, content, created_at, zaps, author:users!author_id(display_name, zid, avatar_url)")
               .eq("id", payload.new.id)
               .single();
-            if (newPostData) setPosts(prev => [newPostData as Post, ...prev]);
+            if (newPostData) setPosts(prev => [newPostData as unknown as Post, ...prev]);
           })
           .subscribe();
       }
@@ -132,11 +132,11 @@ export default function MyZeeWall() {
     if (!newPost.trim() || !userData || posting) return;
     setPosting(true);
     const { data } = await supabase.from("zeewall").insert({
-      owner_id:  userData.id,
+      owner_id: userData.id,
       author_id: userData.id,
-      content:   newPost.trim(),
+      content: newPost.trim(),
     }).select("id, content, created_at, zaps, author:users!author_id(display_name, zid, avatar_url)").single();
-    if (data) setPosts(prev => [data as Post, ...prev]);
+    if (data) setPosts(prev => [data as unknown as Post, ...prev]);
     setNewPost("");
     setPosting(false);
   };
@@ -268,9 +268,9 @@ export default function MyZeeWall() {
                 key={post.id}
                 className="wall-post group rounded-2xl border p-4 transition-all hover:border-opacity-60"
                 style={{
-                  borderColor:     `${primary}20`,
+                  borderColor: `${primary}20`,
                   backgroundColor: "#0B0B12",
-                  animationDelay:  `${i * 0.04}s`,
+                  animationDelay: `${i * 0.04}s`,
                 }}
               >
                 <div className="flex gap-3">
