@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { Bell, Zap, MessageSquare, AtSign, UserPlus, Wifi } from "lucide-react";
+import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Notification = {
@@ -19,33 +19,39 @@ type Notification = {
 
 // Type labels that match Zeezu brand language
 const TYPE_LABEL: Record<string, string> = {
-  zap:     "zapped your post",
+  zap: "zapped your post",
   comment: "dropped a comment",
   mention: "mentioned you",
-  system:  "updated your Core 8",
+  system: "updated your Core 8",
+  friend_request: "wants to be your friend",
+  friend_accept: "accepted your friend request!",
 };
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
-  zap:     <Zap className="w-3.5 h-3.5 text-lime fill-lime drop-shadow-[0_0_6px_#B4FF00]" />,
+  zap: <Zap className="w-3.5 h-3.5 text-lime fill-lime drop-shadow-[0_0_6px_#B4FF00]" />,
   comment: <MessageSquare className="w-3.5 h-3.5 text-cyan drop-shadow-[0_0_6px_#00F7FF]" />,
   mention: <AtSign className="w-3.5 h-3.5 text-orange-400 drop-shadow-[0_0_6px_#fb923c]" />,
-  system:  <UserPlus className="w-3.5 h-3.5 text-electric drop-shadow-[0_0_6px_#8A2EFF]" />,
+  system: <UserPlus className="w-3.5 h-3.5 text-electric drop-shadow-[0_0_6px_#8A2EFF]" />,
+  friend_request: <UserPlus className="w-3.5 h-3.5 text-magenta drop-shadow-[0_0_6px_#FF007A]" />,
+  friend_accept: <UserCheck className="w-3.5 h-3.5 text-lime drop-shadow-[0_0_6px_#B4FF00]" />,
 };
 
 // Color stripe on the left of each notification card
 const TYPE_STRIPE: Record<string, string> = {
-  zap:     "border-l-lime",
+  zap: "border-l-lime",
   comment: "border-l-cyan",
   mention: "border-l-orange-400",
-  system:  "border-l-electric",
+  system: "border-l-electric",
+  friend_request: "border-l-magenta",
+  friend_accept: "border-l-lime",
 };
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [isOpen, setIsOpen]               = useState(false);
-  const [userId, setUserId]               = useState<string | null>(null);
-  const [pulse, setPulse]                 = useState(false); // Ring animation on new notif
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pulse, setPulse] = useState(false); // Ring animation on new notif
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // ── FETCH HELPERS ────────────────────────────────────────────
@@ -75,6 +81,7 @@ export default function NotificationBell() {
   // ── INIT + REALTIME ──────────────────────────────────────────
   useEffect(() => {
     let channelCleanup: (() => void) | undefined;
+    let pollInterval: ReturnType<typeof setInterval> | undefined;
 
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -82,18 +89,19 @@ export default function NotificationBell() {
       setUserId(user.id);
       await fetchUnreadCount(user.id);
 
-      // Subscribe to realtime inserts for THIS user only
+      // Subscribe to realtime inserts — no filter on non-PK columns
       const channel = supabase
-        .channel(`notifs_${user.id}`)
+        .channel(`bell_notifs_${user.id}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "notifications",
-            filter: `user_id=eq.${user.id}`,
           },
-          (_payload) => {
+          (payload: any) => {
+            // Client-side filter: only this user's notifications
+            if (payload.new?.user_id !== user.id) return;
             setUnreadCount((prev) => prev + 1);
             // Pulse the bell icon to get attention
             setPulse(true);
@@ -108,6 +116,9 @@ export default function NotificationBell() {
         .subscribe();
 
       channelCleanup = () => supabase.removeChannel(channel);
+
+      // Polling fallback: re-fetch count every 10s in case realtime misses
+      pollInterval = setInterval(() => fetchUnreadCount(user.id), 10000);
     };
 
     init();
@@ -122,6 +133,7 @@ export default function NotificationBell() {
 
     return () => {
       channelCleanup?.();
+      if (pollInterval) clearInterval(pollInterval);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [fetchUnreadCount, fetchNotifications]);
@@ -214,7 +226,7 @@ export default function NotificationBell() {
               <div className="py-12 flex flex-col items-center gap-3 text-center">
                 <Bell className="w-8 h-8 text-gray-700" />
                 <p className="text-xs text-gray-600 font-mono">No signals yet.</p>
-                <p className="text-[10px] text-gray-700">When someone zaps or comments,<br/>it shows up here.</p>
+                <p className="text-[10px] text-gray-700">When someone zaps or comments,<br />it shows up here.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-900">

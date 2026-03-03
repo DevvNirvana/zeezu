@@ -5,35 +5,35 @@ import { Disc3, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDow
 
 // ── Station data (matches spec exactly) ───────────────────────────────
 type Station = {
-  id:       string;
-  name:     string;
-  color:    string;
-  url?:     string;
+  id: string;
+  name: string;
+  color: string;
+  url?: string;
   playlist?: string[];
 };
 
 const STATIONS: Station[] = [
   {
-    id:      'ost',
-    name:    "OST // ZEEZU",
-    color:   "#fcee0a",
+    id: 'ost',
+    name: "OST // ZEEZU",
+    color: "#fcee0a",
     playlist: [
       "https://dl.dropboxusercontent.com/scl/fi/uz72n6eqlmke36p2xxi1i/KxH-TTR.mp3?rlkey=fsx2dlmlvgidh5s7upenk93vm&e=1&st=hr4rm7of&",
     ],
   },
-  { id: 'chillsynth',  name: "CHILLSYNTH",    url: "https://stream.rekt.network/chillsynth.mp3",  color: "#00f3ff" },
-  { id: 'nightride',   name: "NIGHTRIDE FM",   url: "https://stream.rekt.network/nightride.mp3",   color: "#ff00ff" },
-  { id: 'darksynth',   name: "DARKSYNTH",      url: "https://stream.rekt.network/darksynth.mp3",   color: "#ff003c" },
-  { id: 'datawave',    name: "DATAWAVE",       url: "https://stream.rekt.network/datawave.mp3",    color: "#0aff00" },
-  { id: 'ebsm',        name: "EBSM",           url: "https://stream.rekt.network/ebsm.mp3",        color: "#ff6600" },
-  { id: 'horrorsynth', name: "HORRORSYNTH",    url: "https://stream.rekt.network/horrorsynth.mp3", color: "#9900ff" },
-  { id: 'spacesynth',  name: "SPACESYNTH FM",  url: "https://stream.rekt.network/spacesynth.mp3",  color: "#0066ff" },
+  { id: 'chillsynth', name: "CHILLSYNTH", url: "https://stream.rekt.network/chillsynth.mp3", color: "#00f3ff" },
+  { id: 'nightride', name: "NIGHTRIDE FM", url: "https://stream.rekt.network/nightride.mp3", color: "#ff00ff" },
+  { id: 'darksynth', name: "DARKSYNTH", url: "https://stream.rekt.network/darksynth.mp3", color: "#ff003c" },
+  { id: 'datawave', name: "DATAWAVE", url: "https://stream.rekt.network/datawave.mp3", color: "#0aff00" },
+  { id: 'ebsm', name: "EBSM", url: "https://stream.rekt.network/ebsm.mp3", color: "#ff6600" },
+  { id: 'horrorsynth', name: "HORRORSYNTH", url: "https://stream.rekt.network/horrorsynth.mp3", color: "#9900ff" },
+  { id: 'spacesynth', name: "SPACESYNTH FM", url: "https://stream.rekt.network/spacesynth.mp3", color: "#0066ff" },
 ];
 
 // ── Hex → rgba for glow ──────────────────────────────────────────────
 function hexGlow(hex: string, alpha = 0.35): string {
   const c = hex.replace('#', '');
-  return `rgba(${parseInt(c.slice(0,2),16)},${parseInt(c.slice(2,4),16)},${parseInt(c.slice(4,6),16)},${alpha})`;
+  return `rgba(${parseInt(c.slice(0, 2), 16)},${parseInt(c.slice(2, 4), 16)},${parseInt(c.slice(4, 6), 16)},${alpha})`;
 }
 
 // ── EQ bar animation CSS (injected once) ────────────────────────────
@@ -54,14 +54,14 @@ if (typeof document !== 'undefined' && !document.getElementById(EQ_STYLE_ID)) {
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function RadioPlayer() {
-  const audioRef       = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying,     setIsPlaying]     = useState(false);
-  const [isMinimized,   setIsMinimized]   = useState(true);
-  const [isMuted,       setIsMuted]       = useState(false);
-  const [stationIdx,    setStationIdx]    = useState(0);
-  const [subIdx,        setSubIdx]        = useState(0); // playlist cursor
-  const [volume,        setVolume]        = useState(0.4);
-  const [error,         setError]         = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [stationIdx, setStationIdx] = useState(0);
+  const [subIdx, setSubIdx] = useState(0); // playlist cursor
+  const [volume, setVolume] = useState(0.4);
+  const [error, setError] = useState(false);
 
   const current = STATIONS[stationIdx];
 
@@ -82,7 +82,7 @@ export default function RadioPlayer() {
     return () => {
       audioRef.current?.pause();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Load source when station changes ──────────────────────────────
@@ -95,7 +95,7 @@ export default function RadioPlayer() {
     if (isPlaying) {
       audio.play().catch(() => setError(true));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationIdx, subIdx]);
 
   // ── Auto-advance playlist / next station on track end ─────────────
@@ -128,8 +128,8 @@ export default function RadioPlayer() {
   // ── Volume sync ────────────────────────────────────────────────────
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume  = isMuted ? 0 : volume;
-      audioRef.current.muted   = isMuted;
+      audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.muted = isMuted;
     }
   }, [volume, isMuted]);
 
@@ -160,12 +160,12 @@ export default function RadioPlayer() {
   };
 
   // ── Render ────────────────────────────────────────────────────────
-  const glowColor   = hexGlow(current.color, 0.4);
-  const glowShadow  = `0 0 20px ${glowColor}, 0 4px 20px rgba(0,0,0,0.7)`;
+  const glowColor = hexGlow(current.color, 0.4);
+  const glowShadow = `0 0 20px ${glowColor}, 0 4px 20px rgba(0,0,0,0.7)`;
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-[200] transition-all duration-300"
+      className="fixed bottom-20 md:bottom-4 right-4 z-[200] transition-all duration-300"
       style={{ filter: isMinimized ? 'none' : `drop-shadow(0 0 12px ${glowColor})` }}
     >
       {/* ── MINIMIZED: spinning disc pill ── */}
@@ -175,7 +175,7 @@ export default function RadioPlayer() {
           className="w-12 h-12 rounded-full bg-black/90 border flex items-center justify-center transition-all hover:scale-110"
           style={{
             borderColor: current.color,
-            boxShadow:   glowShadow,
+            boxShadow: glowShadow,
           }}
           title={`Radio: ${current.name}`}
         >
@@ -199,7 +199,7 @@ export default function RadioPlayer() {
           className="w-72 rounded-2xl bg-black/95 border overflow-hidden backdrop-blur-xl"
           style={{
             borderColor: current.color,
-            boxShadow:   glowShadow,
+            boxShadow: glowShadow,
           }}
         >
           {/* Header bar */}
@@ -281,13 +281,13 @@ export default function RadioPlayer() {
               className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95"
               style={{
                 backgroundColor: `${current.color}20`,
-                border:          `1px solid ${current.color}60`,
-                boxShadow:       isPlaying ? `0 0 15px ${glowColor}` : 'none',
+                border: `1px solid ${current.color}60`,
+                boxShadow: isPlaying ? `0 0 15px ${glowColor}` : 'none',
               }}
             >
               {isPlaying
                 ? <Pause className="w-4 h-4 text-white" />
-                : <Play  className="w-4 h-4 text-white ml-0.5" />
+                : <Play className="w-4 h-4 text-white ml-0.5" />
               }
             </button>
 
@@ -300,7 +300,7 @@ export default function RadioPlayer() {
               <button onClick={() => setIsMuted(v => !v)} className="text-gray-500 hover:text-white transition-colors">
                 {isMuted
                   ? <VolumeX className="w-3.5 h-3.5" />
-                  : <Volume2  className="w-3.5 h-3.5" />
+                  : <Volume2 className="w-3.5 h-3.5" />
                 }
               </button>
               <input

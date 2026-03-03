@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import RadioPlayer from "@/components/RadioPlayer";
+import ToastProvider from "@/components/ToastProvider";
 
 export const metadata: Metadata = {
-  title:       "Zeezu — The Internet After Dark",
+  title: "Zeezu — The Internet After Dark",
   description: "Social media before it got sanitized.",
-  icons:       { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           /dashboard and /profile without the music cutting out.
         */}
         <RadioPlayer />
+
+        {/* 
+          ToastProvider — global realtime toast notifications.
+          Listens to notifications + messages tables and shows
+          slide-in toasts for DMs, buzzes, friend requests, etc.
+        */}
+        <ToastProvider />
       </body>
     </html>
   );

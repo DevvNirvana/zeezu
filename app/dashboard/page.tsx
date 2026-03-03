@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Zap, Bell, MessageCircle, Flame, Music, Search, Plus } from "lucide-react";
+import { Loader2, Zap, Bell, MessageCircle, Flame, Music, Search, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
-import { syncUserSession, getCoreEight, getDashboardStats, searchUsers, addToCoreEight } from "@/lib/supabase/queries";
+import { syncUserSession, getCoreEight, getDashboardStats, searchFriends, addToCoreEight, removeFromCoreEight, getFriendCount } from "@/lib/supabase/queries";
 import ZeeWallFeed from "@/components/ZeeWallFeed";
 import NavBar from "@/components/NavBar";
 import ThemeEngine, { type ThemeConfig } from "@/components/ThemeEngine";
@@ -12,17 +12,18 @@ import ThemeEngine, { type ThemeConfig } from "@/components/ThemeEngine";
 export default function Dashboard() {
   const router = useRouter();
 
-  const [loading,      setLoading]     = useState(true);
-  const [userData,     setUserData]    = useState<any>(null);
-  const [coreEight,    setCoreEight]   = useState<any[]>([]);
-  const [stats,        setStats]       = useState({ zaps: 0, buzzes: 0, comments: 0 });
-  const [customization,setCustom]     = useState<ThemeConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
+  const [coreEight, setCoreEight] = useState<any[]>([]);
+  const [stats, setStats] = useState({ zaps: 0, buzzes: 0, comments: 0 });
+  const [customization, setCustom] = useState<ThemeConfig | null>(null);
+  const [friendCount, setFriendCount] = useState(0);
 
   // Core 8 edit modal
-  const [isEditing,    setIsEditing]   = useState(false);
-  const [selectedSlot, setSelectedSlot]= useState<number | null>(null);
-  const [searchQuery,  setSearchQuery] = useState('');
-  const [searchResults,setResults]     = useState<any[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setResults] = useState<any[]>([]);
 
   // ── Init ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -31,27 +32,78 @@ export default function Dashboard() {
       if (!identity) { router.push('/'); return; }
       setUserData(identity);
 
-      const [top8, dashStats, { data: customData }] = await Promise.all([
+      const [top8, dashStats, { data: customData }, fCount] = await Promise.all([
         getCoreEight(identity.id),
         getDashboardStats(),
         supabase.from('profile_customization').select('*').eq('user_id', identity.id).single(),
+        getFriendCount(identity.id),
       ]);
 
       setCoreEight(top8 || []);
       setStats(dashStats);
       if (customData) setCustom(customData as ThemeConfig);
+      setFriendCount(fCount);
 
       setLoading(false);
     }
     init();
   }, [router]);
 
-  // ── Core 8 search ───────────────────────────────────────────────────
+  // ── REALTIME dashboard refresh ───────────────────────────────────
+  useEffect(() => {
+    if (!userData) return;
+
+    const channel = supabase
+      .channel('dashboard_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async (payload: any) => {
+          // Client-side filter: only react to messages for this user
+          if (payload.new?.receiver_id !== userData.id) return;
+          const newStats = await getDashboardStats();
+          setStats(newStats);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'core_eight' },
+        async (payload: any) => {
+          // Client-side filter
+          const row = payload.new || payload.old;
+          if (row?.user_id !== userData.id) return;
+          const updated = await getCoreEight(userData.id);
+          setCoreEight(updated || []);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        async (payload: any) => {
+          if (payload.new?.user_id !== userData.id) return;
+          const newStats = await getDashboardStats();
+          setStats(newStats);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userData]);
+
+  // ── Core 8 search (friends only) ────────────────────────────────────
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    const r = await searchUsers(searchQuery);
+    const r = await searchFriends(searchQuery);
     setResults(r);
+  };
+
+  // ── Remove from Core 8 ────────────────────────────────────────────
+  const handleRemoveFromSlot = async (position: number) => {
+    await removeFromCoreEight(position);
+    if (userData) {
+      const updated = await getCoreEight(userData.id);
+      setCoreEight(updated);
+    }
   };
 
   const handleAddToSlot = async (friendId: string) => {
@@ -122,6 +174,10 @@ export default function Dashboard() {
               </div>
               <h1 className="text-lg font-black text-white tracking-tight">{userData?.display_name}</h1>
               <p className="text-[10px] font-mono text-gray-500 mt-0.5">{userData?.zid}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <Users className="w-3 h-3 text-cyan" />
+                <span className="text-[10px] font-mono text-gray-500">{friendCount} friend{friendCount !== 1 ? 's' : ''}</span>
+              </div>
 
               {userData?.status_message && (
                 <>
@@ -152,12 +208,12 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-4 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(spot => {
-                const entry  = coreEight.find(c => c.position === spot);
+                const entry = coreEight.find(c => c.position === spot);
                 const friend = entry?.friend;
                 return (
                   <div
                     key={spot}
-                    onClick={() => { setSelectedSlot(spot); setIsEditing(true); }}
+                    onClick={() => { if (!friend) { setSelectedSlot(spot); setIsEditing(true); } }}
                     className="aspect-square relative rounded-xl bg-black/40 border border-gray-800 hover:border-electric hover:shadow-[0_0_12px_rgba(138,46,255,0.3)] transition-all cursor-pointer group flex flex-col items-center justify-center overflow-hidden"
                   >
                     <span className="absolute top-0.5 left-1 text-[7px] font-mono text-gray-700 group-hover:text-electric">0{spot}</span>
@@ -165,6 +221,20 @@ export default function Dashboard() {
                       <>
                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`} className="w-7 h-7 rounded-full mb-0.5 border border-gray-700" />
                         <span className="text-[7px] text-gray-300 font-bold truncate w-11/12 text-center">{friend.display_name}</span>
+                        {/* Remove button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
+                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <Trash2 className="w-2.5 h-2.5 text-white" />
+                        </button>
+                        {/* Click to swap */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedSlot(spot); setIsEditing(true); }}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl"
+                        >
+                          <span className="text-[7px] text-white font-mono">SWAP</span>
+                        </button>
                       </>
                     ) : (
                       <Plus className="w-4 h-4 text-gray-700 group-hover:text-electric transition-colors" />
@@ -211,7 +281,7 @@ export default function Dashboard() {
                   <p className="text-xs text-magenta/70">Someone is trying to reach you</p>
                 </div>
               </div>
-              <button className="bg-magenta hover:bg-white hover:text-magenta text-white text-xs font-black py-2 px-4 rounded-lg transition-all">
+              <button onClick={() => router.push('/messages')} className="bg-magenta hover:bg-white hover:text-magenta text-white text-xs font-black py-2 px-4 rounded-lg transition-all">
                 OPEN
               </button>
             </div>
@@ -243,7 +313,7 @@ export default function Dashboard() {
             <h3 className="text-lg font-black text-white mb-1">
               Core 8 — <span className="text-electric">Slot 0{selectedSlot}</span>
             </h3>
-            <p className="text-[11px] text-gray-500 font-mono mb-5">Search by name to fill this slot</p>
+            <p className="text-[11px] text-gray-500 font-mono mb-5">Search your friends to fill this slot</p>
 
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
               <input

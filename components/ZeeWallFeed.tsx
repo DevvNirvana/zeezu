@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { 
-  Send, Zap, Trash2, Reply, MessageSquare, Plus, 
-  ArrowUp, ArrowDown, Pin, XCircle, MoreVertical, Loader2 
+import {
+  Send, Zap, Trash2, Reply, MessageSquare, Plus,
+  ArrowUp, ArrowDown, Pin, XCircle, MoreVertical, Loader2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -44,12 +44,12 @@ export default function ZeeWallFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Record<number, Comment[]>>({}); // Map post_id -> comments
   const [expandedPosts, setExpandedPosts] = useState<Set<number>>(new Set()); // Which posts show comments
-  
+
   const [newPost, setNewPost] = useState("");
   const [newComment, setNewComment] = useState<Record<number, string>>({}); // Map post_id -> input
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
-  
+
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -69,6 +69,53 @@ export default function ZeeWallFeed() {
   // Fetch posts whenever Topic or Page changes
   useEffect(() => {
     fetchPosts();
+  }, [activeTopic, page]);
+
+  // --- REALTIME FEED ---
+  useEffect(() => {
+    const channel = supabase
+      .channel('zeewall_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'zeewall' },
+        async (payload: any) => {
+          const newPost = payload.new;
+          // Only add if same topic and we're on page 0
+          if (newPost.topic_id !== activeTopic || page !== 0) return;
+          // Fetch full post with author join
+          const { data } = await supabase
+            .from('zeewall')
+            .select('id, content, zaps, created_at, owner_id, topic_id, author:users!author_id (id, display_name, zid)')
+            .eq('id', newPost.id)
+            .single();
+          if (data) {
+            // @ts-ignore
+            setPosts(prev => {
+              if (prev.some((p: any) => p.id === data.id)) return prev;
+              return [data, ...prev];
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'zeewall' },
+        (payload: any) => {
+          const updated = payload.new;
+          setPosts(prev => prev.map(p => p.id === updated.id ? { ...p, zaps: updated.zaps } : p));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'zeewall' },
+        (payload: any) => {
+          const deleted = payload.old;
+          setPosts(prev => prev.filter(p => p.id !== deleted.id));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [activeTopic, page]);
 
   // --- DATA FETCHING ---
@@ -95,7 +142,7 @@ export default function ZeeWallFeed() {
       .eq('topic_id', activeTopic)
       .order("created_at", { ascending: false })
       .range(from, to);
-    
+
     if (data) {
       // @ts-ignore
       setPosts(page === 0 ? data : (prev) => [...prev, ...data]);
@@ -112,7 +159,7 @@ export default function ZeeWallFeed() {
       `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
-    
+
     if (data) {
       // @ts-ignore
       setComments(prev => ({ ...prev, [postId]: data }));
@@ -204,23 +251,23 @@ export default function ZeeWallFeed() {
     // Optimistic UI
     setComments(prev => ({
       ...prev,
-      [postId]: prev[postId].map(c => 
-        c.id === commentId 
-          ? { ...c, [type === 'up' ? 'upvotes' : 'downvotes']: c[type === 'up' ? 'upvotes' : 'downvotes'] + 1 } 
+      [postId]: prev[postId].map(c =>
+        c.id === commentId
+          ? { ...c, [type === 'up' ? 'upvotes' : 'downvotes']: c[type === 'up' ? 'upvotes' : 'downvotes'] + 1 }
           : c
       )
     }));
     await supabase.rpc('vote_comment', { comment_id: commentId, vote_type: type });
   };
 
-//   const handleZap = async (postId: number) => {
-//     setPosts(posts.map(p => p.id === postId ? { ...p, zaps: p.zaps + 1 } : p));
-//     await supabase.rpc('zap_post', { post_id: postId });
-//   };
+  //   const handleZap = async (postId: number) => {
+  //     setPosts(posts.map(p => p.id === postId ? { ...p, zaps: p.zaps + 1 } : p));
+  //     await supabase.rpc('zap_post', { post_id: postId });
+  //   };
 
   const handleZap = async (postId: number) => {
     // 1. Guard check: Must be logged in to Zap
-    if (!userId) return; 
+    if (!userId) return;
 
     // 2. Optimistic UI update (Spin the number up immediately)
     setPosts(posts.map(p => p.id === postId ? { ...p, zaps: p.zaps + 1 } : p));
@@ -234,11 +281,11 @@ export default function ZeeWallFeed() {
 
   return (
     <div className="flex flex-col h-full bg-black/90 text-white font-sans">
-      
+
       {/* 1. TOPIC BAR (Tabs) */}
       <div className="flex items-center gap-2 p-2 border-b border-gray-800 bg-void overflow-x-auto custom-scrollbar sticky top-0 z-20">
         {topics.map(topic => (
-          <div 
+          <div
             key={topic.id}
             onClick={() => { setActiveTopic(topic.id); setPage(0); }}
             className={`
@@ -248,7 +295,7 @@ export default function ZeeWallFeed() {
           >
             {topic.is_pinned && <Pin className="w-3 h-3 text-electric" />}
             <span className="text-xs font-bold font-mono">{topic.title.toUpperCase()}</span>
-            
+
             {/* Delete Topic Button (Only if Owner & Not Pinned) */}
             {topic.created_by === userId && !topic.is_pinned && (
               <button onClick={(e) => { e.stopPropagation(); handleDeleteTopic(topic.id); }} className="ml-2 hover:text-red-500">
@@ -257,9 +304,9 @@ export default function ZeeWallFeed() {
             )}
           </div>
         ))}
-        
+
         {/* Create New Topic Button */}
-        <button 
+        <button
           onClick={() => setIsCreatingTopic(!isCreatingTopic)}
           className="px-3 py-2 bg-gray-800 rounded-full hover:bg-electric hover:text-black transition-colors"
         >
@@ -270,7 +317,7 @@ export default function ZeeWallFeed() {
       {/* New Topic Input */}
       {isCreatingTopic && (
         <div className="p-3 bg-gray-900 border-b border-gray-800 flex gap-2 animate-in slide-in-from-top-2">
-          <input 
+          <input
             className="flex-1 bg-black border border-gray-700 rounded px-3 py-1 text-sm focus:border-electric outline-none"
             placeholder="New Topic Name..."
             value={newTopicTitle}
@@ -285,8 +332,8 @@ export default function ZeeWallFeed() {
         <div className="flex gap-3">
           {/* My Avatar */}
           <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden border border-gray-700">
-             {/* Note: We need actual User ZID here, for now using placeholder if not loaded */}
-             <img src={getAvatar(userId || 'me')} alt="Me" className="w-full h-full object-cover" />
+            {/* Note: We need actual User ZID here, for now using placeholder if not loaded */}
+            <img src={getAvatar(userId || 'me')} alt="Me" className="w-full h-full object-cover" />
           </div>
           <form onSubmit={handlePost} className="flex-1 relative">
             <textarea
@@ -296,8 +343,8 @@ export default function ZeeWallFeed() {
               className="w-full bg-gray-900/50 border border-gray-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-electric transition-all placeholder:text-gray-600 resize-none h-20"
             />
             <div className="flex justify-end mt-2">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={!newPost.trim()}
                 className="bg-electric hover:bg-white hover:text-black text-black text-xs font-bold py-1.5 px-4 rounded transition-colors disabled:opacity-50 flex items-center gap-2"
               >
@@ -311,13 +358,13 @@ export default function ZeeWallFeed() {
       {/* 3. FEED LIST */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4">
         {loading && page === 0 ? (
-           <div className="flex justify-center p-10"><Loader2 className="w-8 h-8 text-electric animate-spin" /></div>
+          <div className="flex justify-center p-10"><Loader2 className="w-8 h-8 text-electric animate-spin" /></div>
         ) : posts.length === 0 ? (
-           <div className="text-center text-gray-600 py-10 font-mono text-xs">NO SIGNAL DETECTED IN THIS SECTOR.</div>
+          <div className="text-center text-gray-600 py-10 font-mono text-xs">NO SIGNAL DETECTED IN THIS SECTOR.</div>
         ) : (
           posts.map((post) => (
             <div key={post.id} className="bg-black/40 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all group">
-              
+
               {/* Header */}
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
@@ -333,12 +380,12 @@ export default function ZeeWallFeed() {
 
                 {/* Post Options */}
                 <div className="flex items-center gap-2">
-                   {/* Delete (Owner) */}
-                   {post.owner_id === userId && (
-                     <button onClick={() => handleDeletePost(post.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                   )}
+                  {/* Delete (Owner) */}
+                  {post.owner_id === userId && (
+                    <button onClick={() => handleDeletePost(post.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -365,36 +412,36 @@ export default function ZeeWallFeed() {
               {/* COMMENTS SECTION */}
               {expandedPosts.has(post.id) && (
                 <div className="mt-4 pl-4 border-l-2 border-gray-800 space-y-4 animate-in slide-in-from-left-2">
-                  
+
                   {/* Comments List */}
                   <div className="space-y-3">
                     {comments[post.id]?.map(comment => (
                       <div key={comment.id} className="bg-gray-900/30 rounded p-2 flex gap-3">
-                         <img src={getAvatar(comment.author.zid)} className="w-6 h-6 rounded-full" />
-                         <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                               <span className="text-xs font-bold text-gray-400">{comment.author.display_name}</span>
-                               <span className="text-[10px] text-gray-600">{formatDistanceToNow(new Date(comment.created_at))}</span>
-                            </div>
-                            <p className="text-xs text-gray-300 mt-1">{comment.content}</p>
-                            
-                            {/* Vote Controls */}
-                            <div className="flex items-center gap-3 mt-2">
-                               <button onClick={() => handleVoteComment(comment.id, 'up', post.id)} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-green-400">
-                                 <ArrowUp className="w-3 h-3" /> {comment.upvotes}
-                               </button>
-                               <button onClick={() => handleVoteComment(comment.id, 'down', post.id)} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-red-400">
-                                 <ArrowDown className="w-3 h-3" /> {comment.downvotes}
-                               </button>
-                            </div>
-                         </div>
+                        <img src={getAvatar(comment.author.zid)} className="w-6 h-6 rounded-full" />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs font-bold text-gray-400">{comment.author.display_name}</span>
+                            <span className="text-[10px] text-gray-600">{formatDistanceToNow(new Date(comment.created_at))}</span>
+                          </div>
+                          <p className="text-xs text-gray-300 mt-1">{comment.content}</p>
+
+                          {/* Vote Controls */}
+                          <div className="flex items-center gap-3 mt-2">
+                            <button onClick={() => handleVoteComment(comment.id, 'up', post.id)} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-green-400">
+                              <ArrowUp className="w-3 h-3" /> {comment.upvotes}
+                            </button>
+                            <button onClick={() => handleVoteComment(comment.id, 'down', post.id)} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-red-400">
+                              <ArrowDown className="w-3 h-3" /> {comment.downvotes}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
 
                   {/* Add Comment Input */}
                   <div className="flex gap-2">
-                    <input 
+                    <input
                       className="flex-1 bg-black border border-gray-800 rounded px-3 py-2 text-xs text-white focus:border-cyan outline-none"
                       placeholder="Write a comment..."
                       value={newComment[post.id] || ""}
@@ -414,10 +461,10 @@ export default function ZeeWallFeed() {
             </div>
           ))
         )}
-        
+
         {/* Load More Pagination */}
         {posts.length >= POSTS_PER_PAGE && (
-          <button 
+          <button
             onClick={() => setPage(p => p + 1)}
             className="w-full py-3 text-xs font-mono text-gray-500 hover:text-white border border-dashed border-gray-800 hover:border-gray-600 rounded-lg transition-all"
           >

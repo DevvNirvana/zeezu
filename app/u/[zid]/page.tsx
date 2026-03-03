@@ -6,30 +6,39 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import ProfileCard from "@/components/ProfileCard";
 import {
+  getFriendshipStatus,
+  sendFriendRequest,
+  cancelFriendRequest,
+  respondToFriendRequest,
+  removeFriend,
+  type FriendshipStatus,
+} from "@/lib/supabase/queries";
+import {
   Zap, MessageCircle, Flame, Shield, Snowflake, Music,
   Play, Pause, Plus, Share2, Flag, Clock, Camera,
   Volume2, VolumeX, Edit3, Image as ImageIcon,
+  UserPlus, UserCheck, UserX, Loader2, Check, X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 // ── Types ──────────────────────────────────────────────────────────────
 type ProfileUser = {
-  id:               string;
-  zid:              string;
-  display_name:     string;
-  mdx_profile:      string | null;
-  theme_track_url:  string | null;
-  influence_score:  number;
-  status_message:   string | null;
-  status_updated_at:string | null;
+  id: string;
+  zid: string;
+  display_name: string;
+  mdx_profile: string | null;
+  theme_track_url: string | null;
+  influence_score: number;
+  status_message: string | null;
+  status_updated_at: string | null;
 };
 
 type Customization = {
-  theme_id:           string;
-  primary_color:      string;
-  secondary_color:    string;
-  background_url:     string | null;
-  background_tiling:  boolean;
+  theme_id: string;
+  primary_color: string;
+  secondary_color: string;
+  background_url: string | null;
+  background_tiling: boolean;
   background_opacity: number;
 };
 
@@ -39,17 +48,17 @@ type CoreSlot = {
 };
 
 type Post = {
-  id:         number;
-  content:    string;
+  id: number;
+  content: string;
   created_at: string;
-  zaps:       number;
+  zaps: number;
   author: { display_name: string; zid: string };
 };
 
 type Vibes = {
   trustworthy_score: number;
-  cool_score:        number;
-  sexy_score:        number;
+  cool_score: number;
+  sexy_score: number;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -58,9 +67,9 @@ const getAvatar = (seed: string, style = 'avataaars') =>
 
 const getInfluenceTier = (score: number) => {
   if (score >= 100) return { label: 'LEGENDARY', color: '#FFD700', glow: 'rgba(255,215,0,0.4)' };
-  if (score >= 50)  return { label: 'ICON',      color: '#8A2EFF', glow: 'rgba(138,46,255,0.4)' };
-  if (score >= 20)  return { label: 'RISING',    color: '#00F7FF', glow: 'rgba(0,247,255,0.4)' };
-  return               { label: 'USER',      color: '#888888', glow: 'rgba(136,136,136,0.2)' };
+  if (score >= 50) return { label: 'ICON', color: '#8A2EFF', glow: 'rgba(138,46,255,0.4)' };
+  if (score >= 20) return { label: 'RISING', color: '#00F7FF', glow: 'rgba(0,247,255,0.4)' };
+  return { label: 'USER', color: '#888888', glow: 'rgba(136,136,136,0.2)' };
 };
 
 // Inject retro CSS keyframes once
@@ -113,40 +122,44 @@ if (typeof document !== 'undefined' && !document.getElementById(RETRO_STYLE_ID))
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function PublicProfile() {
-  const params   = useParams();
-  const router   = useRouter();
-  const zid      = typeof params?.zid === 'string' ? params.zid.toUpperCase() : '';
+  const params = useParams();
+  const router = useRouter();
+  const zid = typeof params?.zid === 'string' ? params.zid.toUpperCase() : '';
 
   // Profile data
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
-  const [custom,      setCustom]      = useState<Customization | null>(null);
-  const [coreEight,   setCoreEight]   = useState<CoreSlot[]>([]);
-  const [posts,       setPosts]       = useState<Post[]>([]);
-  const [vibes,       setVibes]       = useState<Vibes | null>(null);
-  const [postCount,   setPostCount]   = useState(0);
-  const [loading,     setLoading]     = useState(true);
-  const [notFound,    setNotFound]    = useState(false);
+  const [custom, setCustom] = useState<Customization | null>(null);
+  const [coreEight, setCoreEight] = useState<CoreSlot[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [vibes, setVibes] = useState<Vibes | null>(null);
+  const [postCount, setPostCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   // Viewer identity
-  const [viewerId,   setViewerId]     = useState<string | null>(null);
-  const [isOwner,    setIsOwner]      = useState(false);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+
+  // Friend system
+  const [friendStatus, setFriendStatus] = useState<FriendshipStatus>({ status: 'none', requestId: null });
+  const [friendLoading, setFriendLoading] = useState(false);
 
   // UI
-  const [visitorNum,  setVisitorNum]  = useState<number | null>(null);
-  const [musicPlaying,setMusicPlaying]= useState(false);
-  const [musicMuted,  setMusicMuted]  = useState(false);
-  const [newPost,     setNewPost]     = useState('');
-  const [postingMsg,  setPostingMsg]  = useState(false);
-  const [activeTab,   setActiveTab]   = useState<'wall'|'about'|'photos'>('wall');
+  const [visitorNum, setVisitorNum] = useState<number | null>(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicMuted, setMusicMuted] = useState(false);
+  const [newPost, setNewPost] = useState('');
+  const [postingMsg, setPostingMsg] = useState(false);
+  const [activeTab, setActiveTab] = useState<'wall' | 'about' | 'photos'>('wall');
 
   // Photo upload
-  const [photos,      setPhotos]      = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioRef     = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Derived colors (fall back to Zeezu defaults)
-  const primary   = custom?.primary_color   ?? '#8A2EFF';
+  const primary = custom?.primary_color ?? '#8A2EFF';
   const secondary = custom?.secondary_color ?? '#00F7FF';
 
   // ── Load profile ──────────────────────────────────────────────────
@@ -173,10 +186,10 @@ export default function PublicProfile() {
       // Parallel data load
       const [
         { data: customData },
-        { data: core8Data  },
-        { data: postsData  },
-        { data: vibeData   },
-        { count: pCount    },
+        { data: core8Data },
+        { data: postsData },
+        { data: vibeData },
+        { count: pCount },
       ] = await Promise.all([
         supabase.from('profile_customization').select('*').eq('user_id', userData.id).single(),
         supabase.from('core_eight')
@@ -195,10 +208,16 @@ export default function PublicProfile() {
       ]);
 
       if (customData) setCustom(customData);
-      if (core8Data)  setCoreEight(core8Data as CoreSlot[]);
-      if (postsData)  setPosts(postsData as Post[]);
-      if (vibeData)   setVibes(vibeData);
+      if (core8Data) setCoreEight(core8Data as unknown as CoreSlot[]);
+      if (postsData) setPosts(postsData as unknown as Post[]);
+      if (vibeData) setVibes(vibeData);
       setPostCount(pCount ?? 0);
+
+      // Fetch friendship status
+      if (authUser && authUser.id !== userData.id) {
+        const fs = await getFriendshipStatus(authUser.id, userData.id);
+        setFriendStatus(fs);
+      }
 
       // Simulated visitor counter (would be a real DB counter in prod)
       setVisitorNum(Math.floor(Math.random() * 9000) + 1000);
@@ -212,12 +231,12 @@ export default function PublicProfile() {
   useEffect(() => {
     const body = document.body;
     if (custom?.background_url) {
-      body.style.backgroundImage    = `url('${custom.background_url}')`;
-      body.style.backgroundRepeat   = custom.background_tiling ? 'repeat' : 'no-repeat';
-      body.style.backgroundSize     = custom.background_tiling ? 'auto'  : 'cover';
+      body.style.backgroundImage = `url('${custom.background_url}')`;
+      body.style.backgroundRepeat = custom.background_tiling ? 'repeat' : 'no-repeat';
+      body.style.backgroundSize = custom.background_tiling ? 'auto' : 'cover';
       body.style.backgroundPosition = 'center top';
       body.style.backgroundAttachment = 'fixed';
-      body.style.opacity             = String((custom.background_opacity ?? 100) / 100);
+      body.style.opacity = String((custom.background_opacity ?? 100) / 100);
     }
     return () => {
       body.style.backgroundImage = 'none';
@@ -248,16 +267,52 @@ export default function PublicProfile() {
     if (!newPost.trim() || !viewerId || !profileUser) return;
     setPostingMsg(true);
     const { data } = await supabase.from('zeewall').insert({
-      owner_id:  profileUser.id,
+      owner_id: profileUser.id,
       author_id: viewerId,
-      content:   newPost.trim(),
+      content: newPost.trim(),
     }).select('id, content, created_at, zaps, author:users!author_id(display_name, zid)').single();
-    if (data) setPosts(prev => [data as Post, ...prev]);
+    if (data) setPosts(prev => [data as unknown as Post, ...prev]);
     setNewPost('');
     setPostingMsg(false);
   };
 
   // ── Zap a post ───────────────────────────────────────────────────
+  // ── Friend actions ──────────────────────────────────────────
+  const handleAddFriend = async () => {
+    if (!viewerId || !profileUser) return;
+    setFriendLoading(true);
+    const result = await sendFriendRequest(profileUser.id);
+    if (result) setFriendStatus({ status: 'pending_sent', requestId: result.id });
+    setFriendLoading(false);
+  };
+
+  const handleCancelRequest = async () => {
+    if (!friendStatus.requestId) return;
+    setFriendLoading(true);
+    await cancelFriendRequest(friendStatus.requestId);
+    setFriendStatus({ status: 'none', requestId: null });
+    setFriendLoading(false);
+  };
+
+  const handleRespondToRequest = async (accept: boolean) => {
+    if (!friendStatus.requestId) return;
+    setFriendLoading(true);
+    await respondToFriendRequest(friendStatus.requestId, accept);
+    setFriendStatus(accept
+      ? { status: 'friends', requestId: friendStatus.requestId }
+      : { status: 'none', requestId: null }
+    );
+    setFriendLoading(false);
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!friendStatus.requestId) return;
+    setFriendLoading(true);
+    await removeFriend(friendStatus.requestId);
+    setFriendStatus({ status: 'none', requestId: null });
+    setFriendLoading(false);
+  };
+
   const handleZap = async (postId: number) => {
     if (!viewerId) return;
     await supabase.rpc('zap_post', { post_id: postId, zapper_id: viewerId });
@@ -269,7 +324,7 @@ export default function PublicProfile() {
     const file = e.target.files?.[0];
     if (!file || !viewerId || !profileUser || !isOwner) return;
     setUploadingPhoto(true);
-    const ext  = file.name.split('.').pop();
+    const ext = file.name.split('.').pop();
     const path = `${profileUser.id}/photos/${Date.now()}.${ext}`;
     const { data, error } = await supabase.storage.from('user-media').upload(path, file);
     if (!error && data) {
@@ -352,13 +407,13 @@ export default function PublicProfile() {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-mono uppercase tracking-widest transition-all"
                 style={{
                   borderColor: secondary,
-                  color:       secondary,
-                  boxShadow:   musicPlaying ? `0 0 12px ${secondary}50` : 'none',
+                  color: secondary,
+                  boxShadow: musicPlaying ? `0 0 12px ${secondary}50` : 'none',
                 }}
               >
                 {musicPlaying
                   ? <><Pause className="w-3 h-3" /> Theme</>
-                  : <><Play  className="w-3 h-3" /> Theme</>
+                  : <><Play className="w-3 h-3" /> Theme</>
                 }
                 {/* EQ bars */}
                 {musicPlaying && (
@@ -423,7 +478,7 @@ export default function PublicProfile() {
             <div className="retro-entry">
               <ProfileCard
                 name={profileUser?.display_name || ''}
-                title={profileUser?.zid          || ''}
+                title={profileUser?.zid || ''}
                 handle={(profileUser?.display_name || '').toLowerCase().replace(/\s+/g, '_')}
                 status={profileUser?.status_message || 'Online'}
                 contactText={isOwner ? '✎ Edit Me' : '⚡ Buzz'}
@@ -475,10 +530,10 @@ export default function PublicProfile() {
                 <span
                   className="text-[10px] font-black px-2 py-0.5 rounded-full font-mono"
                   style={{
-                    color:            tier.color,
-                    backgroundColor:  `${tier.color}15`,
-                    boxShadow:        `0 0 8px ${tier.glow}`,
-                    border:           `1px solid ${tier.color}40`,
+                    color: tier.color,
+                    backgroundColor: `${tier.color}15`,
+                    boxShadow: `0 0 8px ${tier.glow}`,
+                    border: `1px solid ${tier.color}40`,
                   }}
                 >
                   {tier.label}
@@ -490,17 +545,17 @@ export default function PublicProfile() {
                 <div
                   className="h-full rounded-full transition-all duration-1000"
                   style={{
-                    width:      `${Math.min(100, ((profileUser?.influence_score ?? 0) / 100) * 100)}%`,
+                    width: `${Math.min(100, ((profileUser?.influence_score ?? 0) / 100) * 100)}%`,
                     background: `linear-gradient(to right, ${primary}, ${secondary})`,
-                    boxShadow:  `0 0 8px ${primary}`,
+                    boxShadow: `0 0 8px ${primary}`,
                   }}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 {[
-                  { label: 'Posts',  value: postCount,                   color: secondary },
-                  { label: 'Score',  value: profileUser?.influence_score ?? 0, color: primary   },
+                  { label: 'Posts', value: postCount, color: secondary },
+                  { label: 'Score', value: profileUser?.influence_score ?? 0, color: primary },
                 ].map(s => (
                   <div key={s.label} className="bg-black/30 rounded-lg p-2">
                     <p className="font-black text-sm" style={{ color: s.color }}>{s.value}</p>
@@ -524,9 +579,9 @@ export default function PublicProfile() {
                 </p>
                 <div className="space-y-2.5">
                   {[
-                    { label: 'Trust',  icon: <Shield    className="w-3 h-3" />, value: vibes.trustworthy_score, color: '#B4FF00' },
-                    { label: 'Cool',   icon: <Snowflake className="w-3 h-3" />, value: vibes.cool_score,        color: '#00F7FF' },
-                    { label: 'Sexy',   icon: <Flame     className="w-3 h-3" />, value: vibes.sexy_score,        color: '#FF007A' },
+                    { label: 'Trust', icon: <Shield className="w-3 h-3" />, value: vibes.trustworthy_score, color: '#B4FF00' },
+                    { label: 'Cool', icon: <Snowflake className="w-3 h-3" />, value: vibes.cool_score, color: '#00F7FF' },
+                    { label: 'Sexy', icon: <Flame className="w-3 h-3" />, value: vibes.sexy_score, color: '#FF007A' },
                   ].map(v => (
                     <div key={v.label}>
                       <div className="flex justify-between items-center mb-1">
@@ -539,7 +594,7 @@ export default function PublicProfile() {
                         <div
                           className="h-full rounded-full"
                           style={{
-                            width:     `${Math.min(100, v.value)}%`,
+                            width: `${Math.min(100, v.value)}%`,
                             backgroundColor: v.color,
                             boxShadow: `0 0 6px ${v.color}`,
                           }}
@@ -563,8 +618,8 @@ export default function PublicProfile() {
                 <Flame className="w-3 h-3" /> Core 8
               </p>
               <div className="grid grid-cols-4 gap-2">
-                {[1,2,3,4,5,6,7,8].map(slot => {
-                  const entry  = coreEight.find(c => c.position === slot);
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(slot => {
+                  const entry = coreEight.find(c => c.position === slot);
                   const friend = entry?.friend;
                   return (
                     <div key={slot} className="flex flex-col items-center gap-1">
@@ -574,7 +629,7 @@ export default function PublicProfile() {
                             className="w-12 h-12 rounded-xl overflow-hidden border transition-all group-hover:scale-105"
                             style={{
                               borderColor: `${primary}40`,
-                              boxShadow:   `0 0 8px ${primary}20`,
+                              boxShadow: `0 0 8px ${primary}20`,
                             }}
                           >
                             <img
@@ -612,7 +667,7 @@ export default function PublicProfile() {
             <div
               className="retro-entry rounded-2xl border p-5 relative overflow-hidden"
               style={{
-                borderColor:     `${primary}30`,
+                borderColor: `${primary}30`,
                 backgroundColor: `${primary}06`,
               }}
             >
@@ -673,14 +728,65 @@ export default function PublicProfile() {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {!isOwner && viewerId && (
                       <>
+                        {/* Dynamic Friend Button */}
+                        {friendStatus.status === 'none' && (
+                          <button
+                            onClick={handleAddFriend}
+                            disabled={friendLoading}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all text-black disabled:opacity-50"
+                            style={{ backgroundColor: primary, boxShadow: `0 0 12px ${primary}50` }}
+                          >
+                            {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                            Add Friend
+                          </button>
+                        )}
+                        {friendStatus.status === 'pending_sent' && (
+                          <button
+                            onClick={handleCancelRequest}
+                            disabled={friendLoading}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10 disabled:opacity-50"
+                          >
+                            {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                            Request Sent
+                          </button>
+                        )}
+                        {friendStatus.status === 'pending_received' && (
+                          <>
+                            <button
+                              onClick={() => handleRespondToRequest(true)}
+                              disabled={friendLoading}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all text-black disabled:opacity-50"
+                              style={{ backgroundColor: '#B4FF00', boxShadow: '0 0 12px rgba(180,255,0,0.5)' }}
+                            >
+                              {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleRespondToRequest(false)}
+                              disabled={friendLoading}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                            >
+                              <X className="w-3 h-3" /> Decline
+                            </button>
+                          </>
+                        )}
+                        {friendStatus.status === 'friends' && (
+                          <button
+                            onClick={handleRemoveFriend}
+                            disabled={friendLoading}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border disabled:opacity-50 group"
+                            style={{ borderColor: `${secondary}60`, color: secondary }}
+                          >
+                            <UserCheck className="w-3 h-3 group-hover:hidden" />
+                            <UserX className="w-3 h-3 hidden group-hover:block text-red-400" />
+                            <span className="group-hover:hidden">Friends</span>
+                            <span className="hidden group-hover:block text-red-400">Unfriend</span>
+                          </button>
+                        )}
+
                         <button
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all text-black"
-                          style={{ backgroundColor: primary, boxShadow: `0 0 12px ${primary}50` }}
-                        >
-                          <Plus className="w-3 h-3" /> Add Friend
-                        </button>
-                        <button
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border"
+                          onClick={() => profileUser && router.push(`/messages/${profileUser.id}`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border hover:shadow-[0_0_12px_rgba(0,247,255,0.3)]"
                           style={{ borderColor: secondary, color: secondary }}
                         >
                           <MessageCircle className="w-3 h-3" /> Message
@@ -720,8 +826,8 @@ export default function PublicProfile() {
                   className="flex-1 py-3 text-xs font-black uppercase tracking-widest transition-all"
                   style={{
                     backgroundColor: activeTab === tab ? `${primary}20` : 'transparent',
-                    color:           activeTab === tab ? primary : '#555',
-                    borderBottom:    activeTab === tab ? `2px solid ${primary}` : '2px solid transparent',
+                    color: activeTab === tab ? primary : '#555',
+                    borderBottom: activeTab === tab ? `2px solid ${primary}` : '2px solid transparent',
                   }}
                 >
                   {tab}
@@ -781,9 +887,9 @@ export default function PublicProfile() {
                     key={post.id}
                     className="retro-entry rounded-xl border p-4 transition-all hover:border-opacity-60"
                     style={{
-                      borderColor:     `${primary}20`,
+                      borderColor: `${primary}20`,
                       backgroundColor: '#0B0B12',
-                      animationDelay:  `${i * 0.05}s`,
+                      animationDelay: `${i * 0.05}s`,
                     }}
                   >
                     <div className="flex items-start gap-3">
