@@ -78,7 +78,7 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
     document.head.appendChild(s);
 }
 
-export default function GlobalFeed({ userId, userZid }: { userId: string; userZid?: string }) {
+export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: string; userZid?: string; wallOwnerId?: string }) {
     const [mode, setMode] = useState<FeedMode>("all");
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -144,7 +144,9 @@ export default function GlobalFeed({ userId, userZid }: { userId: string; userZi
         else query = query.order("created_at", { ascending: false });
         query = query.range(from, to);
         if (topicId !== null) query = query.eq("topic_id", topicId);
-        if (feedMode === "friends") {
+        if (wallOwnerId) {
+            query = query.eq("owner_id", wallOwnerId);
+        } else if (feedMode === "friends") {
             const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
             const ids = (fr || []).map(r => r.sender_id === userId ? r.receiver_id : r.sender_id);
             ids.push(userId);
@@ -517,25 +519,27 @@ export default function GlobalFeed({ userId, userZid }: { userId: string; userZi
     return (
         <div>
             {/* ── TOPIC BAR ── */}
-            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-800/60 overflow-x-auto topic-scroll">
-                <button onClick={() => setActiveTopic(null)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all border ${activeTopic === null ? "bg-electric/15 border-electric/40 text-electric" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
-                    <Globe className="w-3 h-3" /> ALL
-                </button>
-                {topics.map(t => (
-                    <button key={t.id} onClick={() => setActiveTopic(t.id)}
-                        className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold font-mono tracking-wide transition-all border whitespace-nowrap ${activeTopic === t.id ? "bg-cyan/15 border-cyan/40 text-cyan" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
-                        {t.is_pinned && <Pin className="w-2.5 h-2.5" />}
-                        <Hash className="w-2.5 h-2.5 opacity-50" />{t.title.toUpperCase()}
-                        {t.created_by === userId && !t.is_pinned && <XCircle className="w-3 h-3 ml-0.5 text-gray-700 hover:text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteTopic(t.id); }} />}
+            {!wallOwnerId && (
+                <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-800/60 overflow-x-auto topic-scroll">
+                    <button onClick={() => setActiveTopic(null)}
+                        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all border ${activeTopic === null ? "bg-electric/15 border-electric/40 text-electric" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
+                        <Globe className="w-3 h-3" /> ALL
                     </button>
-                ))}
-                <button onClick={() => setShowNewTopic(!showNewTopic)} className="flex-shrink-0 w-7 h-7 rounded-full border border-dashed border-gray-700 hover:border-electric flex items-center justify-center text-gray-700 hover:text-electric transition-all">
-                    <Plus className="w-3 h-3" />
-                </button>
-            </div>
+                    {topics.map(t => (
+                        <button key={t.id} onClick={() => setActiveTopic(t.id)}
+                            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold font-mono tracking-wide transition-all border whitespace-nowrap ${activeTopic === t.id ? "bg-cyan/15 border-cyan/40 text-cyan" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
+                            {t.is_pinned && <Pin className="w-2.5 h-2.5" />}
+                            <Hash className="w-2.5 h-2.5 opacity-50" />{t.title.toUpperCase()}
+                            {t.created_by === userId && !t.is_pinned && <XCircle className="w-3 h-3 ml-0.5 text-gray-700 hover:text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteTopic(t.id); }} />}
+                        </button>
+                    ))}
+                    <button onClick={() => setShowNewTopic(!showNewTopic)} className="flex-shrink-0 w-7 h-7 rounded-full border border-dashed border-gray-700 hover:border-electric flex items-center justify-center text-gray-700 hover:text-electric transition-all">
+                        <Plus className="w-3 h-3" />
+                    </button>
+                </div>
+            )}
 
-            {showNewTopic && (
+            {!wallOwnerId && showNewTopic && (
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800/40 bg-black/20">
                     <Hash className="w-3.5 h-3.5 text-gray-600" />
                     <input type="text" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleCreateTopic(); }}
@@ -547,13 +551,15 @@ export default function GlobalFeed({ userId, userZid }: { userId: string; userZi
 
             {/* ── BROADCASTER ── */}
             <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(138,46,255,0.04) 0%, transparent 100%)" }}>
-                <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
-                    <button onClick={() => setMode("all")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "all" ? "bg-electric/10 text-electric" : "text-gray-700 hover:text-gray-400"}`}>
-                        <Globe className="w-2.5 h-2.5" /> GLOBAL</button>
-                    <button onClick={() => setMode("friends")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "friends" ? "bg-cyan/10 text-cyan" : "text-gray-700 hover:text-gray-400"}`}>
-                        <Users className="w-2.5 h-2.5" /> NETWORK</button>
-                    {activeTopicName && <span className="ml-auto text-[9px] font-mono text-gray-700">#{activeTopicName.toLowerCase()}</span>}
-                </div>
+                {!wallOwnerId && (
+                    <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
+                        <button onClick={() => setMode("all")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "all" ? "bg-electric/10 text-electric" : "text-gray-700 hover:text-gray-400"}`}>
+                            <Globe className="w-2.5 h-2.5" /> GLOBAL</button>
+                        <button onClick={() => setMode("friends")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "friends" ? "bg-cyan/10 text-cyan" : "text-gray-700 hover:text-gray-400"}`}>
+                            <Users className="w-2.5 h-2.5" /> NETWORK</button>
+                        {activeTopicName && <span className="ml-auto text-[9px] font-mono text-gray-700">#{activeTopicName.toLowerCase()}</span>}
+                    </div>
+                )}
                 <div className="px-3 pb-3">
                     <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(138,46,255,0.08)]">
                         <div className="flex gap-2.5">
