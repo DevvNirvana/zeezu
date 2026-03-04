@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Zap, Bell, MessageCircle, Flame, Music, Search, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { syncUserSession, getCoreEight, getDashboardStats, searchFriends, addToCoreEight, removeFromCoreEight, getFriendCount } from "@/lib/supabase/queries";
-import ZeeWallFeed from "@/components/ZeeWallFeed";
+import GlobalFeed from "@/components/GlobalFeed";
 import NavBar from "@/components/NavBar";
 import ThemeEngine, { type ThemeConfig } from "@/components/ThemeEngine";
 
@@ -289,19 +289,13 @@ export default function Dashboard() {
 
           {/* Feed */}
           <div className="bg-gray-900/40 backdrop-blur-md border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-800 flex justify-between items-center">
-              <h2 className="font-black text-white flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-cyan" /> THE WALL
-              </h2>
-              <div className="flex gap-2 text-xs font-mono text-gray-600">
-                <span className="text-electric cursor-pointer">ALL</span>
-                <span>/</span>
-                <span className="cursor-pointer hover:text-white transition-colors">FRIENDS</span>
-              </div>
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-cyan" />
+              <h2 className="font-black text-white text-sm">THE FEED</h2>
+              <span className="text-[9px] font-mono text-gray-700 ml-auto">LIVE</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-lime animate-pulse" />
             </div>
-            <div className="p-4">
-              <ZeeWallFeed />
-            </div>
+            <GlobalFeed userId={userData?.id || ''} userZid={userData?.zid} />
           </div>
         </div>
       </div>

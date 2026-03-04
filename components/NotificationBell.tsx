@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi } from "lucide-react";
+import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi, Reply, ArrowUp, Trophy } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Notification = {
@@ -19,8 +19,11 @@ type Notification = {
 
 // Type labels that match Zeezu brand language
 const TYPE_LABEL: Record<string, string> = {
-  zap: "zapped your post",
-  comment: "dropped a comment",
+  zap: "zapped your post ⚡",
+  comment: "commented on your post",
+  reply: "replied to your comment",
+  upvote: "upvoted your comment",
+  milestone: "milestone reached!",
   mention: "mentioned you",
   system: "updated your Core 8",
   friend_request: "wants to be your friend",
@@ -30,6 +33,9 @@ const TYPE_LABEL: Record<string, string> = {
 const TYPE_ICON: Record<string, React.ReactNode> = {
   zap: <Zap className="w-3.5 h-3.5 text-lime fill-lime drop-shadow-[0_0_6px_#B4FF00]" />,
   comment: <MessageSquare className="w-3.5 h-3.5 text-cyan drop-shadow-[0_0_6px_#00F7FF]" />,
+  reply: <Reply className="w-3.5 h-3.5 text-indigo-400 drop-shadow-[0_0_6px_#818cf8]" />,
+  upvote: <ArrowUp className="w-3.5 h-3.5 text-green-400 drop-shadow-[0_0_6px_#22c55e]" />,
+  milestone: <Trophy className="w-3.5 h-3.5 text-yellow-400 drop-shadow-[0_0_6px_#fbbf24]" />,
   mention: <AtSign className="w-3.5 h-3.5 text-orange-400 drop-shadow-[0_0_6px_#fb923c]" />,
   system: <UserPlus className="w-3.5 h-3.5 text-electric drop-shadow-[0_0_6px_#8A2EFF]" />,
   friend_request: <UserPlus className="w-3.5 h-3.5 text-magenta drop-shadow-[0_0_6px_#FF007A]" />,
@@ -40,6 +46,9 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 const TYPE_STRIPE: Record<string, string> = {
   zap: "border-l-lime",
   comment: "border-l-cyan",
+  reply: "border-l-indigo-400",
+  upvote: "border-l-green-400",
+  milestone: "border-l-yellow-400",
   mention: "border-l-orange-400",
   system: "border-l-electric",
   friend_request: "border-l-magenta",

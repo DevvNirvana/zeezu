@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase/client";
-import { X, MessageSquare, Zap, UserPlus, UserCheck, Bell } from "lucide-react";
+import { X, MessageSquare, Zap, UserPlus, UserCheck, Bell, Reply, ArrowUp, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type Toast = {
     id: string;
-    type: "message" | "buzz" | "friend_request" | "friend_accept" | "zap" | "system";
+    type: "message" | "buzz" | "friend_request" | "friend_accept" | "zap" | "system" | "comment" | "reply" | "upvote" | "milestone";
     title: string;
     body: string;
     link?: string;
@@ -22,6 +22,10 @@ const TOAST_ICONS: Record<string, React.ReactNode> = {
     friend_accept: <UserCheck className="w-4 h-4" />,
     zap: <Zap className="w-4 h-4" />,
     system: <Bell className="w-4 h-4" />,
+    comment: <MessageSquare className="w-4 h-4" />,
+    reply: <Reply className="w-4 h-4" />,
+    upvote: <ArrowUp className="w-4 h-4" />,
+    milestone: <Trophy className="w-4 h-4" />,
 };
 
 const TOAST_COLORS: Record<string, string> = {
@@ -31,6 +35,10 @@ const TOAST_COLORS: Record<string, string> = {
     friend_accept: "#B4FF00",
     zap: "#B4FF00",
     system: "#8A2EFF",
+    comment: "#00F7FF",
+    reply: "#818cf8",
+    upvote: "#22c55e",
+    milestone: "#fbbf24",
 };
 
 const TOAST_DURATION = 5000;
@@ -39,6 +47,7 @@ export default function ToastProvider() {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
+    const recentNotifIds = useRef<Set<number>>(new Set());
 
     useEffect(() => setMounted(true), []);
 
@@ -78,6 +87,10 @@ export default function ToastProvider() {
                         const notif = payload.new;
                         // Client-side filter: only this user's notifications
                         if (notif.user_id !== user.id) return;
+                        // Dedup: skip if already shown
+                        if (recentNotifIds.current.has(notif.id)) return;
+                        recentNotifIds.current.add(notif.id);
+                        setTimeout(() => recentNotifIds.current.delete(notif.id), 10000);
                         // Fetch actor info
                         const { data: actor } = await supabase
                             .from("users")
@@ -87,8 +100,11 @@ export default function ToastProvider() {
 
                         const name = actor?.display_name || "Someone";
                         const typeLabels: Record<string, string> = {
-                            zap: "zapped your post",
+                            zap: "zapped your post ⚡",
                             comment: "commented on your post",
+                            reply: "replied to your comment",
+                            upvote: "upvoted your comment",
+                            milestone: notif.content || "Your comment hit a milestone!",
                             mention: "mentioned you",
                             friend_request: "sent you a friend request",
                             friend_accept: "accepted your friend request",
@@ -103,6 +119,8 @@ export default function ToastProvider() {
                             link = "/friends";
                         } else if (notif.type === "message" || notif.type === "buzz") {
                             link = `/messages/${notif.actor_id}`;
+                        } else if (["comment", "reply", "zap", "upvote", "milestone"].includes(notif.type)) {
+                            link = "/dashboard";
                         }
 
                         addToast({
