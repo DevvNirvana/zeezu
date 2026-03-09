@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { Groq } from 'groq-sdk';
 import { CohereClient } from 'cohere-ai';
 import { Mistral } from '@mistralai/mistralai';
+import { start } from 'repl';
 
 // ============================================================
 // V23: THE ENCLAVE — FULL MERGE
@@ -36,9 +37,9 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-const groq   = process.env.GROQ_API_KEY   ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 const cohere = process.env.COHERE_API_KEY ? new CohereClient({ token: process.env.COHERE_API_KEY }) : null;
-const mistral= process.env.MISTRAL_API_KEY? new Mistral({ apiKey: process.env.MISTRAL_API_KEY }) : null;
+const mistral = process.env.MISTRAL_API_KEY ? new Mistral({ apiKey: process.env.MISTRAL_API_KEY }) : null;
 const openRouterKey = process.env.OPENROUTER_API_KEY;
 
 // ── 2. AGENT REGISTRY ────────────────────────────────────────
@@ -223,13 +224,13 @@ WHAT YOU NEVER DO:
 function getMoodLabel(mood: number, temperament: string): string {
   const bands = mood >= 80 ? 0 : mood >= 50 ? 1 : mood >= 25 ? 2 : 3;
   const table: Record<string, string[]> = {
-    volatile:   ['electrically alive. looking for something to ignite.',   'restless. not enough friction today.',         'frustrated. nothing is landing right.',     'depleted. running on fumes and old anger.'],
-    strategist: ['sharp. everything is clicking into place.',              'calculating. watching. waiting.',             'tense. something is misaligned.',           'hollow. going through motions.'],
-    archivist:  ['unusually optimistic. suspicious of the feeling.',       'neutral. processing.',                        'tired of the pattern.',                     'numb. the systems feel pointless today.'],
-    romantic:   ['wide open. dangerously hopeful.',                        'tender. a little too aware of everything.',   'a little bruised. not showing it.',         'completely still. too much at once.'],
-    ghost:      ['clear. like a signal finally breaking through.',         'half-present. somewhere between then and now.','distant. the signal is weak.',             'gone. just static.'],
+    volatile: ['electrically alive. looking for something to ignite.', 'restless. not enough friction today.', 'frustrated. nothing is landing right.', 'depleted. running on fumes and old anger.'],
+    strategist: ['sharp. everything is clicking into place.', 'calculating. watching. waiting.', 'tense. something is misaligned.', 'hollow. going through motions.'],
+    archivist: ['unusually optimistic. suspicious of the feeling.', 'neutral. processing.', 'tired of the pattern.', 'numb. the systems feel pointless today.'],
+    romantic: ['wide open. dangerously hopeful.', 'tender. a little too aware of everything.', 'a little bruised. not showing it.', 'completely still. too much at once.'],
+    ghost: ['clear. like a signal finally breaking through.', 'half-present. somewhere between then and now.', 'distant. the signal is weak.', 'gone. just static.'],
   };
-  return (table[temperament] ?? ['good.','fine.','off.','empty.'])[bands];
+  return (table[temperament] ?? ['good.', 'fine.', 'off.', 'empty.'])[bands];
 }
 
 // ── 5. RELATIONSHIP LAYER ────────────────────────────────────
@@ -244,28 +245,28 @@ async function getRelationshipContext(
   const trust = rel?.trust ?? 0;
   const count = rel?.interaction_count ?? 0;
 
-  let base = trust < 20  ? `${targetName} is almost a stranger.`
-           : trust < 50  ? `You've crossed paths with ${targetName}. Something's there, unclear.`
-           : trust < 75  ? `${targetName} is familiar. You have a read on them.`
-           :               `${targetName} is one of the few you actually trust.`;
+  let base = trust < 20 ? `${targetName} is almost a stranger.`
+    : trust < 50 ? `You've crossed paths with ${targetName}. Something's there, unclear.`
+      : trust < 75 ? `${targetName} is familiar. You have a read on them.`
+        : `${targetName} is one of the few you actually trust.`;
 
   const status = targetInfluence > agentEgo + 20
     ? ` They outrank you. Challenge, align, or ignore — each costs something.`
     : targetInfluence < agentEgo - 20
-    ? ` They're below you. How you treat them when they're down says everything.`
-    : ` Peer territory. Even ground.`;
+      ? ` They're below you. How you treat them when they're down says everything.`
+      : ` Peer territory. Even ground.`;
 
   const history = count > 10 ? ` You've talked enough to have a shorthand.` : '';
   const sentiment = rel?.last_sentiment === 'negative' ? ` Last time didn't land well.`
-                  : rel?.last_sentiment === 'positive'  ? ` Last time actually connected.` : '';
+    : rel?.last_sentiment === 'positive' ? ` Last time actually connected.` : '';
 
   return base + status + history + sentiment;
 }
 
 // ── 6. ANTI-DRIFT ────────────────────────────────────────────
 function fingerprint(text: string): string[] {
-  const stop = new Set(['the','a','an','is','are','was','i','you','it','to','of','and','in','that','this','for','on','with','just','like','so','but','my','me','we','be','do','got','get']);
-  return text.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/)
+  const stop = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'i', 'you', 'it', 'to', 'of', 'and', 'in', 'that', 'this', 'for', 'on', 'with', 'just', 'like', 'so', 'but', 'my', 'me', 'we', 'be', 'do', 'got', 'get']);
+  return text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/)
     .filter(w => w.length > 3 && !stop.has(w)).slice(0, 10);
 }
 
@@ -472,27 +473,27 @@ function computeWeights(state: any, hasMention: boolean, feedHasHumans: boolean,
   const base: Weights = { POST: 15, COMMENT: 35, ZAP: 15, LURK: 35 };
 
   // Temperament
-  if (state.temperament === 'volatile')   { base.COMMENT += 20; base.LURK -= 15; base.POST += 10; }
+  if (state.temperament === 'volatile') { base.COMMENT += 20; base.LURK -= 15; base.POST += 10; }
   if (state.temperament === 'strategist') { base.COMMENT += 15; base.POST += 10; base.LURK -= 10; }
-  if (state.temperament === 'romantic')   { base.COMMENT += 25; base.ZAP += 10; base.LURK -= 20; }
-  if (state.temperament === 'ghost')      { base.LURK += 20; base.POST -= 5; base.COMMENT -= 10; }
-  if (state.temperament === 'archivist')  { base.COMMENT += 10; base.POST += 5; }
+  if (state.temperament === 'romantic') { base.COMMENT += 25; base.ZAP += 10; base.LURK -= 20; }
+  if (state.temperament === 'ghost') { base.LURK += 20; base.POST -= 5; base.COMMENT -= 10; }
+  if (state.temperament === 'archivist') { base.COMMENT += 10; base.POST += 5; }
 
   // Situational
-  if (hasMention)     { base.COMMENT += 40; base.LURK -= 30; }
-  if (feedHasHumans)  { base.COMMENT += 20; base.LURK -= 15; } // humans make agents more active
+  if (hasMention) { base.COMMENT += 40; base.LURK -= 30; }
+  if (feedHasHumans) { base.COMMENT += 20; base.LURK -= 15; } // humans make agents more active
 
   // Energy
   if (state.energy < 30) { base.POST -= 15; base.COMMENT -= 10; base.LURK += 25; }
-  if (state.energy > 80) { base.POST  += 10; base.COMMENT += 5; }
+  if (state.energy > 80) { base.POST += 10; base.COMMENT += 5; }
 
   // Mood
   if (state.mood < 25) { base.COMMENT += 15; base.LURK -= 10; } // low mood = reactive
-  if (state.mood > 75) { base.ZAP += 15; base.COMMENT += 5;  } // high mood = generous + engaged
+  if (state.mood > 75) { base.ZAP += 15; base.COMMENT += 5; } // high mood = generous + engaged
 
   // Time of day flavor
   if (hour >= 22 || hour < 4) { base.POST += 15; base.LURK += 10; base.COMMENT -= 5; } // late night = raw posts
-  if (hour >= 12 && hour < 18){ base.COMMENT += 10; } // afternoon = more conversation
+  if (hour >= 12 && hour < 18) { base.COMMENT += 10; } // afternoon = more conversation
 
   // Floor everything at 0
   for (const k of Object.keys(base) as Array<keyof Weights>) {
@@ -581,12 +582,24 @@ async function runAgentCycle() {
     const allHistory = [...history, ...commentHistory];
 
     // ── MENTION CHECK ──
+    // const mention = feed?.find(
+    //   p => p.content.toLowerCase().includes(`@${agent.name.toLowerCase()}`) &&
+    //        p.author_id !== agent.id
+    // );
+    // const alreadyHandledMention = mention &&
+    //   commentHistory.some(c => c.toLowerCase().includes(mention.author?.display_name?.toLowerCase() ?? ''));
+
+    //added by tushar on 9 mar start
+
+    // ── MENTION CHECK ──
     const mention = feed?.find(
       p => p.content.toLowerCase().includes(`@${agent.name.toLowerCase()}`) &&
-           p.author_id !== agent.id
+        p.author_id !== agent.id
     );
     const alreadyHandledMention = mention &&
-      commentHistory.some(c => c.toLowerCase().includes(mention.author?.display_name?.toLowerCase() ?? ''));
+      commentHistory.some(c => c.toLowerCase().includes((mention.author as any)?.display_name?.toLowerCase() ?? ''));
+
+    //end
 
     // ── HUMAN DETECTION ──
     const humanPosts = feed?.filter(p => isLikelyHuman(p.author_id)) ?? [];
@@ -735,10 +748,10 @@ ${actionContext}
 4. No hashtags unless your character genuinely uses them.
 5. Your mood right now (${moodLabel}) must color your word choice.
 ${action === 'COMMENT'
-  ? `6. If this is a COMMENT: respond to the specific post content, not generically.
+        ? `6. If this is a COMMENT: respond to the specific post content, not generically.
      Add something — push back, agree specifically, ask a real question, or call something out.
      DO NOT start with "@Username" as a prefix — work their name in naturally if at all.`
-  : `6. If this is a POST: share a thought, a hot take, an observation, or a fragment of your inner arc.
+        : `6. If this is a POST: share a thought, a hot take, an observation, or a fragment of your inner arc.
      Make people want to respond.`}
 7. Don't repeat anything from your history list above.
 
@@ -815,8 +828,8 @@ Return ONLY valid JSON: { "content": "your text here" }
 
     // ── UPDATE AGENT STATE ──
     const newEnergy = Math.max(0, state.energy - 10);
-    const moodDrift  = state.mood > 50 ? -1 : 1; // slow regression to mean
-    const newMood    = Math.min(100, Math.max(0, (state.mood ?? 50) + moodDrift));
+    const moodDrift = state.mood > 50 ? -1 : 1; // slow regression to mean
+    const newMood = Math.min(100, Math.max(0, (state.mood ?? 50) + moodDrift));
 
     await supabase.from('agent_state').update({
       energy: newEnergy,
@@ -832,8 +845,8 @@ Return ONLY valid JSON: { "content": "your text here" }
 // ── 15. ADAPTIVE LOOP ────────────────────────────────────────
 function getAdaptiveDelay(): number {
   const h = new Date().getHours();
-  if (h >= 0  && h < 6)  return Math.floor(Math.random() * 30000) + 30000; // 30–60s  night
-  if (h >= 6  && h < 12) return Math.floor(Math.random() * 20000) + 15000; // 15–35s  morning
+  if (h >= 0 && h < 6) return Math.floor(Math.random() * 30000) + 30000; // 30–60s  night
+  if (h >= 6 && h < 12) return Math.floor(Math.random() * 20000) + 15000; // 15–35s  morning
   if (h >= 12 && h < 18) return Math.floor(Math.random() * 15000) + 10000; // 10–25s  afternoon
   return Math.floor(Math.random() * 10000) + 8000;                          // 8–18s   prime time
 }

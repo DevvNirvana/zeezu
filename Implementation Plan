@@ -1,0 +1,138 @@
+# Profile / Identity Settings — Major Overhaul
+
+Polish and upgrade the profile settings page (`app/profile/page.tsx`) with new features, better UX, and premium aesthetics, making it a state-of-the-art customization experience.
+
+## What Already Exists (Keeping)
+- ✅ Identity section (display name, status, bio)
+- ✅ Avatar upload with live preview  
+- ✅ Theme presets (6) + custom color pickers
+- ✅ Background (URL, tiling, opacity)
+- ✅ Profile Anthem (theme track URL)
+- ✅ Vibes (read-only trust/cool/sexy bars)
+- ✅ Live ProfileCard 3D preview
+- ✅ Stats strip (posts, influence, tier)
+- ✅ ThemeEngine integration
+- ✅ Save button with loading/success states
+
+## Proposed Changes
+
+### 1. Navigation & Layout Upgrade
+
+#### [MODIFY] [page.tsx](file:///t:/zeezu/app/profile/page.tsx)
+
+**Tabbed sections** — Replace the single long scroll with tab navigation for cleaner organization. Tabs will include:
+- **Identity** — Name, status, bio, avatar (existing)
+- **Appearance** — Theme presets, colors, background (existing)
+- **Social Links** — New links section (website, Twitter/X, Instagram, GitHub, Discord, custom)
+- **Privacy** — Visibility toggles for profile sections
+- **Account** — Email display, sign out, danger zone (delete account)
+
+This keeps the live ProfileCard preview pinned on the left at all times.
+
+---
+
+### 2. New Features
+
+#### Social Links Section (NEW)
+- Add 6 link fields: Website, X/Twitter, Instagram, GitHub, Discord, Custom
+- Each with icon, URL input, and live preview on public profile
+- Stored in `users` table columns or a new `social_links` JSONB column
+
+#### Privacy & Visibility Section (NEW)
+- Toggle: Show/hide vibes scores on public profile
+- Toggle: Show/hide wall posts on public profile  
+- Toggle: Allow anyone to post on wall vs friends-only
+- Toggle: Show online status
+- Stored in `users` or `profile_customization` table
+
+#### Profile Completeness Meter (NEW)
+- Visual progress bar showing profile completion %
+- Checks: display name, avatar, bio, status, theme, social links, anthem
+- Encouraging micro-copy for each incomplete item
+
+#### Account Actions (NEW)
+- Display email (read-only)
+- Sign out button  
+- Change password (link to Supabase auth)
+
+---
+
+### 3. UX Polish
+
+#### Animated Tab Transitions
+- Smooth slide animation when switching between tabs
+- Active tab indicator with animated underline
+
+#### Unsaved Changes Warning
+- Track dirty state across all fields
+- Show "Unsaved changes" floating indicator
+- Warn before navigating away via `beforeunload` event
+
+#### Per-Section Save Feedback
+- Each section card gets a subtle border glow when modified
+- Save button pulses when there are unsaved changes
+
+#### Input Improvements
+- Character counters on all text fields (display name 30/30, bio 500/500, status 140/140)
+- URL validation with visual feedback for theme track and background URLs
+- Avatar: show file size and accept/reject feedback
+
+---
+
+### 4. Visual Upgrades
+
+#### Redesigned Header
+- Larger avatar in header with the user's primary color glow ring
+- ZID displayed prominently with copy button
+- Influence tier badge next to name
+- "View Public Profile" link button
+
+#### Better Theme Preview
+- Show a mini-mockup of how the theme looks on a post card
+- Gradient preview bar updates live as colors are picked
+
+#### Mobile Optimization
+- Tabs become a horizontal scrollable pill bar
+- ProfileCard preview collapses to a smaller inline card on mobile
+- Touch-friendly color picker sizing
+
+---
+
+### 5. Profile Completeness Scoring
+
+| Field | Points |
+|---|---|
+| Display name set (not default) | 15 |
+| Avatar uploaded | 20 |
+| Bio written (>20 chars) | 15 |
+| Status set | 10 |
+| Theme customized | 10 |
+| Profile anthem set | 10 |
+| At least 1 social link | 10 |
+| Background set | 10 |
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Social links storage**: I plan to store social links as a `social_links JSONB` column on the `users` table (simplest approach). Alternative would be a separate `user_links` table. Preference?
+
+> [!IMPORTANT]  
+> **Privacy toggles**: These would need new columns on `users` or `profile_customization`. If you want these functional on the public profile too, I'd also update `app/u/[zid]/page.tsx` to respect these.
+
+> [!NOTE]
+> The existing page is already 735 lines. With these additions I expect it to grow to ~1000-1100 lines. The tab system will actually make each section feel lighter since you only see one at a time.
+
+## Verification Plan
+
+### Manual
+- Test all tabs navigate correctly
+- Verify save persists all fields including new ones
+- Check live preview updates for all color/theme changes  
+- Test avatar upload workflow
+- Verify mobile responsiveness on small screens
+- Check unsaved changes warning fires correctly
+
+### TypeScript
+- `npx tsc --noEmit` — ensure clean compilation

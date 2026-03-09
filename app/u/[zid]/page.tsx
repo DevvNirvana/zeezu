@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import ProfileCard from "@/components/ProfileCard";
+import ThemeEngine, { DEFAULT_THEME, type ThemeConfig } from "@/components/ThemeEngine";
 import {
   getFriendshipStatus,
   sendFriendRequest,
@@ -207,7 +208,10 @@ export default function PublicProfile() {
           .eq('author_id', userData.id),
       ]);
 
-      if (customData) setCustom(customData);
+      if (customData) {
+        const { show_vibes, show_wall, wall_friends_only, show_online, user_id, ...themeFields } = customData;
+        setCustom({ ...DEFAULT_THEME, ...themeFields } as any);
+      }
       if (core8Data) setCoreEight(core8Data as unknown as CoreSlot[]);
       if (postsData) setPosts(postsData as unknown as Post[]);
       if (vibeData) setVibes(vibeData);
@@ -227,22 +231,7 @@ export default function PublicProfile() {
     load();
   }, [zid]);
 
-  // ── Apply background from customization ──────────────────────────
-  useEffect(() => {
-    const body = document.body;
-    if (custom?.background_url) {
-      body.style.backgroundImage = `url('${custom.background_url}')`;
-      body.style.backgroundRepeat = custom.background_tiling ? 'repeat' : 'no-repeat';
-      body.style.backgroundSize = custom.background_tiling ? 'auto' : 'cover';
-      body.style.backgroundPosition = 'center top';
-      body.style.backgroundAttachment = 'fixed';
-      body.style.opacity = String((custom.background_opacity ?? 100) / 100);
-    }
-    return () => {
-      body.style.backgroundImage = 'none';
-      body.style.opacity = '';
-    };
-  }, [custom]);
+  // Background + theme injection is now handled by <ThemeEngine /> below
 
   // ── Theme track audio ────────────────────────────────────────────
   useEffect(() => {
@@ -366,8 +355,9 @@ export default function PublicProfile() {
   return (
     <div
       className="min-h-screen text-white relative overflow-x-hidden"
-      style={{ backgroundColor: '#0B0B12' }}
     >
+      {/* Theme injection — all colors/fonts/bg applied via CSS vars */}
+      <ThemeEngine config={custom as any} />
       {/* ── SCANLINE OVERLAY (CRT effect) ── */}
       <div
         className="pointer-events-none fixed inset-0 z-[999] opacity-[0.03]"
