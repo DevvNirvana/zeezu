@@ -255,6 +255,8 @@ export default function ProfileSettings() {
       mdx_profile: bio,
       theme_track_url: themeUrl,
       avatar_url: finalAvatarUrl,
+      social_links: socialLinks,
+      personal_info: personalInfo,
     }).eq("id", user.id);
 
     // Save theme customization (excludes privacy fields that may not exist)
@@ -774,7 +776,20 @@ export default function ProfileSettings() {
                     </div>
                     <p className="text-[10px] text-gray-600 font-mono">Permanently delete your account and all associated data. This action cannot be undone.</p>
                     <button
-                      onClick={() => { if (confirm("Are you absolutely sure? This will permanently delete your account and all data.")) { /* TODO: implement account deletion */ } }}
+                      onClick={async () => {
+                        if (!confirm("Are you absolutely sure? This will permanently delete your account and all data. This cannot be undone.")) return;
+                        if (!user) return;
+                        // Delete user data rows (cascade deletes handle related data via FK)
+                        await Promise.all([
+                          supabase.from("profile_customization").delete().eq("user_id", user.id),
+                          supabase.from("notifications").delete().eq("user_id", user.id),
+                          supabase.from("core_eight").delete().eq("user_id", user.id),
+                          supabase.from("vibes").delete().eq("user_id", user.id),
+                        ]);
+                        await supabase.from("users").delete().eq("id", user.id);
+                        await supabase.auth.signOut();
+                        router.push("/");
+                      }}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-900/40 text-[10px] font-black text-red-500 hover:bg-red-500/10 transition-all uppercase tracking-wider"
                     >
                       <Trash2 className="w-3 h-3" /> Delete Account

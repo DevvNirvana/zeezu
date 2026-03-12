@@ -19,6 +19,7 @@ import {
   Play, Pause, Plus, Share2, Flag, Clock, Camera,
   Volume2, VolumeX, Edit3, Image as ImageIcon,
   UserPlus, UserCheck, UserX, Loader2, Check, X,
+  Globe, Github, Instagram, Link as LinkIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -32,6 +33,8 @@ type ProfileUser = {
   influence_score: number;
   status_message: string | null;
   status_updated_at: string | null;
+  avatar_url: string | null;
+  social_links: Record<string, string> | null;
 };
 
 type Customization = {
@@ -153,6 +156,21 @@ export default function PublicProfile() {
   const [postingMsg, setPostingMsg] = useState(false);
   const [activeTab, setActiveTab] = useState<'wall' | 'about' | 'photos'>('wall');
 
+  // Privacy settings (loaded from profile_customization)
+  const [privacySettings, setPrivacySettings] = useState({
+    show_vibes: true,
+    show_wall: true,
+    wall_friends_only: false,
+    show_online: true,
+  });
+
+  // Vibes rating
+  const [myRating, setMyRating] = useState<{ trust: number; cool: number; sexy: number } | null>(null);
+  const [ratingDraft, setRatingDraft] = useState({ trust: 3, cool: 3, sexy: 3 });
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingDone, setRatingDone] = useState(false);
+
   // Photo upload
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -211,16 +229,35 @@ export default function PublicProfile() {
       if (customData) {
         const { show_vibes, show_wall, wall_friends_only, show_online, user_id, ...themeFields } = customData;
         setCustom({ ...DEFAULT_THEME, ...themeFields } as any);
+        setPrivacySettings({
+          show_vibes: show_vibes ?? true,
+          show_wall: show_wall ?? true,
+          wall_friends_only: wall_friends_only ?? false,
+          show_online: show_online ?? true,
+        });
       }
       if (core8Data) setCoreEight(core8Data as unknown as CoreSlot[]);
       if (postsData) setPosts(postsData as unknown as Post[]);
       if (vibeData) setVibes(vibeData);
       setPostCount(pCount ?? 0);
 
-      // Fetch friendship status
+      // Fetch friendship status + my existing vibes rating
       if (authUser && authUser.id !== userData.id) {
-        const fs = await getFriendshipStatus(authUser.id, userData.id);
+        const [fs, { data: myRatingData }] = await Promise.all([
+          getFriendshipStatus(authUser.id, userData.id),
+          supabase
+            .from('vibes_ratings')
+            .select('trust_vote, cool_vote, sexy_vote')
+            .eq('rater_id', authUser.id)
+            .eq('rated_user_id', userData.id)
+            .maybeSingle(),
+        ]);
         setFriendStatus(fs);
+        if (myRatingData) {
+          const r = { trust: myRatingData.trust_vote, cool: myRatingData.cool_vote, sexy: myRatingData.sexy_vote };
+          setMyRating(r);
+          setRatingDraft(r);
+        }
       }
 
       // Simulated visitor counter (would be a real DB counter in prod)
@@ -306,6 +343,29 @@ export default function PublicProfile() {
     if (!viewerId) return;
     await supabase.rpc('zap_post', { post_id: postId, zapper_id: viewerId });
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, zaps: p.zaps + 1 } : p));
+  };
+
+  const handleRateVibes = async () => {
+    if (!viewerId || !profileUser || isOwner) return;
+    setRatingSubmitting(true);
+    const { error } = await supabase.rpc('rate_vibes', {
+      p_rated_user_id: profileUser.id,
+      p_trust: ratingDraft.trust,
+      p_cool: ratingDraft.cool,
+      p_sexy: ratingDraft.sexy,
+    });
+    if (!error) {
+      setMyRating({ ...ratingDraft });
+      // Optimistically blend new rating into displayed scores
+      setVibes(prev => ({
+        trustworthy_score: prev ? Math.round((prev.trustworthy_score + ratingDraft.trust * 20) / 2) : ratingDraft.trust * 20,
+        cool_score: prev ? Math.round((prev.cool_score + ratingDraft.cool * 20) / 2) : ratingDraft.cool * 20,
+        sexy_score: prev ? Math.round((prev.sexy_score + ratingDraft.sexy * 20) / 2) : ratingDraft.sexy * 20,
+      }));
+      setRatingDone(true);
+      setTimeout(() => { setRatingDone(false); setRatingOpen(false); }, 1600);
+    }
+    setRatingSubmitting(false);
   };
 
   // ── Photo upload ─────────────────────────────────────────────────
@@ -472,8 +532,8 @@ export default function PublicProfile() {
                 handle={(profileUser?.display_name || '').toLowerCase().replace(/\s+/g, '_')}
                 status={profileUser?.status_message || 'Online'}
                 contactText={isOwner ? '✎ Edit Me' : '⚡ Buzz'}
-                avatarUrl={getAvatar(profileUser?.zid ?? '')}
-                miniAvatarUrl={getAvatar(profileUser?.zid ?? '')}
+                avatarUrl={profileUser?.avatar_url ?? getAvatar(profileUser?.zid ?? '')}
+                miniAvatarUrl={profileUser?.avatar_url ?? getAvatar(profileUser?.zid ?? '')}
                 showUserInfo={true}
                 enableTilt={true}
                 enableMobileTilt={true}
@@ -556,43 +616,128 @@ export default function PublicProfile() {
             </div>
 
             {/* ── VIBES ── */}
-            {vibes && (
+            {privacySettings.show_vibes && (
               <div
                 className="retro-entry rounded-xl border p-4"
                 style={{ borderColor: `${primary}25`, backgroundColor: '#0B0B12' }}
               >
-                <p
-                  className="text-[9px] font-mono uppercase tracking-widest mb-3 flex items-center gap-2"
-                  style={{ color: primary }}
-                >
-                  <Flame className="w-3 h-3" /> Vibes
-                </p>
-                <div className="space-y-2.5">
-                  {[
-                    { label: 'Trust', icon: <Shield className="w-3 h-3" />, value: vibes.trustworthy_score, color: '#B4FF00' },
-                    { label: 'Cool', icon: <Snowflake className="w-3 h-3" />, value: vibes.cool_score, color: '#00F7FF' },
-                    { label: 'Sexy', icon: <Flame className="w-3 h-3" />, value: vibes.sexy_score, color: '#FF007A' },
-                  ].map(v => (
-                    <div key={v.label}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="flex items-center gap-1 text-[9px] font-mono uppercase" style={{ color: v.color }}>
-                          {v.icon} {v.label}
-                        </span>
-                        <span className="text-[9px] font-black font-mono" style={{ color: v.color }}>{v.value}</span>
-                      </div>
-                      <div className="h-1 bg-gray-900 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.min(100, v.value)}%`,
-                            backgroundColor: v.color,
-                            boxShadow: `0 0 6px ${v.color}`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between mb-3">
+                  <p
+                    className="text-[9px] font-mono uppercase tracking-widest flex items-center gap-2"
+                    style={{ color: primary }}
+                  >
+                    <Flame className="w-3 h-3" /> Vibes
+                  </p>
+                  {myRating && !ratingOpen && (
+                    <span className="text-[8px] font-mono text-lime tracking-wide">✓ You rated</span>
+                  )}
                 </div>
+
+                {/* Aggregate vibes bars */}
+                {vibes ? (
+                  <div className="space-y-2.5">
+                    {[
+                      { label: 'Trust', icon: <Shield className="w-3 h-3" />, value: vibes.trustworthy_score, color: '#B4FF00' },
+                      { label: 'Cool', icon: <Snowflake className="w-3 h-3" />, value: vibes.cool_score, color: '#00F7FF' },
+                      { label: 'Sexy', icon: <Flame className="w-3 h-3" />, value: vibes.sexy_score, color: '#FF007A' },
+                    ].map(v => (
+                      <div key={v.label}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="flex items-center gap-1 text-[9px] font-mono uppercase" style={{ color: v.color }}>
+                            {v.icon} {v.label}
+                          </span>
+                          <span className="text-[9px] font-black font-mono" style={{ color: v.color }}>{v.value}</span>
+                        </div>
+                        <div className="h-1 bg-gray-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${Math.min(100, v.value)}%`,
+                              backgroundColor: v.color,
+                              boxShadow: `0 0 6px ${v.color}`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-gray-700 font-mono">No vibes yet — be first to rate!</p>
+                )}
+
+                {/* Rating widget — visitors only */}
+                {viewerId && !isOwner && (
+                  <div className="mt-3 pt-3 border-t border-white/5">
+                    {!ratingOpen ? (
+                      <button
+                        onClick={() => setRatingOpen(true)}
+                        className="w-full py-2 rounded-lg border text-[9px] font-mono uppercase tracking-widest transition-all hover:opacity-80"
+                        style={{
+                          borderColor: myRating ? '#B4FF0040' : `${primary}30`,
+                          color: myRating ? '#B4FF00' : primary,
+                          backgroundColor: myRating ? '#B4FF0008' : 'transparent',
+                        }}
+                      >
+                        {myRating ? '✓ Your Rating · Update' : '⚡ Rate Their Vibes'}
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        {[
+                          { key: 'trust' as const, label: 'Trust', color: '#B4FF00', icon: '🛡' },
+                          { key: 'cool' as const, label: 'Cool', color: '#00F7FF', icon: '❄' },
+                          { key: 'sexy' as const, label: 'Sexy', color: '#FF007A', icon: '🔥' },
+                        ].map(cat => (
+                          <div key={cat.key}>
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-[9px] font-mono uppercase tracking-wide" style={{ color: cat.color }}>
+                                {cat.icon} {cat.label}
+                              </span>
+                              <span className="text-[9px] font-black font-mono" style={{ color: cat.color }}>
+                                {ratingDraft[cat.key]}/5
+                              </span>
+                            </div>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <button
+                                  key={n}
+                                  onClick={() => setRatingDraft(prev => ({ ...prev, [cat.key]: n }))}
+                                  className="flex-1 h-7 rounded text-[10px] font-black transition-all"
+                                  style={{
+                                    backgroundColor: ratingDraft[cat.key] >= n ? `${cat.color}20` : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${ratingDraft[cat.key] >= n ? cat.color : '#2a2a2a'}`,
+                                    color: ratingDraft[cat.key] >= n ? cat.color : '#444',
+                                    boxShadow: ratingDraft[cat.key] >= n ? `0 0 6px ${cat.color}40` : 'none',
+                                  }}
+                                >
+                                  {n}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={handleRateVibes}
+                            disabled={ratingSubmitting || ratingDone}
+                            className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-60 text-black"
+                            style={{
+                              backgroundColor: ratingDone ? '#B4FF00' : primary,
+                              boxShadow: ratingDone ? '0 0 12px rgba(180,255,0,0.4)' : `0 0 12px ${primary}40`,
+                            }}
+                          >
+                            {ratingDone ? '✓ Saved!' : ratingSubmitting ? '...' : myRating ? 'Update' : 'Submit'}
+                          </button>
+                          <button
+                            onClick={() => { setRatingOpen(false); if (myRating) setRatingDraft(myRating); else setRatingDraft({ trust: 3, cool: 3, sexy: 3 }); }}
+                            className="px-3 py-2 rounded-lg text-[9px] font-mono border border-gray-800 text-gray-600 hover:text-white transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -677,8 +822,8 @@ export default function PublicProfile() {
                     style={{ borderColor: primary, boxShadow: `0 0 20px ${primary}50` }}
                   >
                     <img
-                      src={getAvatar(profileUser?.zid ?? '')}
-                      className="w-full h-full"
+                      src={profileUser?.avatar_url ?? getAvatar(profileUser?.zid ?? '')}
+                      className="w-full h-full object-cover"
                       alt={profileUser?.display_name}
                     />
                   </div>
@@ -829,8 +974,19 @@ export default function PublicProfile() {
             {activeTab === 'wall' && (
               <div className="space-y-3">
 
-                {/* Post input — shown to everyone signed in */}
-                {viewerId && (
+                {/* Wall hidden by owner */}
+                {!privacySettings.show_wall && !isOwner && (
+                  <div
+                    className="retro-entry rounded-xl border p-10 text-center"
+                    style={{ borderColor: `${primary}15`, borderStyle: 'dashed' }}
+                  >
+                    <Shield className="w-8 h-8 mx-auto mb-3 text-gray-700" />
+                    <p className="text-xs text-gray-600 font-mono">Wall is private.</p>
+                  </div>
+                )}
+
+                {/* Post input — shown to signed-in users (respects wall_friends_only) */}
+                {viewerId && (privacySettings.show_wall || isOwner) && (!privacySettings.wall_friends_only || isOwner || friendStatus.status === 'friends') && (
                   <div
                     className="retro-entry rounded-xl border p-4"
                     style={{ borderColor: `${primary}25`, backgroundColor: '#0B0B12' }}
@@ -861,7 +1017,7 @@ export default function PublicProfile() {
                 )}
 
                 {/* Posts */}
-                {posts.length === 0 ? (
+                {(privacySettings.show_wall || isOwner) && posts.length === 0 ? (
                   <div
                     className="retro-entry rounded-xl border p-10 text-center"
                     style={{ borderColor: `${primary}15`, borderStyle: 'dashed' }}
@@ -872,7 +1028,7 @@ export default function PublicProfile() {
                       <p className="text-[10px] text-gray-700 mt-1">Be the first to write something.</p>
                     )}
                   </div>
-                ) : posts.map((post, i) => (
+                ) : (privacySettings.show_wall || isOwner) && posts.map((post, i) => (
                   <div
                     key={post.id}
                     className="retro-entry rounded-xl border p-4 transition-all hover:border-opacity-60"
@@ -921,28 +1077,66 @@ export default function PublicProfile() {
 
             {/* ── ABOUT TAB ── */}
             {activeTab === 'about' && (
-              <div
-                className="retro-entry rounded-xl border p-5"
-                style={{ borderColor: `${primary}25`, backgroundColor: '#0B0B12' }}
-              >
-                {profileUser?.mdx_profile ? (
-                  <div className="prose prose-invert prose-sm max-w-none">
-                    {/* Render bio as plain text — MDX rendering would go here */}
-                    <pre
-                      className="whitespace-pre-wrap text-sm text-gray-300 font-sans leading-relaxed"
-                      style={{ fontFamily: 'inherit' }}
-                    >
-                      {profileUser.mdx_profile}
-                    </pre>
-                  </div>
-                ) : (
-                  <div className="text-center py-10">
-                    <p className="text-xs text-gray-600 font-mono">No bio written yet.</p>
-                    {isOwner && (
-                      <Link href="/profile" className="text-[11px] text-electric underline mt-2 block">
-                        Add your story →
-                      </Link>
-                    )}
+              <div className="space-y-4">
+                <div
+                  className="retro-entry rounded-xl border p-5"
+                  style={{ borderColor: `${primary}25`, backgroundColor: '#0B0B12' }}
+                >
+                  {profileUser?.mdx_profile ? (
+                    <div className="prose prose-invert prose-sm max-w-none">
+                      <pre
+                        className="whitespace-pre-wrap text-sm text-gray-300 font-sans leading-relaxed"
+                        style={{ fontFamily: 'inherit' }}
+                      >
+                        {profileUser.mdx_profile}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <p className="text-xs text-gray-600 font-mono">No bio written yet.</p>
+                      {isOwner && (
+                        <Link href="/profile" className="text-[11px] text-electric underline mt-2 block">
+                          Add your story →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Social Links */}
+                {profileUser?.social_links && Object.values(profileUser.social_links).some(v => v?.trim()) && (
+                  <div
+                    className="retro-entry rounded-xl border p-5 space-y-3"
+                    style={{ borderColor: `${primary}25`, backgroundColor: '#0B0B12' }}
+                  >
+                    <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: primary }}>
+                      Social Links
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { key: 'website', label: 'Website', icon: <Globe className="w-3.5 h-3.5" /> },
+                        { key: 'twitter', label: 'X / Twitter', icon: <span className="text-xs font-black">𝕏</span> },
+                        { key: 'instagram', label: 'Instagram', icon: <Instagram className="w-3.5 h-3.5" /> },
+                        { key: 'github', label: 'GitHub', icon: <Github className="w-3.5 h-3.5" /> },
+                        { key: 'discord', label: 'Discord', icon: <span className="text-[10px] font-bold">DC</span> },
+                        { key: 'custom', label: 'Link', icon: <LinkIcon className="w-3.5 h-3.5" /> },
+                      ].filter(p => profileUser.social_links?.[p.key]?.trim()).map(platform => (
+                        <a
+                          key={platform.key}
+                          href={profileUser.social_links![platform.key].startsWith('http') ? profileUser.social_links![platform.key] : `https://${profileUser.social_links![platform.key]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 text-sm text-gray-400 hover:text-white transition-colors group"
+                        >
+                          <span className="w-6 h-6 rounded-lg bg-white/5 border border-gray-800 flex items-center justify-center text-gray-500 group-hover:border-gray-600 transition-colors">
+                            {platform.icon}
+                          </span>
+                          <span className="font-mono text-[11px] truncate group-hover:underline">
+                            {profileUser.social_links![platform.key]}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
