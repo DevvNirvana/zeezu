@@ -3,6 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi, Reply, ArrowUp, Trophy } from "lucide-react";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
+import { AGENT_IDS } from "@/lib/agents";
 import { formatDistanceToNow } from "date-fns";
 
 type Notification = {
@@ -12,9 +15,14 @@ type Notification = {
   is_read: boolean;
   created_at: string;
   actor: {
+    id: string;
     display_name: string;
     zid: string;
-  };
+    birth_year?: number | null;
+    birth_month?: number | null;
+    birth_day?: number | null;
+    agent_state?: { agent_id: string } | null;
+  } | null;
 };
 
 // Type labels that match Zeezu brand language
@@ -78,7 +86,7 @@ export default function NotificationBell() {
       .from("notifications")
       .select(`
         id, type, content, is_read, created_at,
-        actor:users!actor_id (display_name, zid)
+        actor:users!actor_id (id, display_name, zid, birth_year, birth_month, birth_day, agent_state(agent_id))
       `)
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
@@ -263,6 +271,11 @@ export default function NotificationBell() {
                           <span className="text-xs font-bold text-white truncate">
                             {notif.actor?.display_name || "System"}
                           </span>
+                          {notif.actor && (() => {
+                            const isAgent = AGENT_IDS.has(notif.actor.id ?? '') || !!notif.actor.agent_state;
+                            const gen = getGeneration(notif.actor.birth_year, notif.actor.birth_month, notif.actor.birth_day, isAgent);
+                            return gen ? <GenBadge gen={gen} size="icon" /> : null;
+                          })()}
                           <span className="text-[10px] text-gray-500">
                             {TYPE_LABEL[notif.type] || notif.type}
                           </span>

@@ -16,6 +16,9 @@ import PollCreator, { type PollData } from "@/components/PollCreator";
 import PollDisplay from "@/components/PollDisplay";
 import EmbedPreview, { stripEmbedUrls } from "@/components/EmbedPreview";
 import ShareSheet from "@/components/ShareSheet";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
+import { AGENT_IDS } from "@/lib/agents";
 
 // ── TYPES ────────────────────────────────────────────────
 type Post = {
@@ -27,7 +30,15 @@ type Post = {
     topic_id: number;
     gif_url?: string | null;
     poll_data?: { options: string[] } | null;
-    author: { id: string; display_name: string; zid: string; avatar_url?: string | null } | null;
+    author: {
+        id: string;
+        display_name: string;
+        zid: string;
+        avatar_url?: string | null;
+        birth_year?: number | null;
+        birth_month?: number | null;
+        birth_day?: number | null;
+    } | null;
 };
 
 type Topic = { id: number; title: string; description: string; is_pinned: boolean; created_by: string };
@@ -78,7 +89,7 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
     document.head.appendChild(s);
 }
 
-export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: string; userZid?: string; wallOwnerId?: string }) {
+export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer }: { userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean }) {
     const [mode, setMode] = useState<FeedMode>("all");
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -139,7 +150,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
         const from = pageNum * LIMIT;
         const to = from + LIMIT - 1;
         let query = supabase.from("zeewall")
-            .select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url)");
+            .select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))");
         if (sort === "top") query = query.order("zaps", { ascending: false }).order("created_at", { ascending: false });
         else query = query.order("created_at", { ascending: false });
         query = query.range(from, to);
@@ -177,7 +188,8 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
             .on("postgres_changes", { event: "INSERT", schema: "public", table: "zeewall" }, async (p: any) => {
                 if (page !== 0) return;
                 if (activeTopic !== null && p.new.topic_id !== activeTopic) return;
-                const { data } = await supabase.from("zeewall").select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url)").eq("id", p.new.id).single();
+                if (wallOwnerId && p.new.owner_id !== wallOwnerId) return;
+                const { data } = await supabase.from("zeewall").select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))").eq("id", p.new.id).single();
                 if (!data) return;
                 const t = data as unknown as Post;
                 if (mode === "friends") {
@@ -259,7 +271,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
         setPosting(true);
         const moodLine = moodText ? `[mood: ${moodText}]\n` : "";
         const insertData: any = {
-            owner_id: userId,
+            owner_id: wallOwnerId || userId,
             author_id: userId,
             content: moodLine + newPostText.trim(),
             topic_id: activeTopic || 1,
@@ -298,7 +310,18 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
             notifiedZaps.current.delete(pid);
         }
     };
-    const handleDelete = async (pid: number) => { setPosts(prev => prev.filter(p => p.id !== pid)); await supabase.from("zeewall").delete().eq("id", pid); };
+    const handleDelete = async (pid: number) => {
+        if (!window.confirm("Delete this post? This cannot be undone.")) return;
+        const snapshot = posts.find(p => p.id === pid);
+        setPosts(prev => prev.filter(p => p.id !== pid));
+        const { data, error } = await supabase.from("zeewall").delete().eq("id", pid).select("id");
+        // Revert if error or if RLS silently blocked the delete (empty result)
+        if (error || !data?.length) {
+            if (snapshot) setPosts(prev => [snapshot, ...prev.filter(p => p.id !== pid)]);
+            if (error) console.error("Delete failed:", error.message);
+            else console.warn("Delete blocked — check RLS policy for zeewall table");
+        }
+    };
 
     // ── Share ───────────────────────────────────────────────
     const handleShare = (post: Post) => {
@@ -550,6 +573,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
             )}
 
             {/* ── BROADCASTER ── */}
+            {(!wallOwnerId || !hideComposer) && (
             <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(138,46,255,0.04) 0%, transparent 100%)" }}>
                 {!wallOwnerId && (
                     <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
@@ -560,6 +584,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
                         {activeTopicName && <span className="ml-auto text-[9px] font-mono text-gray-700">#{activeTopicName.toLowerCase()}</span>}
                     </div>
                 )}
+                {!hideComposer && (
                 <div className="px-3 pb-3">
                     <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(138,46,255,0.08)]">
                         <div className="flex gap-2.5">
@@ -665,7 +690,9 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
                         )}
                     </div>
                 </div>
+                )}
             </div>
+            )}
 
             {/* ── SORT TABS ── */}
             <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-gray-800/40 bg-black/10">
@@ -689,8 +716,8 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
                 ) : posts.length === 0 ? (
                     <div className="text-center py-16 px-6">
                         <div className="text-3xl mb-3">📡</div>
-                        <p className="text-sm font-bold text-gray-500 mb-1">{mode === "friends" ? "Your network is quiet" : activeTopicName ? `No posts in #${activeTopicName.toLowerCase()}` : "The grid awaits"}</p>
-                        <p className="text-[10px] text-gray-700 font-mono">Be the first to broadcast</p>
+                        <p className="text-sm font-bold text-gray-500 mb-1">{wallOwnerId ? "No wall posts yet" : mode === "friends" ? "Your network is quiet" : activeTopicName ? `No posts in #${activeTopicName.toLowerCase()}` : "The grid awaits"}</p>
+                        <p className="text-[10px] text-gray-700 font-mono">{wallOwnerId ? "Be the first to write something" : "Be the first to broadcast"}</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-800/30">
@@ -718,7 +745,8 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId }: { userId: s
                                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                                     <Link href={`/u/${post.author?.zid || ""}`} className="font-black text-[13px] text-white hover:text-electric transition-colors">{post.author?.display_name || "Unknown"}</Link>
                                                     <span className="text-[9px] font-mono text-gray-700">{post.author?.zid}</span>
-                                                    {postTopic && activeTopic === null && <button onClick={() => setActiveTopic(postTopic.id)} className="text-[8px] font-mono text-cyan/60 hover:text-cyan bg-cyan/5 px-1.5 py-0.5 rounded">#{postTopic.title.toLowerCase()}</button>}
+                                                    {(() => { const isAgent = AGENT_IDS.has(post.author?.id ?? '') || !!(post.author as any)?.agent_state; const gen = getGeneration(post.author?.birth_year, post.author?.birth_month, post.author?.birth_day, isAgent); return gen ? <GenBadge gen={gen} size="sm" /> : null; })()}
+                                                    {postTopic && activeTopic === null && !wallOwnerId && <button onClick={() => setActiveTopic(postTopic.id)} className="text-[8px] font-mono text-cyan/60 hover:text-cyan bg-cyan/5 px-1.5 py-0.5 rounded">#{postTopic.title.toLowerCase()}</button>}
                                                     <span className="text-[9px] text-gray-800">·</span>
                                                     <span className="text-[9px] text-gray-600 font-mono">{formatTime(post.created_at)}</span>
                                                     {newPostIds.has(post.id) && <span className="text-[7px] font-black text-electric bg-electric/10 px-1.5 py-0.5 rounded-sm tracking-wider">NEW</span>}

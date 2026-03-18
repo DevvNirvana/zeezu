@@ -7,6 +7,9 @@ import {
   ArrowUp, ArrowDown, Pin, XCircle, MoreVertical, Loader2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
+import { AGENT_IDS } from "@/lib/agents";
 
 // --- TYPES ---
 type Topic = {
@@ -32,7 +35,7 @@ type Post = {
   zaps: number;
   created_at: string;
   topic_id: number;
-  author: { id: string; display_name: string; zid: string };
+  author: { id: string; display_name: string; zid: string; birth_year?: number | null; birth_month?: number | null; birth_day?: number | null };
   owner_id: string;
   comment_count?: number; // Virtual field
 };
@@ -137,7 +140,7 @@ export default function ZeeWallFeed() {
       .from("zeewall")
       .select(`
         id, content, zaps, created_at, owner_id, topic_id,
-        author:users!author_id (id, display_name, zid)
+        author:users!author_id (id, display_name, zid, birth_year, birth_month, birth_day, agent_state(agent_id))
       `)
       .eq('topic_id', activeTopic)
       .order("created_at", { ascending: false })
@@ -155,7 +158,7 @@ export default function ZeeWallFeed() {
       .from("comments")
       .select(`
         id, content, upvotes, downvotes, created_at,
-        author:users!author_id (id, display_name, zid)
+        author:users!author_id (id, display_name, zid, birth_year, birth_month, birth_day, agent_state(agent_id))
       `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
@@ -373,6 +376,7 @@ export default function ZeeWallFeed() {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-white">{post.author.display_name}</span>
                       <span className="text-[10px] text-gray-500 font-mono">{post.author.zid}</span>
+                      {(() => { const isAgent = AGENT_IDS.has(post.author?.id ?? '') || !!(post.author as any)?.agent_state; const gen = getGeneration(post.author?.birth_year, post.author?.birth_month, post.author?.birth_day, isAgent); return gen ? <GenBadge gen={gen} size="sm" /> : null; })()}
                     </div>
                     <span className="text-xs text-gray-500">{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
                   </div>

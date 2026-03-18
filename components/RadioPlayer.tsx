@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Disc3, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown } from "lucide-react";
 
-// ── Station data (matches spec exactly) ───────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  STATIONS — unchanged from original
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Station = {
   id: string;
   name: string;
@@ -14,118 +16,442 @@ type Station = {
 
 const STATIONS: Station[] = [
   {
-    id: 'ost',
+    id: "ost",
     name: "OST // ZEEZU",
     color: "#fcee0a",
     playlist: [
       "https://dl.dropboxusercontent.com/scl/fi/uz72n6eqlmke36p2xxi1i/KxH-TTR.mp3?rlkey=fsx2dlmlvgidh5s7upenk93vm&e=1&st=hr4rm7of&",
     ],
   },
-  { id: 'chillsynth', name: "CHILLSYNTH", url: "https://stream.rekt.network/chillsynth.mp3", color: "#00f3ff" },
-  { id: 'nightride', name: "NIGHTRIDE FM", url: "https://stream.rekt.network/nightride.mp3", color: "#ff00ff" },
-  { id: 'darksynth', name: "DARKSYNTH", url: "https://stream.rekt.network/darksynth.mp3", color: "#ff003c" },
-  { id: 'datawave', name: "DATAWAVE", url: "https://stream.rekt.network/datawave.mp3", color: "#0aff00" },
-  { id: 'ebsm', name: "EBSM", url: "https://stream.rekt.network/ebsm.mp3", color: "#ff6600" },
-  { id: 'horrorsynth', name: "HORRORSYNTH", url: "https://stream.rekt.network/horrorsynth.mp3", color: "#9900ff" },
-  { id: 'spacesynth', name: "SPACESYNTH FM", url: "https://stream.rekt.network/spacesynth.mp3", color: "#0066ff" },
+  { id: "chillsynth", name: "CHILLSYNTH", url: "https://stream.rekt.network/chillsynth.mp3", color: "#00f3ff" },
+  { id: "nightride", name: "NIGHTRIDE FM", url: "https://stream.rekt.network/nightride.mp3", color: "#ff00ff" },
+  { id: "darksynth", name: "DARKSYNTH", url: "https://stream.rekt.network/darksynth.mp3", color: "#ff003c" },
+  { id: "datawave", name: "DATAWAVE", url: "https://stream.rekt.network/datawave.mp3", color: "#0aff00" },
+  { id: "ebsm", name: "EBSM", url: "https://stream.rekt.network/ebsm.mp3", color: "#ff6600" },
+  { id: "horrorsynth", name: "HORRORSYNTH", url: "https://stream.rekt.network/horrorsynth.mp3", color: "#9900ff" },
+  { id: "spacesynth", name: "SPACESYNTH FM", url: "https://stream.rekt.network/spacesynth.mp3", color: "#0066ff" },
 ];
 
-// ── Hex → rgba for glow ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 function hexGlow(hex: string, alpha = 0.35): string {
-  const c = hex.replace('#', '');
+  const c = hex.replace("#", "");
   return `rgba(${parseInt(c.slice(0, 2), 16)},${parseInt(c.slice(2, 4), 16)},${parseInt(c.slice(4, 6), 16)},${alpha})`;
 }
 
-// ── EQ bar animation CSS (injected once) ────────────────────────────
-const EQ_STYLE_ID = 'radio-eq-style';
-if (typeof document !== 'undefined' && !document.getElementById(EQ_STYLE_ID)) {
-  const s = document.createElement('style');
-  s.id = EQ_STYLE_ID;
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${String(m).padStart(1, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GLOBAL STYLES — injected once
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STYLE_ID = "zeeamp-styles";
+if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = STYLE_ID;
   s.textContent = `
-    @keyframes eq1 { 0%,100%{height:4px} 50%{height:12px} }
-    @keyframes eq2 { 0%,100%{height:10px} 50%{height:4px} }
-    @keyframes eq3 { 0%,100%{height:7px} 30%{height:14px} 70%{height:4px} }
-    .eq-bar-1 { animation: eq1 0.7s ease-in-out infinite; }
-    .eq-bar-2 { animation: eq2 0.9s ease-in-out infinite; }
-    .eq-bar-3 { animation: eq3 0.6s ease-in-out infinite; }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Share+Tech+Mono&display=swap');
+
+    /* ── EQ bars ── */
+    @keyframes za-eq1 { 0%,100%{height:3px}  50%{height:13px} }
+    @keyframes za-eq2 { 0%,100%{height:9px}  50%{height:3px}  }
+    @keyframes za-eq3 { 0%,100%{height:6px}  30%{height:14px} 70%{height:3px} }
+    @keyframes za-eq4 { 0%,100%{height:11px} 45%{height:4px}  }
+    @keyframes za-eq5 { 0%,100%{height:5px}  60%{height:12px} }
+    @keyframes za-eq6 { 0%,100%{height:8px}  35%{height:3px}  }
+    @keyframes za-eq7 { 0%,100%{height:4px}  55%{height:11px} }
+    @keyframes za-eq8 { 0%,100%{height:7px}  25%{height:14px} 65%{height:3px} }
+    @keyframes za-eq9 { 0%,100%{height:10px} 40%{height:4px}  }
+    @keyframes za-eq0 { 0%,100%{height:6px}  50%{height:13px} }
+
+    .za-eq-1  { animation: za-eq1 0.65s ease-in-out infinite; }
+    .za-eq-2  { animation: za-eq2 0.80s ease-in-out infinite; }
+    .za-eq-3  { animation: za-eq3 0.55s ease-in-out infinite; }
+    .za-eq-4  { animation: za-eq4 0.90s ease-in-out infinite; }
+    .za-eq-5  { animation: za-eq5 0.70s ease-in-out infinite; }
+    .za-eq-6  { animation: za-eq6 0.60s ease-in-out infinite; }
+    .za-eq-7  { animation: za-eq7 0.85s ease-in-out infinite; }
+    .za-eq-8  { animation: za-eq8 0.75s ease-in-out infinite; }
+    .za-eq-9  { animation: za-eq9 0.95s ease-in-out infinite; }
+    .za-eq-10 { animation: za-eq0 0.72s ease-in-out infinite; }
+
+    /* ── Track title marquee ── */
+    @keyframes za-scroll { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+    .za-marquee { animation: za-scroll 14s linear infinite; white-space: nowrap; }
+
+    /* ── Scanlines ── */
+    .za-crt::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px
+      );
+      border-radius: inherit;
+    }
+
+    /* ── Brushed metal shell ── */
+    .za-shell {
+      background: linear-gradient(180deg,
+        #1a2540 0%, #111c35 30%, #0d1628 60%, #111c35 80%, #1a2540 100%
+      );
+    }
+
+    /* ── Button press ── */
+    .za-btn:active { transform: scale(0.92); }
+
+    /* ── Slider thumb ── */
+    .za-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 3px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+    }
+    .za-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 9px;
+      height: 15px;
+      background: linear-gradient(180deg, #4a6fa5 0%, #2a4a7a 50%, #4a6fa5 100%);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .za-slider::-moz-range-thumb {
+      width: 9px; height: 15px;
+      background: linear-gradient(180deg, #4a6fa5 0%, #2a4a7a 50%, #4a6fa5 100%);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 2px;
+      cursor: pointer;
+    }
   `;
   document.head.appendChild(s);
 }
 
-// ── Component ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  SUB-COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Classic Winamp-style bevel border
+function Bevel({
+  children,
+  inset = false,
+  style,
+  className = "",
+}: {
+  children?: React.ReactNode;
+  inset?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  return (
+    <div
+      className={className}
+      style={{
+        border: inset
+          ? "1px solid rgba(0,0,0,0.6)"
+          : "1px solid rgba(255,255,255,0.12)",
+        boxShadow: inset
+          ? "inset 1px 1px 2px rgba(0,0,0,0.5), inset -1px -1px 2px rgba(255,255,255,0.05)"
+          : "1px 1px 2px rgba(0,0,0,0.5), -1px -1px 2px rgba(255,255,255,0.05)",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// LCD-style seven-segment display for the time
+function LcdTime({ time, color }: { time: string; color: string }) {
+  return (
+    <div
+      style={{
+        fontFamily: "'VT323', monospace",
+        fontSize: "28px",
+        lineHeight: "1",
+        color,
+        textShadow: `0 0 8px ${hexGlow(color, 0.9)}, 0 0 20px ${hexGlow(color, 0.5)}`,
+        letterSpacing: "3px",
+        userSelect: "none",
+        minWidth: "60px",
+      }}
+    >
+      {time}
+    </div>
+  );
+}
+
+// Winamp-style tiny label pill
+function InfoPill({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "1px",
+        lineHeight: 1,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "'VT323', monospace",
+          fontSize: "8px",
+          color: "rgba(255,255,255,0.4)",
+          letterSpacing: "1px",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: "'VT323', monospace",
+          fontSize: "11px",
+          color,
+          textShadow: `0 0 6px ${hexGlow(color, 0.7)}`,
+          letterSpacing: "0.5px",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// Spectrum EQ bars — 10 bars like Winamp
+function SpectrumBars({
+  active,
+  color,
+}: {
+  active: boolean;
+  color: string;
+}) {
+  const heights = [4, 9, 6, 11, 5, 8, 4, 7, 10, 6];
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        gap: "1.5px",
+        height: "18px",
+        paddingBottom: "1px",
+      }}
+    >
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div
+          key={i}
+          className={active ? `za-eq-${i + 1}` : ""}
+          style={{
+            width: "3px",
+            height: active ? undefined : `${heights[i]}px`,
+            minHeight: "3px",
+            backgroundColor: color,
+            boxShadow: active ? `0 0 4px ${hexGlow(color, 0.7)}` : "none",
+            borderRadius: "1px",
+            opacity: active ? 1 : 0.25,
+            transition: "opacity 0.3s",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Small Winamp-style square button (PL, EQ, ML)
+function SquareBtn({
+  label,
+  active = false,
+  onClick,
+  color,
+}: {
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  color: string;
+}) {
+  return (
+    <Bevel inset={active}>
+      <button
+        onClick={onClick}
+        className="za-btn"
+        style={{
+          width: "24px",
+          height: "15px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: active
+            ? `linear-gradient(180deg, ${hexGlow(color, 0.3)}, ${hexGlow(color, 0.15)})`
+            : "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.2))",
+          fontFamily: "'VT323', monospace",
+          fontSize: "9px",
+          color: active ? color : "rgba(255,255,255,0.55)",
+          letterSpacing: "0.5px",
+          cursor: "pointer",
+          border: "none",
+          textShadow: active ? `0 0 6px ${hexGlow(color, 0.8)}` : "none",
+          transition: "all .15s",
+          userSelect: "none",
+        }}
+      >
+        {label}
+      </button>
+    </Bevel>
+  );
+}
+
+// Classic round transport button
+function TransportBtn({
+  icon,
+  onClick,
+  isPrimary = false,
+  color,
+  disabled = false,
+}: {
+  icon: React.ReactNode;
+  onClick: () => void;
+  isPrimary?: boolean;
+  color: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Bevel>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className="za-btn"
+        style={{
+          width: isPrimary ? "34px" : "26px",
+          height: isPrimary ? "22px" : "18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: isPrimary
+            ? `linear-gradient(180deg, ${hexGlow(color, 0.25)}, ${hexGlow(color, 0.08)})`
+            : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(0,0,0,0.3))",
+          cursor: disabled ? "not-allowed" : "pointer",
+          border: "none",
+          color: disabled ? "rgba(255,255,255,0.2)" : isPrimary ? color : "rgba(255,255,255,0.7)",
+          opacity: disabled ? 0.4 : 1,
+          boxShadow: isPrimary && !disabled ? `inset 0 0 8px ${hexGlow(color, 0.2)}` : undefined,
+          transition: "all .15s",
+          borderRadius: "2px",
+        }}
+      >
+        {icon}
+      </button>
+    </Bevel>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function RadioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [stationIdx, setStationIdx] = useState(0);
-  const [subIdx, setSubIdx] = useState(0); // playlist cursor
+  const [subIdx, setSubIdx] = useState(0);
   const [volume, setVolume] = useState(0.4);
   const [error, setError] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showPlaylist, setShowPlaylist] = useState(false);
+  const [showEq, setShowEq] = useState(false);
 
   const current = STATIONS[stationIdx];
 
-  // ── Get current URL ────────────────────────────────────────────────
+  // ── Get current URL — unchanged ──────────────────────────────────
   const getCurrentSrc = useCallback((sIdx: number, pIdx: number): string => {
     const s = STATIONS[sIdx];
     if (s.playlist) return s.playlist[Math.min(pIdx, s.playlist.length - 1)];
     return s.url!;
   }, []);
 
-  // ── Init audio element once ────────────────────────────────────────
+  // ── Init audio — unchanged ────────────────────────────────────────
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.crossOrigin = "anonymous";
       audioRef.current.volume = volume;
     }
-    return () => {
-      audioRef.current?.pause();
-    };
+    return () => { audioRef.current?.pause(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Load source when station changes ──────────────────────────────
+  // ── Time tracking ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const src = getCurrentSrc(stationIdx, subIdx);
-    audio.src = src;
+    const onTime = () => setElapsed(audio.currentTime);
+    const onMeta = () => setDuration(audio.duration || 0);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadedmetadata", onMeta);
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadedmetadata", onMeta);
+    };
+  }, []);
+
+  // ── Load source on station change — unchanged ─────────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.src = getCurrentSrc(stationIdx, subIdx);
     setError(false);
-    if (isPlaying) {
-      audio.play().catch(() => setError(true));
-    }
+    setElapsed(0);
+    setDuration(0);
+    if (isPlaying) audio.play().catch(() => setError(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationIdx, subIdx]);
 
-  // ── Auto-advance playlist / next station on track end ─────────────
+  // ── Auto-advance / end — unchanged ───────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const onEnd = () => {
       const s = STATIONS[stationIdx];
       if (s.playlist && subIdx < s.playlist.length - 1) {
         setSubIdx(prev => prev + 1);
       } else {
-        // Go to next station
         const next = (stationIdx + 1) % STATIONS.length;
         setStationIdx(next);
         setSubIdx(0);
       }
     };
-
-    const onError = () => setError(true);
-
-    audio.addEventListener('ended', onEnd);
-    audio.addEventListener('error', onError);
+    const onErr = () => setError(true);
+    audio.addEventListener("ended", onEnd);
+    audio.addEventListener("error", onErr);
     return () => {
-      audio.removeEventListener('ended', onEnd);
-      audio.removeEventListener('error', onError);
+      audio.removeEventListener("ended", onEnd);
+      audio.removeEventListener("error", onErr);
     };
   }, [stationIdx, subIdx]);
 
-  // ── Volume sync ────────────────────────────────────────────────────
+  // ── Volume sync — unchanged ───────────────────────────────────────
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
@@ -133,188 +459,703 @@ export default function RadioPlayer() {
     }
   }, [volume, isMuted]);
 
-  // ── Controls ──────────────────────────────────────────────────────
+  // ── Controls — unchanged ──────────────────────────────────────────
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setError(true));
-    }
+    if (isPlaying) { audio.pause(); setIsPlaying(false); }
+    else { audio.play().then(() => setIsPlaying(true)).catch(() => setError(true)); }
   };
 
-  const goNext = () => {
-    const next = (stationIdx + 1) % STATIONS.length;
-    setStationIdx(next);
-    setSubIdx(0);
+  const goNext = () => { setStationIdx((stationIdx + 1) % STATIONS.length); setSubIdx(0); };
+  const goPrev = () => { setStationIdx((stationIdx - 1 + STATIONS.length) % STATIONS.length); setSubIdx(0); };
+
+  const seekTo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const t = parseFloat(e.target.value);
+    audio.currentTime = t;
+    setElapsed(t);
   };
 
-  const goPrev = () => {
-    const prev = (stationIdx - 1 + STATIONS.length) % STATIONS.length;
-    setStationIdx(prev);
-    setSubIdx(0);
-  };
+  // ── Computed values ───────────────────────────────────────────────
+  const glowColor = hexGlow(current.color, 0.5);
+  const timeStr = fmtTime(elapsed);
+  const seekPct = duration > 0 ? elapsed / duration : 0;
+  const isStream = !STATIONS[stationIdx].playlist;
 
-  // ── Render ────────────────────────────────────────────────────────
-  const glowColor = hexGlow(current.color, 0.4);
-  const glowShadow = `0 0 20px ${glowColor}, 0 4px 20px rgba(0,0,0,0.7)`;
-
+  // ─────────────────────────────────────────────────────────────────
+  //  RENDER
+  // ─────────────────────────────────────────────────────────────────
+  // return (
+  //   <div
+  //     className="fixed bottom-[72px] md:bottom-6 lg:bottom-4 right-3 md:right-4 z-[200]"
+  //     style={{ userSelect: "none" }}
+  //   >
+  // ─────────────────────────────────────────────────────────────────
+  //  RENDER
+  // ─────────────────────────────────────────────────────────────────
   return (
     <div
-      className="fixed bottom-20 md:bottom-4 right-4 z-[200] transition-all duration-300"
-      style={{ filter: isMinimized ? 'none' : `drop-shadow(0 0 12px ${glowColor})` }}
+      style={{
+        position: "fixed",
+        right: "16px",
+        /* 38px accounts for the 26px Marquee Ticker + 12px gap. 
+           var(--mobile-dock-height) lifts it perfectly on mobile. */
+        bottom: "calc(var(--mobile-dock-height, 0px) + 38px)",
+        zIndex: 9999,
+        userSelect: "none",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end" /* Ensures the minimized circle anchors to the right */
+      }}
     >
-      {/* ── MINIMIZED: spinning disc pill ── */}
+      {/* ══════════════════════════════════════════════════════════
+          MINIMIZED — spinning Winamp logo disc
+      ══════════════════════════════════════════════════════════ */}
       {isMinimized && (
         <button
           onClick={() => setIsMinimized(false)}
-          className="w-12 h-12 rounded-full bg-black/90 border flex items-center justify-center transition-all hover:scale-110"
+          title={`ZeeAmp: ${current.name}`}
           style={{
-            borderColor: current.color,
-            boxShadow: glowShadow,
+            position: "relative",
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            background: "linear-gradient(135deg,#1a2540,#0d1628)",
+            border: `1.5px solid ${current.color}`,
+            boxShadow: `0 0 16px ${glowColor}, 0 4px 16px rgba(0,0,0,0.6)`,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform .2s, box-shadow .2s",
           }}
-          title={`Radio: ${current.name}`}
+          onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.1)")}
+          onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
         >
-          <Disc3
-            className={`w-5 h-5 transition-all ${isPlaying ? 'animate-spin' : ''}`}
-            style={{ color: current.color }}
-          />
+          {/* Winamp W logo in VT323 */}
+          <span
+            style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: "13px",
+              fontWeight: 900,
+              color: current.color,
+              textShadow: `0 0 8px ${glowColor}`,
+              letterSpacing: "-2px",
+              lineHeight: 1,
+            }}
+          >
+            Z
+          </span>
+          {/* Spinning ring when playing */}
+          {isPlaying && (
+            <div
+              style={{
+                position: "absolute",
+                inset: "-2px",
+                borderRadius: "50%",
+                border: `1px dashed ${current.color}`,
+                opacity: 0.4,
+                animation: "spin 4s linear infinite",
+              }}
+            />
+          )}
           {/* Live dot */}
           {isPlaying && (
             <span
-              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse"
-              style={{ backgroundColor: current.color }}
+              style={{
+                position: "absolute",
+                top: "-1px",
+                right: "-1px",
+                width: "9px",
+                height: "9px",
+                borderRadius: "50%",
+                background: current.color,
+                boxShadow: `0 0 6px ${current.color}`,
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
             />
           )}
         </button>
       )}
 
-      {/* ── EXPANDED: rave pill player ── */}
+      {/* ══════════════════════════════════════════════════════════
+          EXPANDED — ZeeAmp window
+      ══════════════════════════════════════════════════════════ */}
+      {/* {!isMinimized && (
+        <div
+          className="za-shell"
+          style={{
+            width: "274px",
+            borderRadius: "6px",
+            overflow: "hidden",
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 24px ${glowColor}, 0 8px 40px rgba(0,0,0,0.8)`,
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        > */}
       {!isMinimized && (
         <div
-          className="w-72 rounded-2xl bg-black/95 border overflow-hidden backdrop-blur-xl"
+          className="za-shell"
           style={{
-            borderColor: current.color,
-            boxShadow: glowShadow,
+            width: "274px",
+            borderRadius: "6px",
+            overflow: "hidden",
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 24px ${glowColor}, 0 8px 40px rgba(0,0,0,0.8)`,
+            border: "1px solid rgba(255,255,255,0.07)",
+            display: "flex",
+            flexDirection: "column",
+            /* Prevents the player from stretching off the top of tiny mobile screens */
+            maxHeight: "calc(100vh - var(--nav-height, 0px) - var(--mobile-dock-height, 0px) - 60px)"
           }}
         >
-          {/* Header bar */}
+          {/* ── TITLE BAR ───────────────────────────────────── */}
           <div
-            className="flex items-center justify-between px-4 py-2.5 border-b"
-            style={{ borderColor: `${current.color}30`, backgroundColor: `${current.color}10` }}
+            style={{
+              height: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0 6px 0 8px",
+              background: `linear-gradient(90deg, ${hexGlow(current.color, 0.35)}, rgba(138,46,255,0.2), rgba(11,75,143,0.3))`,
+              borderBottom: "1px solid rgba(0,0,0,0.4)",
+              cursor: "default",
+            }}
           >
-            <div className="flex items-center gap-2">
-              {/* EQ bars */}
-              <div className="flex items-end gap-[2px] h-4">
-                {isPlaying ? (
-                  <>
-                    <div className="w-[3px] rounded-full eq-bar-1" style={{ backgroundColor: current.color }} />
-                    <div className="w-[3px] rounded-full eq-bar-2" style={{ backgroundColor: current.color }} />
-                    <div className="w-[3px] rounded-full eq-bar-3" style={{ backgroundColor: current.color }} />
-                  </>
-                ) : (
-                  <>
-                    {[4, 8, 5].map((h, i) => (
-                      <div key={i} className="w-[3px] rounded-full opacity-30" style={{ height: `${h}px`, backgroundColor: current.color }} />
-                    ))}
-                  </>
-                )}
-              </div>
-              <span className="text-[9px] font-mono font-black uppercase tracking-[0.2em]" style={{ color: current.color }}>
-                LIVE RADIO
-              </span>
-            </div>
-            <button
-              onClick={() => setIsMinimized(true)}
-              className="text-gray-500 hover:text-white transition-colors p-1 rounded"
-            >
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Station info */}
-          <div className="px-4 pt-4 pb-2">
-            <div
-              className="text-sm font-black tracking-tight truncate"
-              style={{ color: current.color, textShadow: `0 0 10px ${glowColor}` }}
-            >
-              {current.name}
-            </div>
-            {error ? (
-              <p className="text-[10px] text-red-400 font-mono mt-0.5">Stream error — try next station</p>
-            ) : (
-              <p className="text-[10px] text-gray-500 font-mono mt-0.5">
-                {isPlaying ? '▶ streaming...' : '⏸ paused'}
-              </p>
-            )}
-          </div>
-
-          {/* Station selector dots */}
-          {/* <div className="px-4 pb-2 flex gap-1 flex-wrap">
-            {STATIONS.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => { setStationIdx(i); setSubIdx(0); }}
-                className="w-2 h-2 rounded-full transition-all"
-                style={{
-                  backgroundColor: i === stationIdx ? s.color : '#333',
-                  boxShadow:       i === stationIdx ? `0 0 6px ${hexGlow(s.color, 0.8)}` : 'none',
-                  transform:       i === stationIdx ? 'scale(1.4)' : 'scale(1)',
-                }}
-                title={s.name}
-              />
-            ))}
-          </div> */}
-
-          {/* Controls */}
-          <div className="px-4 pb-4 flex items-center gap-3">
-            <button onClick={goPrev} className="text-gray-500 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-              <SkipBack className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95"
+            {/* Left: title */}
+            <span
               style={{
-                backgroundColor: `${current.color}20`,
-                border: `1px solid ${current.color}60`,
-                boxShadow: isPlaying ? `0 0 15px ${glowColor}` : 'none',
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: "8px",
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.85)",
+                letterSpacing: "3px",
+                textTransform: "uppercase",
               }}
             >
-              {isPlaying
-                ? <Pause className="w-4 h-4 text-white" />
-                : <Play className="w-4 h-4 text-white ml-0.5" />
-              }
-            </button>
+              ZEE·AMP
+            </span>
 
-            <button onClick={goNext} className="text-gray-500 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-              <SkipForward className="w-4 h-4" />
-            </button>
-
-            {/* Mute + Volume */}
-            <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => setIsMuted(v => !v)} className="text-gray-500 hover:text-white transition-colors">
-                {isMuted
-                  ? <VolumeX className="w-3.5 h-3.5" />
-                  : <Volume2 className="w-3.5 h-3.5" />
-                }
+            {/* Right: window chrome buttons */}
+            <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+              {/* Minimize */}
+              <button
+                onClick={() => setIsMinimized(true)}
+                style={{
+                  width: "12px",
+                  height: "10px",
+                  background: "linear-gradient(180deg,rgba(255,255,255,0.15),rgba(255,255,255,0.05))",
+                  border: "1px solid rgba(0,0,0,0.5)",
+                  borderRadius: "1px",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  paddingBottom: "1px",
+                }}
+              >
+                <div style={{ width: "6px", height: "1px", background: "rgba(255,255,255,0.6)" }} />
               </button>
+              {/* Shade (no-op) */}
+              <button
+                style={{
+                  width: "12px",
+                  height: "10px",
+                  background: "linear-gradient(180deg,rgba(255,255,255,0.15),rgba(255,255,255,0.05))",
+                  border: "1px solid rgba(0,0,0,0.5)",
+                  borderRadius: "1px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ width: "6px", height: "5px", border: "1px solid rgba(255,255,255,0.5)", borderBottom: "none" }} />
+              </button>
+              {/* Close */}
+              <button
+                onClick={() => setIsMinimized(true)}
+                style={{
+                  width: "12px",
+                  height: "10px",
+                  background: "linear-gradient(180deg,rgba(255,80,80,0.4),rgba(200,20,20,0.2))",
+                  border: "1px solid rgba(0,0,0,0.5)",
+                  borderRadius: "1px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "rgba(255,180,180,0.9)",
+                  fontSize: "7px",
+                  fontFamily: "monospace",
+                  fontWeight: "bold",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* ── MAIN DISPLAY BLOCK ──────────────────────────── */}
+          <div
+            className="za-crt"
+            style={{
+              position: "relative",
+              margin: "4px 4px 2px",
+              borderRadius: "3px",
+              background: "#000a14",
+              border: "1px solid rgba(0,0,0,0.8)",
+              boxShadow: `inset 0 0 20px rgba(0,0,0,0.6), inset 0 0 6px ${hexGlow(current.color, 0.15)}`,
+              padding: "6px 7px 5px",
+              overflow: "hidden",
+            }}
+          >
+            {/* Inner glow tint from station color */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `radial-gradient(ellipse 80% 60% at 50% 20%, ${hexGlow(current.color, 0.07)}, transparent)`,
+                pointerEvents: "none",
+                borderRadius: "3px",
+              }}
+            />
+
+            {/* Row 1: Time + Status badges + Spectrum */}
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "6px" }}>
+
+              {/* Play indicator triangle + time */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                <span
+                  style={{
+                    fontFamily: "'VT323', monospace",
+                    fontSize: "10px",
+                    color: isPlaying ? current.color : "rgba(255,255,255,0.25)",
+                    textShadow: isPlaying ? `0 0 6px ${glowColor}` : "none",
+                    lineHeight: 1,
+                  }}
+                >
+                  {isPlaying ? "▶" : "⏸"}
+                </span>
+                <LcdTime time={timeStr} color={current.color} />
+              </div>
+
+              {/* Center: info pills stack */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <InfoPill label="KBPS" value={isStream ? "128" : "320"} color={current.color} />
+                  <InfoPill label="KHZ" value="44" color={current.color} />
+                </div>
+                {/* STEREO / MONO badge */}
+                <div
+                  style={{
+                    fontFamily: "'VT323', monospace",
+                    fontSize: "9px",
+                    color: current.color,
+                    textShadow: `0 0 5px ${hexGlow(current.color, 0.6)}`,
+                    letterSpacing: "1px",
+                    background: hexGlow(current.color, 0.1),
+                    border: `1px solid ${hexGlow(current.color, 0.3)}`,
+                    borderRadius: "2px",
+                    padding: "0 4px",
+                    lineHeight: "14px",
+                  }}
+                >
+                  STEREO
+                </div>
+              </div>
+
+              {/* Spectrum EQ bars */}
+              <div style={{ flexShrink: 0 }}>
+                <SpectrumBars active={isPlaying} color={current.color} />
+              </div>
+            </div>
+
+            {/* Row 2: Scrolling track title */}
+            <div
+              style={{
+                marginTop: "5px",
+                overflow: "hidden",
+                height: "16px",
+                background: hexGlow(current.color, 0.04),
+                borderRadius: "2px",
+                border: `1px solid ${hexGlow(current.color, 0.15)}`,
+              }}
+            >
+              {error ? (
+                <span
+                  style={{
+                    fontFamily: "'VT323', monospace",
+                    fontSize: "12px",
+                    color: "#ff4444",
+                    letterSpacing: "1px",
+                    lineHeight: "16px",
+                    padding: "0 6px",
+                  }}
+                >
+                  STREAM ERROR — TRY NEXT STATION
+                </span>
+              ) : (
+                <span
+                  className="za-marquee"
+                  style={{
+                    display: "block",
+                    fontFamily: "'VT323', monospace",
+                    fontSize: "13px",
+                    color: current.color,
+                    textShadow: `0 0 6px ${hexGlow(current.color, 0.7)}`,
+                    letterSpacing: "2px",
+                    lineHeight: "16px",
+                    paddingLeft: "6px",
+                  }}
+                >
+                  {`${current.name}  •  ZEEZU FM  •  ${isPlaying ? "NOW STREAMING" : "PAUSED"}  •  `}
+                  {`${current.name}  •  ZEEZU FM  •  ${isPlaying ? "NOW STREAMING" : "PAUSED"}  •  `}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ── SEEK BAR ────────────────────────────────────── */}
+          <div style={{ padding: "2px 6px 1px" }}>
+            <div
+              style={{
+                position: "relative",
+                height: "8px",
+                background: "linear-gradient(180deg,rgba(0,0,0,0.6),rgba(255,255,255,0.03))",
+                border: "1px solid rgba(0,0,0,0.5)",
+                borderRadius: "2px",
+                overflow: "hidden",
+              }}
+            >
+              {/* Fill bar */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  height: "100%",
+                  width: `${seekPct * 100}%`,
+                  background: `linear-gradient(90deg, ${hexGlow(current.color, 0.6)}, ${current.color})`,
+                  boxShadow: `2px 0 6px ${hexGlow(current.color, 0.8)}`,
+                  transition: "width 0.3s linear",
+                  pointerEvents: "none",
+                }}
+              />
+              {/* Range input overlay */}
               <input
                 type="range"
+                className="za-slider"
+                min={0}
+                max={duration || 100}
+                step={0.5}
+                value={elapsed}
+                onChange={seekTo}
+                disabled={isStream || !duration}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  opacity: 0,
+                  cursor: isStream || !duration ? "default" : "pointer",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ── TRANSPORT + VOLUME ROW ───────────────────────── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "3px 6px 3px",
+              gap: "3px",
+            }}
+          >
+            {/* Transport buttons */}
+            <TransportBtn
+              icon={<span style={{ fontSize: "9px" }}>⏮</span>}
+              onClick={goPrev}
+              color={current.color}
+            />
+            <TransportBtn
+              icon={<span style={{ fontSize: "10px", color: current.color }}>▶</span>}
+              onClick={togglePlay}
+              isPrimary
+              color={current.color}
+            />
+            <TransportBtn
+              icon={<span style={{ fontSize: "10px" }}>⏸</span>}
+              onClick={togglePlay}
+              color={current.color}
+            />
+            <TransportBtn
+              icon={<span style={{ fontSize: "9px" }}>⏹</span>}
+              onClick={() => {
+                audioRef.current?.pause();
+                if (audioRef.current) audioRef.current.currentTime = 0;
+                setIsPlaying(false);
+                setElapsed(0);
+              }}
+              color={current.color}
+            />
+            <TransportBtn
+              icon={<span style={{ fontSize: "9px" }}>⏭</span>}
+              onClick={goNext}
+              color={current.color}
+            />
+
+            {/* Gap */}
+            <div style={{ flex: 1 }} />
+
+            {/* Mute button */}
+            <TransportBtn
+              icon={
+                <span style={{ fontSize: "9px" }}>
+                  {isMuted ? "🔇" : "🔊"}
+                </span>
+              }
+              onClick={() => setIsMuted(v => !v)}
+              color={current.color}
+            />
+
+            {/* Volume slider */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "3px",
+                width: "60px",
+                height: "16px",
+                background: "linear-gradient(180deg,rgba(0,0,0,0.5),rgba(255,255,255,0.03))",
+                border: "1px solid rgba(0,0,0,0.4)",
+                borderRadius: "2px",
+                padding: "0 4px",
+                position: "relative",
+              }}
+            >
+              {/* Volume fill */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "4px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  height: "3px",
+                  width: `${(isMuted ? 0 : volume) * 52}px`,
+                  background: current.color,
+                  boxShadow: `0 0 4px ${hexGlow(current.color, 0.6)}`,
+                  borderRadius: "1px",
+                  pointerEvents: "none",
+                  transition: "width 0.15s",
+                }}
+              />
+              <input
+                type="range"
+                className="za-slider"
                 min={0} max={1} step={0.05}
                 value={isMuted ? 0 : volume}
                 onChange={e => { setVolume(parseFloat(e.target.value)); setIsMuted(false); }}
-                className="w-16 accent-current h-1"
-                style={{ accentColor: current.color }}
+                style={{ width: "100%", position: "relative", zIndex: 1 }}
               />
             </div>
           </div>
+
+          {/* ── STATION SELECTOR + PL/EQ/ML BUTTONS ─────────── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "2px 6px 4px",
+              borderTop: "1px solid rgba(0,0,0,0.3)",
+              background: "rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* Station dots */}
+            <div style={{ display: "flex", gap: "3px", alignItems: "center", flexWrap: "wrap", maxWidth: "150px" }}>
+              {STATIONS.map((s, i) => (
+                <button
+                  key={s.id}
+                  onClick={() => { setStationIdx(i); setSubIdx(0); }}
+                  title={s.name}
+                  style={{
+                    width: i === stationIdx ? "8px" : "5px",
+                    height: i === stationIdx ? "8px" : "5px",
+                    borderRadius: "50%",
+                    background: s.color,
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: i === stationIdx
+                      ? `0 0 6px ${hexGlow(s.color, 0.9)}, 0 0 12px ${hexGlow(s.color, 0.5)}`
+                      : "none",
+                    opacity: i === stationIdx ? 1 : 0.3,
+                    transition: "all .2s",
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Right panel buttons: EQ PL ML + CONFIG lightning */}
+            <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+              <SquareBtn label="EQ" active={showEq} onClick={() => setShowEq(v => !v)} color={current.color} />
+              <SquareBtn label="PL" active={showPlaylist} onClick={() => setShowPlaylist(v => !v)} color={current.color} />
+              <SquareBtn label="ML" color={current.color} />
+              {/* CONFIG / lightning bolt */}
+              <div style={{ marginLeft: "3px", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                <span
+                  style={{
+                    fontFamily: "'VT323',monospace",
+                    fontSize: "7px",
+                    color: "rgba(255,255,255,0.25)",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  CONFIG
+                </span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: current.color,
+                    textShadow: `0 0 6px ${hexGlow(current.color, 0.7)}`,
+                    lineHeight: 1,
+                  }}
+                >
+                  ⚡
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── PLAYLIST PANEL (PL toggle) ───────────────────── */}
+          {showPlaylist && (
+            <div
+              style={{
+                borderTop: "1px solid rgba(0,0,0,0.5)",
+                background: "#050e1a",
+                maxHeight: "120px",
+                overflowY: "auto",
+              }}
+            >
+              <div
+                style={{
+                  padding: "3px 7px 2px",
+                  background: `linear-gradient(90deg, ${hexGlow(current.color, 0.2)}, transparent)`,
+                  borderBottom: "1px solid rgba(0,0,0,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "2px" }}>
+                  PLAYLIST
+                </span>
+                <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.25)", letterSpacing: "1px" }}>
+                  {STATIONS.length} STATIONS
+                </span>
+              </div>
+              {STATIONS.map((s, i) => (
+                <button
+                  key={s.id}
+                  onClick={() => { setStationIdx(i); setSubIdx(0); }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "4px 8px",
+                    background: i === stationIdx
+                      ? hexGlow(s.color, 0.12)
+                      : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    borderBottom: "1px solid rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "'VT323',monospace",
+                      fontSize: "9px",
+                      color: "rgba(255,255,255,0.25)",
+                      width: "14px",
+                      textAlign: "right",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    {i + 1}.
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontFamily: "'VT323',monospace",
+                      fontSize: "11px",
+                      color: i === stationIdx ? s.color : "rgba(255,255,255,0.5)",
+                      textShadow: i === stationIdx ? `0 0 6px ${hexGlow(s.color, 0.5)}` : "none",
+                      letterSpacing: "1.5px",
+                      textAlign: "left",
+                      transition: "color .15s",
+                    }}
+                  >
+                    {s.name}
+                  </span>
+                  {i === stationIdx && isPlaying && (
+                    <SpectrumBars active color={s.color} />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── EQ PANEL (EQ toggle) ─────────────────────────── */}
+          {showEq && (
+            <div
+              style={{
+                borderTop: "1px solid rgba(0,0,0,0.5)",
+                background: "#050e1a",
+                padding: "6px 8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "2px" }}>
+                  EQUALIZER
+                </span>
+                <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.25)" }}>
+                  VISUAL ONLY
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "36px", justifyContent: "space-between" }}>
+                {["60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K"].map((label, i) => (
+                  <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
+                    <div
+                      className={`za-eq-${i + 1}`}
+                      style={{
+                        width: "5px",
+                        background: `linear-gradient(180deg, ${current.color}, ${hexGlow(current.color, 0.4)})`,
+                        borderRadius: "2px 2px 0 0",
+                        boxShadow: `0 0 4px ${hexGlow(current.color, 0.5)}`,
+                        animationPlayState: isPlaying ? "running" : "paused",
+                        opacity: isPlaying ? 1 : 0.25,
+                      }}
+                    />
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "7px", color: "rgba(255,255,255,0.2)" }}>
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Global spin keyframe */}
+      <style>{`
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+      `}</style>
     </div>
   );
 }

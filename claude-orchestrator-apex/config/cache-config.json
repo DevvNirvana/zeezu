@@ -1,0 +1,43 @@
+{
+  "_comment": "Cache configuration for plan cache + response cache. Implements Layers 2+3 of token intelligence.",
+  "plan_cache": {
+    "enabled": true,
+    "directory": ".claude/cache/plans",
+    "similarity_threshold": 0.72,
+    "max_entries": 200,
+    "ttl_hours": 168,
+    "task_type_patterns": {
+      "page_build": ["build.*page", "create.*page", "add.*page", "new.*page"],
+      "component_build": ["build.*component", "create.*component", "add.*component"],
+      "api_endpoint": ["api.*endpoint", "create.*route", "add.*endpoint", "rest.*api"],
+      "auth_flow": ["auth", "login", "signup", "authentication", "oauth"],
+      "data_model": ["schema", "model", "database", "migration", "entity"],
+      "feature_build": ["feature", "implement", "add.*feature"],
+      "refactor": ["refactor", "restructure", "reorganize", "clean up"],
+      "optimization": ["optimize", "performance", "speed up", "reduce bundle"],
+      "testing": ["test", "spec", "coverage", "unit test", "integration test"]
+    }
+  },
+  "response_cache": {
+    "enabled": true,
+    "directory": ".claude/cache/responses",
+    "similarity_threshold": 0.83,
+    "max_entries": 500,
+    "ttl_hours": 72,
+    "cacheable_commands": ["plan", "docs", "spawn"],
+    "never_cache": ["review", "ship", "debug"],
+    "invalidate_on_file_change": true,
+    "invalidation_watch": ["src/**/*.ts", "src/**/*.tsx", "package.json", "docs/*.md"]
+  },
+  "embeddings": {
+    "method": "tfidf_bm25",
+    "comment": "Zero-dependency BM25 scoring. No external APIs needed.",
+    "ngram_range": [1, 2],
+    "min_score": 0.3
+  },
+  "storage": {
+    "format": "json",
+    "compress": false,
+    "max_cache_size_mb": 50
+  }
+}

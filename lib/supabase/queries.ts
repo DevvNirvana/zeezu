@@ -4,7 +4,12 @@ import { generateZid } from "../utils/generateZid";
 // ── SESSION SYNC ─────────────────────────────────────────────
 // On every login, checks if user exists in public.users.
 // If not, auto-creates their profile + generates a ZID.
-export async function syncUserSession() {
+// _isNew: true  → first ever login, redirect to onboarding
+// _isNew: false → returning user, go straight to dashboard
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SyncedUser = Record<string, any> & { _isNew: boolean };
+
+export async function syncUserSession(): Promise<SyncedUser | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -14,7 +19,20 @@ export async function syncUserSession() {
     .eq("id", user.id)
     .single();
 
-  if (existingUser) return existingUser;
+  if (existingUser) {
+    // Fire-and-forget — refresh presence. Try with online_status first,
+    // fall back to just last_seen_at if column doesn't exist yet.
+    supabase.from("users")
+      .update({ last_seen_at: new Date().toISOString(), online_status: "online" })
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) {
+          // Column may not exist yet — update only last_seen_at
+          supabase.from("users").update({ last_seen_at: new Date().toISOString() }).eq("id", user.id);
+        }
+      });
+    return { ...existingUser, _isNew: false };
+  }
 
   // New user — generate ZID and create profile
   const newZid = generateZid();
@@ -38,7 +56,7 @@ export async function syncUserSession() {
     return null;
   }
 
-  return newUser;
+  return { ...newUser, _isNew: true };
 }
 
 // ── ZEEWALL ──────────────────────────────────────────────────
@@ -146,7 +164,7 @@ export async function getCoreEight(userId: string) {
     .from("core_eight")
     .select(`
       position,
-      friend:users!fk_core_friend (id, display_name, zid)
+      friend:users!fk_core_friend (id, display_name, zid, birth_year, birth_month, birth_day, agent_state(agent_id))
     `)
     .eq("user_id", userId)
     .order("position", { ascending: true });
@@ -166,7 +184,7 @@ export async function searchUsers(query: string) {
 
   const { data } = await supabase
     .from("users")
-    .select("id, display_name, zid, avatar_url, status_message, created_at")
+    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day")
     .or(`display_name.ilike.%${trimmed}%,zid.ilike.%${trimmed}%`)
     .limit(20);
 
@@ -183,7 +201,7 @@ export async function discoverUsers(page = 0, limit = 20) {
 
   const { data, count } = await supabase
     .from("users")
-    .select("id, display_name, zid, avatar_url, status_message, created_at", { count: "exact" })
+    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day", { count: "exact" })
     .neq("id", user?.id || "")
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -380,35 +398,96 @@ export async function removeFriend(requestId: number) {
 
 /** Get all accepted friends for a user */
 export async function getFriends(userId: string) {
-  // Fetch requests where this user is sender OR receiver and status is accepted
+  const normalize = (data: any[]) =>
+    data.map((row: any) => {
+      const isSender = row.sender_id === userId;
+      const friend = isSender ? row.receiver : row.sender;
+      return { requestId: row.id, friendSince: row.created_at, ...friend };
+    });
+
+  const base = `.eq("status","accepted").or("sender_id.eq.${userId},receiver_id.eq.${userId}")`;
+  void base; // just for reference
+
+  // Full query including recently added presence columns
   const { data, error } = await supabase
     .from("friend_requests")
     .select(`
-      id,
-      sender_id,
-      receiver_id,
-      created_at,
-      sender:users!sender_id (id, display_name, zid, avatar_url),
-      receiver:users!receiver_id (id, display_name, zid, avatar_url)
+      id, sender_id, receiver_id, created_at,
+      sender:users!sender_id   (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id), influence_score, theme_track_url, last_seen_at, online_status),
+      receiver:users!receiver_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id), influence_score, theme_track_url, last_seen_at, online_status)
     `)
     .eq("status", "accepted")
     .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
 
-  if (error) {
-    console.error("Error fetching friends:", error);
+  if (!error) return normalize(data || []);
+
+  // Graceful fallback — presence columns may not exist yet in DB
+  console.warn("getFriends: falling back (missing column?):", error.message ?? error);
+  const { data: fallback, error: fbErr } = await supabase
+    .from("friend_requests")
+    .select(`
+      id, sender_id, receiver_id, created_at,
+      sender:users!sender_id   (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id), influence_score, theme_track_url),
+      receiver:users!receiver_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id), influence_score, theme_track_url)
+    `)
+    .eq("status", "accepted")
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+  if (fbErr) {
+    console.error("Error fetching friends:", fbErr.message ?? fbErr);
     return [];
   }
+  return normalize(fallback || []);
+}
 
-  // Normalize: always return the "other" person
-  return (data || []).map((row: any) => {
-    const isSender = row.sender_id === userId;
-    const friend = isSender ? row.receiver : row.sender;
-    return {
-      requestId: row.id,
-      friendSince: row.created_at,
-      ...friend,
-    };
-  });
+/** Update the current user's online status. */
+export type OnlineStatus = "online" | "busy" | "away" | "offline";
+export async function updateOnlineStatus(status: OnlineStatus) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { error } = await supabase
+    .from("users")
+    .update({ online_status: status, last_seen_at: new Date().toISOString() })
+    .eq("id", user.id);
+  if (error) console.error("Error updating online status:", error);
+}
+
+/** Get mutual friends between two users.
+ *  Requires RLS policy: authenticated users can SELECT where status = 'accepted' */
+export async function getMutualFriends(viewerId: string, profileUserId: string) {
+  const [{ data: viewerRows }, { data: profileRows }] = await Promise.all([
+    supabase
+      .from("friend_requests")
+      .select("sender_id, receiver_id")
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${viewerId},receiver_id.eq.${viewerId}`),
+    supabase
+      .from("friend_requests")
+      .select("sender_id, receiver_id")
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${profileUserId},receiver_id.eq.${profileUserId}`),
+  ]);
+
+  if (!viewerRows || !profileRows) return [];
+
+  const viewerFriendIds = new Set(
+    viewerRows.map(r => r.sender_id === viewerId ? r.receiver_id : r.sender_id)
+  );
+  const profileFriendIds = new Set(
+    profileRows.map(r => r.sender_id === profileUserId ? r.receiver_id : r.sender_id)
+  );
+
+  const mutualIds = [...viewerFriendIds].filter(
+    id => profileFriendIds.has(id) && id !== viewerId && id !== profileUserId
+  );
+  if (!mutualIds.length) return [];
+
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, display_name, zid, avatar_url")
+    .in("id", mutualIds);
+
+  return users ?? [];
 }
 
 /** Get friend count for a user */
@@ -432,7 +511,7 @@ export async function getIncomingRequests() {
     .select(`
       id,
       created_at,
-      sender:users!sender_id (id, display_name, zid, avatar_url)
+      sender:users!sender_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))
     `)
     .eq("receiver_id", user.id)
     .eq("status", "pending")
@@ -629,4 +708,320 @@ export async function getUnreadMessageCount() {
     .eq("is_read", false);
 
   return count || 0;
+}
+
+// ── ZLOGGER ───────────────────────────────────────────────────
+
+export type ZlogInput = {
+  title: string;
+  slug: string;
+  content_markdown: string;
+  content_html: string;
+  cover_image_url?: string;
+  theme?: string;
+  mood?: string;
+  is_anonymous?: boolean;
+  visibility?: string;
+  notify_core8?: boolean;
+  notify_friends?: boolean;
+  share_to_zeewall?: boolean;
+  response_to?: string;
+};
+
+export type ZlogListItem = {
+  id: string;
+  slug: string;
+  title: string;
+  cover_image_url: string | null;
+  mood: string | null;
+  is_anonymous: boolean;
+  created_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  author: any;
+  engagementCounts: { zap: number; vibe: number; save: number; comment: number };
+  excerpt: string;
+};
+
+export type ZlogFull = ZlogListItem & {
+  content_html: string;
+  content_markdown: string;
+  theme: string;
+  visibility: string;
+  updated_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  responseTo?: any;
+  myEngagement: string[];
+};
+
+export type ZlogComment = {
+  id: string;
+  content: string;
+  created_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  author: any;
+};
+
+export type ZlogFilter = "latest" | "trending" | "anonymous" | "network" | "gen_z" | "millennial" | "gen_x";
+
+/** Create a new zlog. Returns { id, slug } or null. */
+export async function createZlog(data: ZlogInput): Promise<{ id: string; slug: string } | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: row, error } = await supabase
+    .from("zlogs")
+    .insert({ ...data, user_id: user.id })
+    .select("id, slug")
+    .single();
+
+  if (error) { console.error("createZlog:", error); return null; }
+  return row;
+}
+
+/** Update an existing zlog owned by the current user. */
+export async function updateZlog(id: string, data: Partial<ZlogInput>): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("zlogs")
+    .update(data)
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) { console.error("updateZlog:", error); return false; }
+  return true;
+}
+
+/** Delete a zlog owned by the current user. */
+export async function deleteZlog(id: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("zlogs")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) { console.error("deleteZlog:", error); return false; }
+  return true;
+}
+
+/** Fetch a full zlog by slug with author, engagement counts, parent zlog, and current user's engagement. */
+export async function getZlogBySlug(slug: string): Promise<ZlogFull | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: row, error } = await supabase
+    .from("zlogs")
+    .select(`
+      id, slug, title, content_html, content_markdown,
+      cover_image_url, theme, mood, is_anonymous,
+      visibility, created_at, updated_at,
+      user_id, response_to,
+      author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day),
+      responseTo:zlogs!response_to (id, slug, title)
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error || !row) { console.error("getZlogBySlug:", error); return null; }
+
+  const { data: engRows } = await supabase
+    .from("zlog_engagement")
+    .select("type")
+    .eq("zlog_id", row.id);
+
+  const counts = { zap: 0, vibe: 0, save: 0, comment: 0 };
+  for (const e of (engRows ?? [])) {
+    if (e.type in counts) counts[e.type as keyof typeof counts]++;
+  }
+
+  const { count: commentCount } = await supabase
+    .from("zlog_comments")
+    .select("*", { count: "exact", head: true })
+    .eq("zlog_id", row.id);
+  counts.comment = commentCount ?? 0;
+
+  let myEngagement: string[] = [];
+  if (user) {
+    const { data: myRows } = await supabase
+      .from("zlog_engagement")
+      .select("type")
+      .eq("zlog_id", row.id)
+      .eq("user_id", user.id);
+    myEngagement = (myRows ?? []).map((r) => r.type);
+  }
+
+  const content = (row as any).content_markdown ?? "";
+  const excerpt = content.replace(/[#*`>\[\]]/g, "").slice(0, 160);
+
+  return {
+    ...row,
+    engagementCounts: counts,
+    myEngagement,
+    excerpt,
+    author: (row as any).is_anonymous ? null : (row as any).author,
+    responseTo: (row as any).responseTo ?? undefined,
+  } as unknown as ZlogFull;
+}
+
+/** Fetch paginated public zlogs with filter support. */
+export async function getPublicZlogs(
+  filter: ZlogFilter,
+  cursor?: string,
+  userId?: string
+): Promise<ZlogListItem[]> {
+  void filter;
+
+  let query = supabase
+    .from("zlogs")
+    .select(`
+      id, slug, title, cover_image_url, mood, is_anonymous,
+      created_at, user_id,
+      author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day),
+      content_markdown
+    `)
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (filter === "anonymous") {
+    query = query.eq("is_anonymous", true);
+  }
+
+  if (userId) query = query.eq("user_id", userId);
+  if (cursor) query = query.lt("created_at", cursor);
+
+  const { data, error } = await query;
+  if (error) { console.error("getPublicZlogs:", error); return []; }
+
+  return ((data ?? []) as any[]).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    cover_image_url: row.cover_image_url ?? null,
+    mood: row.mood ?? null,
+    is_anonymous: row.is_anonymous,
+    created_at: row.created_at,
+    author: row.is_anonymous ? null : row.author,
+    engagementCounts: { zap: 0, vibe: 0, save: 0, comment: 0 },
+    excerpt: (row.content_markdown ?? "").replace(/[#*`>\[\]]/g, "").slice(0, 160),
+  }));
+}
+
+/** Get all zlogs for a user profile. Owner sees all; others see public only. */
+export async function getUserZlogs(userId: string): Promise<ZlogListItem[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const isOwner = user?.id === userId;
+
+  let query = supabase
+    .from("zlogs")
+    .select("id, slug, title, cover_image_url, mood, is_anonymous, created_at, content_markdown, visibility")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (!isOwner) {
+    query = query.eq("visibility", "public");
+  }
+
+  const { data, error } = await query;
+  if (error) { console.error("getUserZlogs:", error); return []; }
+
+  return ((data ?? []) as any[]).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    cover_image_url: row.cover_image_url ?? null,
+    mood: row.mood ?? null,
+    is_anonymous: row.is_anonymous,
+    created_at: row.created_at,
+    author: null,
+    engagementCounts: { zap: 0, vibe: 0, save: 0, comment: 0 },
+    excerpt: (row.content_markdown ?? "").replace(/[#*`>\[\]]/g, "").slice(0, 160),
+  }));
+}
+
+/** Toggle engagement (zap/vibe/save). Returns "added" | "removed". */
+export async function engageZlog(zlogId: string, type: "zap" | "vibe" | "save"): Promise<"added" | "removed" | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: existing } = await supabase
+    .from("zlog_engagement")
+    .select("id")
+    .eq("zlog_id", zlogId)
+    .eq("user_id", user.id)
+    .eq("type", type)
+    .single();
+
+  if (existing) {
+    await supabase.from("zlog_engagement").delete().eq("id", existing.id);
+    return "removed";
+  } else {
+    await supabase.from("zlog_engagement").insert({ zlog_id: zlogId, user_id: user.id, type });
+    return "added";
+  }
+}
+
+/** Get all comments for a zlog, ordered ascending. */
+export async function getZlogComments(zlogId: string): Promise<ZlogComment[]> {
+  const { data, error } = await supabase
+    .from("zlog_comments")
+    .select(`
+      id, content, created_at,
+      author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day)
+    `)
+    .eq("zlog_id", zlogId)
+    .order("created_at", { ascending: true });
+
+  if (error) { console.error("getZlogComments:", error); return []; }
+  return (data ?? []) as ZlogComment[];
+}
+
+/** Add a comment and notify the zlog owner. Returns comment with author or null. */
+export async function addZlogComment(zlogId: string, content: string): Promise<ZlogComment | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: row, error } = await supabase
+    .from("zlog_comments")
+    .insert({ zlog_id: zlogId, user_id: user.id, content })
+    .select(`
+      id, content, created_at,
+      author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day)
+    `)
+    .single();
+
+  if (error) { console.error("addZlogComment:", error); return null; }
+
+  supabase
+    .from("zlogs")
+    .select("user_id")
+    .eq("id", zlogId)
+    .single()
+    .then(({ data: zlog }) => {
+      if (zlog?.user_id && zlog.user_id !== user.id) {
+        supabase.from("notifications").insert({
+          user_id: zlog.user_id,
+          actor_id: user.id,
+          type: "comment",
+          content: content.slice(0, 60),
+          reference_id: zlogId,
+        });
+      }
+    });
+
+  return row as ZlogComment;
+}
+
+/** Set a zlog as featured for the current user. */
+export async function setFeaturedZlog(zlogId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  await supabase.from("zlogs").update({ is_featured: false }).eq("user_id", user.id);
+  const { error } = await supabase.from("zlogs").update({ is_featured: true }).eq("id", zlogId).eq("user_id", user.id);
+  if (error) { console.error("setFeaturedZlog:", error); return false; }
+  return true;
 }

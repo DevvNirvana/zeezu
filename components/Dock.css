@@ -1,0 +1,101 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dock.css — Zeezu Portal theme
+   Labels drop DOWNWARD from the icon when docked inside the top NavBar.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Outer wrapper — height animated by motion/react */
+.dock-outer {
+  margin: 0;
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  overflow: visible;            /* labels must not be clipped */
+}
+
+/* Panel — the visible pill container */
+.dock-panel {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  width: fit-content;
+  gap: 4px;
+  border-radius: 12px;
+  background: rgba(8, 14, 36, 0.65);
+  border: 1px solid rgba(138, 46, 255, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 8px 5px;
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  overflow: visible;            /* labels must not be clipped */
+}
+
+/* Individual dock item */
+.dock-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  overflow: visible;            /* labels must not be clipped */
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.dock-item:hover,
+.dock-item:focus-visible {
+  background: rgba(138, 46, 255, 0.1);
+  border-color: rgba(138, 46, 255, 0.42);
+  box-shadow: 0 0 10px rgba(138, 46, 255, 0.22);
+}
+
+/* Active state — applied via className prop from NavBar */
+.dock-item.zee-active {
+  background: rgba(138, 46, 255, 0.14);
+  border-color: rgba(138, 46, 255, 0.55);
+  box-shadow: 0 0 12px rgba(138, 46, 255, 0.3);
+}
+
+/* Icon wrapper */
+.dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── LABEL — positioned BELOW the icon ──────────────────────────────────────
+   top: calc(100% + 8px)  →  sits below the icon with an 8px gap.
+   The motion/react animation drives y: -4→0 (a short downward drop-in).
+   x: -50% is applied inline by motion via the style prop.
+───────────────────────────────────────────────────────────────────────────── */
+.dock-label {
+  position: absolute;
+  top: calc(100% + 8px);       /* BELOW the icon */
+  bottom: auto;
+  left: 50%;
+  /* x: '-50%' is set inline by DockLabel via motion style prop */
+
+  width: fit-content;
+  white-space: nowrap;
+  border-radius: 5px;
+  border: 1px solid rgba(138, 46, 255, 0.38);
+  background: rgba(8, 14, 36, 0.97);
+  padding: 2px 7px;
+  font-family: 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}

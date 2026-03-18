@@ -85,11 +85,31 @@ export default function ShareSheet({ isOpen, onClose, title, text, url }: ShareS
     const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center share-overlay-enter"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+        <div
+            className="share-overlay-enter"
+            style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.65)",
+                backdropFilter: "blur(4px)",
+                padding: "16px",
+            }}
+        >
             <div ref={sheetRef}
-                className="share-sheet-enter w-full max-w-sm mx-auto sm:mx-0 bg-[#111118] border border-gray-800 sm:rounded-xl rounded-t-xl overflow-hidden"
-                style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(138,46,255,0.1)" }}>
+                className="share-sheet-enter"
+                style={{
+                    width: "100%",
+                    maxWidth: "380px",
+                    background: "#111118",
+                    border: "1px solid #1f2937",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(138,46,255,0.12)",
+                }}>
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800/60">

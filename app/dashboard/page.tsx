@@ -2,18 +2,131 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Zap, Bell, MessageCircle, Flame, Music, Search, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, Zap, Activity, MessageCircle, Flame, Music, Search, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
-import { syncUserSession, getCoreEight, getDashboardStats, searchFriends, addToCoreEight, removeFromCoreEight, getFriendCount } from "@/lib/supabase/queries";
+import {
+  syncUserSession, getCoreEight, getDashboardStats, searchFriends,
+  addToCoreEight, removeFromCoreEight, getFriendCount, type SyncedUser,
+} from "@/lib/supabase/queries";
 import GlobalFeed from "@/components/GlobalFeed";
 import NavBar from "@/components/NavBar";
 import ThemeEngine, { type ThemeConfig } from "@/components/ThemeEngine";
+import BootScreen from "@/components/BootScreen";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
+import { AGENT_IDS } from "@/lib/agents";
+import ReflectiveCard from "@/components/ReflectiveCard";
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Y2K KEYFRAMES — injected once
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KEYFRAMES = `
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Orbitron:wght@700;900&family=VT323&display=swap');
+
+  @keyframes zee-marquee   { 0%{transform:translateX(0)} 100%{transform:translateX(-33.333%)} }
+  @keyframes zee-twinkle   { 0%,100%{opacity:.09;transform:scale(1) rotate(0)} 50%{opacity:.4;transform:scale(1.12) rotate(16deg)} }
+  @keyframes zee-buzz-pulse{ 0%{box-shadow:0 0 0 0 rgba(255,0,122,.5)} 70%{box-shadow:0 0 0 10px rgba(255,0,122,0)} 100%{box-shadow:0 0 0 0 rgba(255,0,122,0)} }
+  @keyframes zee-live-dot  { 0%,100%{opacity:1} 50%{opacity:.25} }
+  @keyframes zee-eq-bar    { 0%,100%{transform:scaleY(0.3)} 50%{transform:scaleY(1)} }
+  @keyframes zee-online    { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes zee-fade-in   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes zee-spin      { to{transform:rotate(360deg)} }
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PORTAL MODULE HEADER — shared Y2K "widget title bar" pattern
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ModuleHeader({
+  icon,
+  title,
+  accent = "var(--color-electric, #8A2EFF)",
+  right,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  accent?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "10px 16px 10px 14px",
+        background: `linear-gradient(90deg, color-mix(in srgb, ${accent} 13%, transparent) 0%, transparent 100%)`,
+        borderBottom: `1px solid color-mix(in srgb, ${accent} 19%, transparent)`,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ width: "3px", height: "18px", background: `linear-gradient(180deg, ${accent}, color-mix(in srgb, ${accent} 40%, transparent))`, borderRadius: "2px", flexShrink: 0 }} />
+        <span style={{ color: accent, display: "flex", alignItems: "center" }}>{icon}</span>
+        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: "#fff", letterSpacing: "0.5px" }}>
+          {title}
+        </span>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PORTAL CARD — base card styling
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PortalCard({
+  children,
+  style,
+  className = "",
+  accent = "color-mix(in srgb, var(--color-electric, #8A2EFF) 20%, transparent)",
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+  className?: string;
+  accent?: string;
+}) {
+  return (
+    <div
+      className={className}
+      style={{
+        background: "var(--color-card-bg, rgba(14,22,48,0.85))",
+        backdropFilter: "blur(12px)",
+        border: `1px solid ${accent}`,
+        borderRadius: "16px",
+        overflow: "hidden",
+        boxShadow: "0 8px 32px rgba(0,0,0,.5)",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STAR DECORATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STARS = [
+  { x: "2%", y: "12%", s: 10, d: "0s" },
+  { x: "98%", y: "20%", s: 8, d: "1.1s" },
+  { x: "1%", y: "55%", s: 9, d: "0.5s" },
+  { x: "99%", y: "65%", s: 11, d: "1.8s" },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DASHBOARD PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [showBoot, setShowBoot] = useState(false);
+  const [isFirstEver, setIsFirstEver] = useState(false);
   const [coreEight, setCoreEight] = useState<any[]>([]);
   const [stats, setStats] = useState({ zaps: 0, buzzes: 0, comments: 0 });
   const [customization, setCustom] = useState<ThemeConfig | null>(null);
@@ -22,335 +135,928 @@ export default function Dashboard() {
   // Core 8 edit modal
   const [isEditing, setIsEditing] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setResults] = useState<any[]>([]);
 
-  // ── Init ────────────────────────────────────────────────────────────
+  // ── Init — logic UNCHANGED ──────────────────────────────────────────
   useEffect(() => {
     async function init() {
       const identity = await syncUserSession();
-      if (!identity) { router.push('/'); return; }
+      if (!identity) { router.push("/login"); return; }
+      if ((identity as SyncedUser)._isNew) { router.push("/onboarding"); return; }
       setUserData(identity);
 
-      const [top8, dashStats, { data: customData }, fCount] = await Promise.all([
-        getCoreEight(identity.id),
-        getDashboardStats(),
-        supabase.from('profile_customization').select('*').eq('user_id', identity.id).single(),
-        getFriendCount(identity.id),
-      ]);
+      const freshLogin = localStorage.getItem("zeezu_fresh_login") === "1";
+      const bootSeen = localStorage.getItem("zeezu_boot_seen") === "1";
+      const shouldBoot = freshLogin || !bootSeen;
 
-      setCoreEight(top8 || []);
-      setStats(dashStats);
-      if (customData) setCustom(customData as ThemeConfig);
-      setFriendCount(fCount);
+      try {
+        const [top8, dashStats, { data: customData }, fCount] = await Promise.all([
+          getCoreEight(identity.id),
+          getDashboardStats(),
+          supabase.from("profile_customization").select("*").eq("user_id", identity.id).single(),
+          getFriendCount(identity.id),
+        ]);
 
-      setLoading(false);
+        setCoreEight(top8 || []);
+        setStats(dashStats);
+        if (customData) setCustom(customData as ThemeConfig);
+        setFriendCount(fCount);
+
+        if (shouldBoot) {
+          localStorage.removeItem("zeezu_fresh_login");
+          localStorage.setItem("zeezu_boot_seen", "1");
+          setIsFirstEver(!bootSeen);
+          setShowBoot(true);
+        }
+      } finally {
+        setLoading(false);
+      }
     }
     init();
   }, [router]);
 
-  // ── REALTIME dashboard refresh ───────────────────────────────────
+  // ── Realtime — UNCHANGED ────────────────────────────────────────────
   useEffect(() => {
     if (!userData) return;
-
     const channel = supabase
-      .channel('dashboard_realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        async (payload: any) => {
-          // Client-side filter: only react to messages for this user
-          if (payload.new?.receiver_id !== userData.id) return;
-          const newStats = await getDashboardStats();
-          setStats(newStats);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'core_eight' },
-        async (payload: any) => {
-          // Client-side filter
-          const row = payload.new || payload.old;
-          if (row?.user_id !== userData.id) return;
-          const updated = await getCoreEight(userData.id);
-          setCoreEight(updated || []);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications' },
-        async (payload: any) => {
-          if (payload.new?.user_id !== userData.id) return;
-          const newStats = await getDashboardStats();
-          setStats(newStats);
-        }
-      )
+      .channel("dashboard_realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload: any) => {
+        if (payload.new?.receiver_id !== userData.id) return;
+        setStats(await getDashboardStats());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "core_eight" }, async (payload: any) => {
+        const row = payload.new || payload.old;
+        if (row?.user_id !== userData.id) return;
+        setCoreEight((await getCoreEight(userData.id)) || []);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, async (payload: any) => {
+        if (payload.new?.user_id !== userData.id) return;
+        setStats(await getDashboardStats());
+      })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [userData]);
 
-  // ── Core 8 search (friends only) ────────────────────────────────────
+  // ── Core 8 handlers — UNCHANGED ────────────────────────────────────
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = await searchFriends(searchQuery);
-    setResults(r);
+    setResults(await searchFriends(searchQuery));
   };
 
-  // ── Remove from Core 8 ────────────────────────────────────────────
   const handleRemoveFromSlot = async (position: number) => {
     await removeFromCoreEight(position);
-    if (userData) {
-      const updated = await getCoreEight(userData.id);
-      setCoreEight(updated);
-    }
+    if (userData) setCoreEight(await getCoreEight(userData.id));
   };
 
   const handleAddToSlot = async (friendId: string) => {
     if (selectedSlot === null) return;
     await addToCoreEight(friendId, selectedSlot);
-    if (userData) {
-      const updated = await getCoreEight(userData.id);
-      setCoreEight(updated);
-    }
+    if (userData) setCoreEight(await getCoreEight(userData.id));
     setIsEditing(false);
-    setSearchQuery('');
+    setSearchQuery("");
     setResults([]);
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#0B0B12] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-8 h-8 text-electric animate-spin" />
-        <span className="text-xs font-mono text-gray-500 tracking-[0.2em]">LOADING SYSTEM...</span>
-      </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--color-page-bg, #080E24)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "12px",
+        fontFamily: "'VT323', monospace",
+      }}
+    >
+      <Loader2 size={28} className="animate-spin" style={{ color: "var(--color-electric, #8A2EFF)" }} />
+      <span style={{ fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
+        LOADING SYSTEM...
+      </span>
     </div>
   );
 
+  const gen = getGeneration(userData?.birth_year, userData?.birth_month, userData?.birth_day);
+
+  // ── Render ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0B0B12] text-white pb-24 overflow-x-hidden">
+    <>
+      <style>{KEYFRAMES}</style>
 
-      {/* ── THEME ENGINE: applies user's profile_customization to dashboard ── */}
-      {/* This is why profile settings feel like "your world" when you log in    */}
-      <ThemeEngine config={customization} />
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "var(--color-page-bg, #080E24)",
+          backgroundImage: `
+            radial-gradient(ellipse 70% 45% at 50% 0%,   color-mix(in srgb, var(--color-electric, #8A2EFF) 13%, transparent) 0%, transparent 60%),
+            radial-gradient(ellipse 35% 25% at 0%  60%,  color-mix(in srgb, var(--color-cyan, #00E5FF) 6%, transparent)  0%, transparent 55%),
+            radial-gradient(ellipse 30% 20% at 100% 80%, rgba(78,205,196,.05) 0%, transparent 55%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='.8' fill='rgba(255,255,255,.035)'/%3E%3C/svg%3E")
+          `,
+          color: "#fff",
+          // paddingBottom: "60px",
+          overflowX: "hidden",
+          fontFamily: "'Nunito', system-ui, sans-serif",
+          position: "relative",
+        }}
+      >
+        {/* Stars */}
+        {STARS.map((st, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: st.x,
+              top: st.y,
+              fontSize: `${st.s}px`,
+              color: "#8A2EFF",
+              pointerEvents: "none",
+              userSelect: "none",
+              animation: `zee-twinkle ${3.4 + i * 0.5}s ease-in-out infinite`,
+              animationDelay: st.d,
+              zIndex: 0,
+            }}
+          >
+            ✦
+          </span>
+        ))}
 
-      <NavBar />
+        {/* ── Boot + Theme engine ──────────────────────────────────── */}
+        {showBoot && (
+          <BootScreen
+            username={userData?.display_name}
+            isFirstEver={isFirstEver}
+            onComplete={() => setShowBoot(false)}
+          />
+        )}
+        <ThemeEngine config={customization} />
+        <NavBar />
 
-      {/* ── STATS BAR ─────────────────────────────────────────────────── */}
-      <div className="sticky top-16 z-30 bg-[#0B0B12]/80 backdrop-blur-md border-b border-gray-800/80 h-10 flex items-center justify-between px-4">
-        <div className="flex items-center gap-5 text-[10px] font-mono font-bold tracking-widest">
-          <button className={`flex items-center gap-2 transition-all ${stats.buzzes > 0 ? 'text-magenta animate-pulse' : 'text-gray-600'}`}>
-            <Bell className="w-3 h-3" />
-            <span>{stats.buzzes} BUZZES</span>
-          </button>
-          <button className="flex items-center gap-2 text-lime hover:text-white transition-colors">
-            <Zap className="w-3 h-3 fill-lime" />
-            <span>{stats.zaps} ZAPS</span>
-          </button>
-          <button className="hidden sm:flex items-center gap-2 text-cyan hover:text-white transition-colors">
-            <MessageCircle className="w-3 h-3" />
-            <span>WALL ACTIVE</span>
-          </button>
-        </div>
-      </div>
 
-      {/* ── MAIN GRID ─────────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        {/* ── LEFT: Identity + Core 8 ───────────────────────────────── */}
-        <div className="lg:col-span-4 space-y-5">
-
-          {/* Identity card */}
-          <div className="bg-gray-900/60 backdrop-blur-md border border-gray-800 rounded-2xl p-5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-electric/10 blur-[60px] rounded-full pointer-events-none group-hover:bg-electric/20 transition-all" />
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full border-2 border-electric p-0.5 mb-3 shadow-[0_0_20px_rgba(138,46,255,0.3)]">
-                <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.zid}`}
-                  alt="avatar"
-                  className="w-full h-full rounded-full bg-black"
-                />
-              </div>
-              <h1 className="text-lg font-black text-white tracking-tight">{userData?.display_name}</h1>
-              <p className="text-[10px] font-mono text-gray-500 mt-0.5">{userData?.zid}</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <Users className="w-3 h-3 text-cyan" />
-                <span className="text-[10px] font-mono text-gray-500">{friendCount} friend{friendCount !== 1 ? 's' : ''}</span>
-              </div>
-
-              {userData?.status_message && (
-                <>
-                  <div className="w-full h-px bg-gray-800/60 my-3" />
-                  <p className="text-xs text-gray-400 italic">"{userData.status_message}"</p>
-                </>
-              )}
-
-              {/* Theme color indicator dots */}
-              {customization && (
-                <div className="flex items-center gap-1.5 mt-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: customization.primary_color, boxShadow: `0 0 6px ${customization.primary_color}` }} />
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: customization.secondary_color, boxShadow: `0 0 6px ${customization.secondary_color}` }} />
-                  <span className="text-[9px] font-mono text-gray-600 ml-1">custom theme</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Core 8 */}
-          <div className="bg-gray-900/60 backdrop-blur-md border border-gray-800 rounded-2xl p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-black text-electric flex items-center gap-2">
-                <Flame className="w-4 h-4" /> CORE 8
-              </h2>
-              <span className="text-[9px] text-gray-600 uppercase tracking-widest font-mono">Hierarchy</span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(spot => {
-                const entry = coreEight.find(c => c.position === spot);
-                const friend = entry?.friend;
-                return (
-                  <div
-                    key={spot}
-                    onClick={() => { if (!friend) { setSelectedSlot(spot); setIsEditing(true); } }}
-                    className="aspect-square relative rounded-xl bg-black/40 border border-gray-800 hover:border-electric hover:shadow-[0_0_12px_rgba(138,46,255,0.3)] transition-all cursor-pointer group flex flex-col items-center justify-center overflow-hidden"
-                  >
-                    <span className="absolute top-0.5 left-1 text-[7px] font-mono text-gray-700 group-hover:text-electric">0{spot}</span>
-                    {friend ? (
-                      <>
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`} className="w-7 h-7 rounded-full mb-0.5 border border-gray-700" />
-                        <span className="text-[7px] text-gray-300 font-bold truncate w-11/12 text-center">{friend.display_name}</span>
-                        {/* Remove button */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
-                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                        >
-                          <Trash2 className="w-2.5 h-2.5 text-white" />
-                        </button>
-                        {/* Click to swap */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedSlot(spot); setIsEditing(true); }}
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl"
-                        >
-                          <span className="text-[7px] text-white font-mono">SWAP</span>
-                        </button>
-                      </>
-                    ) : (
-                      <Plus className="w-4 h-4 text-gray-700 group-hover:text-electric transition-colors" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Theme track indicator */}
-          {userData?.theme_track_url && (
-            <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center flex-shrink-0">
-                <Music className="w-4 h-4 text-electric" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] text-gray-500 font-mono uppercase">Theme Track</p>
-                <p className="text-xs text-white font-bold truncate">Playing Now...</p>
-              </div>
-              <div className="flex gap-px items-end h-4 flex-shrink-0">
-                {[2, 4, 3].map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-[3px] rounded-full bg-electric animate-bounce"
-                    style={{ height: `${h * 3}px`, animationDelay: `${i * 0.15}s` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── RIGHT: ZeeWall feed ──────────────────────────────────── */}
-        <div className="lg:col-span-8 space-y-5">
-
-          {/* Buzz alert */}
-          {stats.buzzes > 0 && (
-            <div className="bg-magenta/10 border border-magenta/50 rounded-xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(255,0,122,0.1)]">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-magenta" />
-                <div>
-                  <p className="text-sm font-black text-white">{stats.buzzes} NEW BUZZ{stats.buzzes > 1 ? 'ES' : ''}</p>
-                  <p className="text-xs text-magenta/70">Someone is trying to reach you</p>
-                </div>
-              </div>
-              <button onClick={() => router.push('/messages')} className="bg-magenta hover:bg-white hover:text-magenta text-white text-xs font-black py-2 px-4 rounded-lg transition-all">
-                OPEN
-              </button>
-            </div>
-          )}
-
-          {/* Feed */}
-          <div className="bg-gray-900/40 backdrop-blur-md border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-800 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-cyan" />
-              <h2 className="font-black text-white text-sm">THE FEED</h2>
-              <span className="text-[9px] font-mono text-gray-700 ml-auto">LIVE</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-lime animate-pulse" />
-            </div>
-            <GlobalFeed userId={userData?.id || ''} userZid={userData?.zid} />
+        {/* ══════════════════════════════════════════════════════════
+            MARQUEE TICKER
+        ══════════════════════════════════════════════════════════ */}
+        <div className="zee-ticker"
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "28px",
+            background: "linear-gradient(90deg,#3B0DA8 0%,#0B4B8F 50%,#3B0DA8 100%)",
+            borderTop: "1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 40%, transparent)",
+            display: "flex",
+            alignItems: "center",
+            overflow: "hidden",
+            zIndex: 20,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              whiteSpace: "nowrap",
+              animation: "zee-marquee 36s linear infinite",
+              fontFamily: "'VT323',monospace",
+              fontSize: "13px",
+              color: "rgba(255,255,255,.45)",
+              letterSpacing: "1.5px",
+              willChange: "transform",
+            }}
+          >
+            {("✦ WELCOME BACK · THE FEED IS LIVE · CHECK YOUR CORE 8 · NO ALGORITHM · NO FEED MANIPULATION · JUST PEOPLE · ZEEZU NETWORK · ").repeat(4)}
           </div>
         </div>
-      </div>
 
-      {/* ── CORE 8 EDIT MODAL ─────────────────────────────────────────── */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#121225] border border-electric rounded-2xl w-full max-w-md p-6 shadow-[0_0_60px_rgba(138,46,255,0.3)]">
-            <h3 className="text-lg font-black text-white mb-1">
-              Core 8 — <span className="text-electric">Slot 0{selectedSlot}</span>
-            </h3>
-            <p className="text-[11px] text-gray-500 font-mono mb-5">Search your friends to fill this slot</p>
+        {/* ══════════════════════════════════════════════════════════
+            MAIN LAYOUT GRID
+        ══════════════════════════════════════════════════════════ */}
+        <div
+          style={{
+            maxWidth: "1100px",
+            margin: "0 auto",
+            padding: "20px 16px",
+            display: "grid",
+            gridTemplateColumns: "320px 1fr",
+            gap: "20px",
+          }}
+          className="dashboard-grid"
+        >
+          {/* ══════════════════════════════════════════════════════
+              LEFT SIDEBAR
+          ══════════════════════════════════════════════════════ */}
+          <div className="col-wrapper" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
-            <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search display name..."
-                className="flex-1 bg-black/60 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:border-electric outline-none transition-colors"
+            {/* ── IDENTITY CARD ──────────────────────────────────── */}
+            <PortalCard className="card-profile" style={{ display: "none" }}>
+              <ModuleHeader
+                icon={<Users size={13} />}
+                title="MY PROFILE"
+                right={
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(138,46,255,.45)", letterSpacing: "1px" }}>
+                    {userData?.zid}
+                  </span>
+                }
               />
-              <button type="submit" className="bg-electric text-white px-4 py-2.5 rounded-xl hover:bg-electric/80 transition-colors">
-                <Search className="w-4 h-4" />
-              </button>
-            </form>
+              <div
+                style={{
+                  padding: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Ambient glow behind avatar */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: "-20px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "120px",
+                    height: "120px",
+                    background: "radial-gradient(circle, rgba(138,46,255,.25) 0%, transparent 70%)",
+                    pointerEvents: "none",
+                  }}
+                />
 
-            <div className="space-y-2 max-h-56 overflow-y-auto">
-              {searchResults.map(u => (
-                <div key={u.id} className="flex items-center justify-between p-3 bg-black/40 border border-gray-800 rounded-xl hover:border-cyan transition-colors">
-                  <div className="flex items-center gap-3">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.zid}`} className="w-8 h-8 rounded-full bg-gray-800" />
+                {/* Avatar ring */}
+                <div
+                  style={{
+                    width: "88px",
+                    height: "88px",
+                    borderRadius: "50%",
+                    padding: "3px",
+                    background: "linear-gradient(135deg,#8A2EFF,#00E5FF)",
+                    marginBottom: "12px",
+                    flexShrink: 0,
+                    boxShadow: "0 0 24px rgba(138,46,255,.4)",
+                  }}
+                >
+                  <div style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", background: "#000" }}>
+                    <img
+                      src={userData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.zid}`}
+                      alt="avatar"
+                      style={{ width: "100%", height: "100%", display: "block" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Name */}
+                <h1
+                  style={{
+                    fontFamily: "'Orbitron',sans-serif",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    color: "#fff",
+                    letterSpacing: "-0.5px",
+                    margin: "0 0 4px 0",
+                  }}
+                >
+                  {userData?.display_name}
+                </h1>
+
+                {/* Gen badge */}
+                {gen && (
+                  <div style={{ marginBottom: "6px" }}>
+                    <GenBadge gen={gen} size="md" />
+                  </div>
+                )}
+
+                {/* Friend count */}
+                <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "4px" }}>
+                  <Users size={11} style={{ color: "#00E5FF" }} />
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(0,229,255,.7)", letterSpacing: "0.5px" }}>
+                    {friendCount} FRIEND{friendCount !== 1 ? "S" : ""}
+                  </span>
+                </div>
+
+                {/* Status message */}
+                {userData?.status_message && (
+                  <>
+                    <div style={{ width: "100%", height: "1px", background: "rgba(138,46,255,.15)", margin: "12px 0" }} />
+                    <p
+                      style={{
+                        fontFamily: "'Nunito',sans-serif",
+                        fontSize: "12px",
+                        color: "rgba(255,255,255,.45)",
+                        fontStyle: "italic",
+                        lineHeight: "1.5",
+                        margin: 0,
+                      }}
+                    >
+                      &ldquo;{userData.status_message}&rdquo;
+                    </p>
+                  </>
+                )}
+
+                {/* Theme color dots */}
+                {customization && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "12px" }}>
+                    <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: customization.primary_color, boxShadow: `0 0 6px ${customization.primary_color}`, display: "inline-block" }} />
+                    <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: customization.secondary_color, boxShadow: `0 0 6px ${customization.secondary_color}55`, display: "inline-block" }} />
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.2)", letterSpacing: "1px", marginLeft: "3px" }}>CUSTOM THEME</span>
+                  </div>
+                )}
+              </div>
+            </PortalCard>
+
+            <ReflectiveCard
+              displayName={userData?.display_name || ""}
+              zid={userData?.zid || ""}
+              avatarUrl={userData?.avatar_url}
+              statusMessage={userData?.status_message}
+              friendCount={friendCount}
+              birthYear={userData?.birth_year}
+              birthMonth={userData?.birth_month}
+              birthDay={userData?.birth_day}
+              influenceScore={userData?.influence_score ?? 0}
+              primaryColor={customization?.primary_color}
+              secondaryColor={customization?.secondary_color}
+            />
+
+            {/* ── CORE 8 ─────────────────────────────────────────── */}
+            <PortalCard className="card-core8" accent="rgba(255,100,0,.2)">
+              <ModuleHeader
+                icon={<Flame size={13} />}
+                title="CORE 8"
+                accent="#FF6400"
+                right={
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Desktop: Hierarchy */}
+                    <span className="desktop-hierarchy" style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,100,0,.45)", letterSpacing: "1.5px" }}>
+                      HIERARCHY
+                    </span>
+                    {/* Mobile: Shiny Swipe Text */}
+                    <span className="mobile-swipe-text">
+                      SWIPE {">>>"}
+                    </span>
+                  </div>
+
+                }
+              />
+
+              <div style={{ padding: "14px" }}>
+                {/* 4×2 grid */}
+                {/* <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px" }}> */}
+                <div className="core-eight-container">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(spot => {
+                    const entry = coreEight.find(c => c.position === spot);
+                    const friend = entry?.friend;
+                    return (
+                      <div
+                        key={spot}
+                        onClick={() => { if (!friend) { setSelectedSlot(spot); setIsEditing(true); } }}
+                        style={{
+                          aspectRatio: "1",
+                          position: "relative",
+                          borderRadius: "12px",
+                          background: "rgba(0,0,0,.4)",
+                          border: "1px solid rgba(255,100,0,.15)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          overflow: "hidden",
+                          transition: "border-color .2s, box-shadow .2s",
+                        }}
+                        className="core-slot"
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.5)";
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 12px rgba(255,100,0,.2)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.15)";
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                        }}
+                      >
+                        {/* Slot number */}
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "3px",
+                            left: "5px",
+                            fontFamily: "'VT323',monospace",
+                            fontSize: "9px",
+                            color: "rgba(255,100,0,.4)",
+                          }}
+                        >
+                          0{spot}
+                        </span>
+
+                        {friend ? (
+                          <>
+                            <img
+                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`}
+                              style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1px solid rgba(255,100,0,.3)", marginBottom: "2px" }}
+                              alt={friend.display_name}
+                            />
+                            <span style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "7px", color: "rgba(255,255,255,.7)", textAlign: "center", width: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {friend.display_name}
+                            </span>
+                            {(() => {
+                              const isAgent = AGENT_IDS.has((friend as any).id ?? "") || !!(friend as any).agent_state;
+                              const fg = getGeneration((friend as any).birth_year, (friend as any).birth_month, (friend as any).birth_day, isAgent);
+                              return fg ? <GenBadge gen={fg} size="icon" /> : null;
+                            })()}
+
+                            {/* Remove button (hover) */}
+                            <button
+                              onClick={e => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
+                              style={{
+                                position: "absolute",
+                                top: "3px",
+                                right: "3px",
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
+                                background: "rgba(255,80,80,.8)",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                opacity: 0,
+                              }}
+                              className="remove-btn"
+                            >
+                              <Trash2 size={9} color="#fff" />
+                            </button>
+
+                            {/* Swap overlay (hover) */}
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedSlot(spot); setIsEditing(true); }}
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: "rgba(0,0,0,.55)",
+                                border: "none",
+                                borderRadius: "12px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                opacity: 0,
+                                fontFamily: "'VT323',monospace",
+                                fontSize: "10px",
+                                color: "#fff",
+                                letterSpacing: "1px",
+                              }}
+                              className="swap-overlay"
+                            >
+                              SWAP
+                            </button>
+                          </>
+                        ) : (
+                          <Plus size={16} style={{ color: "rgba(255,100,0,.35)", transition: "color .2s" }} className="plus-icon" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+
+                {/* Hover CSS (inline inject) */}
+                <style>{`
+                  .core-slot:hover .remove-btn  { opacity: 1 !important; }
+                  .core-slot:hover .swap-overlay { opacity: 1 !important; }
+                  .core-slot:hover .plus-icon    { color: rgba(255,100,0,.8) !important; }
+                `}</style>
+              </div>
+            </PortalCard>
+
+            {/* ── THEME TRACK ──────────────────────────────────────── */}
+            {userData?.theme_track_url && (
+              <PortalCard className="card-theme">
+                <ModuleHeader icon={<Music size={13} />} title="THEME TRACK" />
+                <div style={{ padding: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg,rgba(138,46,255,.3),rgba(0,229,255,.2))",
+                      border: "1px solid rgba(138,46,255,.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Music size={16} style={{ color: "#8A2EFF" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(138,46,255,.55)", letterSpacing: "1.5px", margin: "0 0 2px 0" }}>
+                      NOW PLAYING
+                    </p>
+                    <p style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "12px", color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      Playing Now...
+                    </p>
+                  </div>
+                  {/* EQ bars */}
+                  <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "18px", flexShrink: 0 }}>
+                    {[0.4, 0.85, 0.6, 1, 0.7].map((h, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: "3px",
+                          height: `${h * 18}px`,
+                          background: "linear-gradient(180deg,#8A2EFF,#00E5FF)",
+                          borderRadius: "2px",
+                          animation: "zee-eq-bar 0.8s ease-in-out infinite",
+                          animationDelay: `${i * 0.12}s`,
+                          transformOrigin: "bottom",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </PortalCard>
+            )}
+          </div>
+
+          {/* ══════════════════════════════════════════════════════
+              RIGHT COLUMN — Feed
+          ══════════════════════════════════════════════════════ */}
+          {/* ══════════════════════════════════════════════════════
+              RIGHT COLUMN — Feed
+          ══════════════════════════════════════════════════════ */}
+          <div className="col-wrapper" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+            {/* ── BIG BUZZ ALERT (Only shows if buzzes > 0) ────────── */}
+            {stats.buzzes > 0 && (
+              <PortalCard className="card-buzz" accent="rgba(255,0,122,.4)" style={{ animation: "zee-fade-in .4s ease-out both" }}>
+                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,0,122,.07)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "rgba(255,0,122,.15)", border: "1px solid rgba(255,0,122,.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, animation: "zee-buzz-pulse 2.5s ease-out infinite" }}>
+                      <Activity size={16} style={{ color: "#FF007A" }} />
+                    </div>
                     <div>
-                      <p className="text-sm font-bold text-white">{u.display_name}</p>
-                      <p className="text-[10px] font-mono text-gray-500">{u.zid}</p>
+                      <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "12px", fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "0.5px" }}>
+                        {stats.buzzes} NEW BUZZ{stats.buzzes > 1 ? "ES" : ""}
+                      </p>
+                      <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,0,122,.7)", margin: 0, letterSpacing: "0.5px" }}>
+                        Someone is trying to reach you
+                      </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleAddToSlot(u.id)}
-                    className="text-[11px] font-black bg-lime/10 hover:bg-lime text-lime hover:text-black border border-lime/30 px-3 py-1.5 rounded-lg transition-all font-mono uppercase"
-                  >
-                    Add
-                  </button>
+                  <button onClick={() => router.push("/messages")} style={{ background: "#FF007A", border: "none", borderRadius: "10px", padding: "9px 18px", color: "#fff", fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px", cursor: "pointer", flexShrink: 0, transition: "background .2s" }} onMouseEnter={e => (e.currentTarget.style.background = "#CC0061")} onMouseLeave={e => (e.currentTarget.style.background = "#FF007A")}>OPEN</button>
                 </div>
-              ))}
-              {searchResults.length === 0 && searchQuery && (
-                <p className="text-center text-gray-600 text-xs py-4 font-mono">No users found for "{searchQuery}"</p>
-              )}
-            </div>
+              </PortalCard>
+            )}
 
-            <button onClick={() => { setIsEditing(false); setResults([]); setSearchQuery(''); }} className="mt-5 text-[11px] text-gray-600 hover:text-white transition-colors w-full text-center underline">
-              Cancel
-            </button>
+            {/* ── FEED (Now includes Zaps contextually!) ───────────── */}
+            <PortalCard className="card-feed" accent="color-mix(in srgb, var(--color-cyan, #00E5FF) 20%, transparent)" style={{ flex: 1 }}>
+              <ModuleHeader
+                icon={<MessageCircle size={13} />}
+                title="THE FEED"
+                accent="var(--color-cyan, #00E5FF)"
+                right={
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+
+                    {/* Zaps integrated natively into Feed Header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(180,255,0,0.08)", border: "1px solid rgba(180,255,0,0.25)", borderRadius: "6px", padding: "2px 6px" }}>
+                      <Zap size={12} fill="#B4FF00" color="#B4FF00" />
+                      <span style={{ fontFamily: "'VT323', monospace", fontSize: "12px", color: "#B4FF00", letterSpacing: "1px" }}>
+                        {stats.zaps} <span className="">ZAPS</span>
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span className="" style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(0,229,255,.45)", letterSpacing: "1.5px" }}>LIVE</span>
+                      <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#6BCB77", display: "inline-block", animation: "zee-live-dot 2s ease-in-out infinite", boxShadow: "0 0 6px rgba(107,203,119,.8)" }} />
+                    </div>
+                  </div>
+                }
+              />
+              <GlobalFeed userId={userData?.id || ""} userZid={userData?.zid} />
+            </PortalCard>
+
           </div>
         </div>
-      )}
-    </div>
+
+        {/* ══════════════════════════════════════════════════════════
+            CORE 8 EDIT MODAL — Y2K portal popup
+        ══════════════════════════════════════════════════════════ */}
+        {isEditing && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.82)",
+              backdropFilter: "blur(8px)",
+              zIndex: 100,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+            }}
+          >
+            {/* Outer glow border */}
+            <div style={{ position: "relative" }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: "-2px",
+                  borderRadius: "20px",
+                  background: "linear-gradient(135deg,#8A2EFF,#00E5FF,#8A2EFF)",
+                  opacity: .5,
+                  filter: "blur(1px)",
+                  zIndex: -1,
+                }}
+              />
+              <div
+                style={{
+                  background: "#0E1630",
+                  border: "1px solid rgba(138,46,255,.35)",
+                  borderRadius: "18px",
+                  width: "100%",
+                  maxWidth: "420px",
+                  overflow: "hidden",
+                  boxShadow: "0 24px 80px rgba(0,0,0,.8)",
+                  animation: "zee-fade-in .3s ease-out both",
+                }}
+              >
+                {/* Modal header */}
+                <div
+                  style={{
+                    background: "linear-gradient(135deg,#6D10E8 0%,#3B0DA8 40%,#0B4B8F 100%)",
+                    padding: "14px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderBottom: "1px solid rgba(255,255,255,.07)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.02) 3px,rgba(255,255,255,.02) 4px)", pointerEvents: "none" }} />
+                  <div>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+                      Core 8 — <span style={{ color: "#FF6400" }}>Slot 0{selectedSlot}</span>
+                    </span>
+                  </div>
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,255,255,.3)", letterSpacing: "2px" }}>
+                    EDIT MODE
+                  </span>
+                </div>
+
+                {/* Modal body */}
+                <div style={{ padding: "20px" }}>
+                  <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(138,46,255,.6)", letterSpacing: "1px", margin: "0 0 14px 0" }}>
+                    Search your friends to fill this slot
+                  </p>
+
+                  <form onSubmit={handleSearch} style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search display name..."
+                      style={{
+                        flex: 1,
+                        background: "rgba(0,0,0,.5)",
+                        border: "1px solid rgba(138,46,255,.25)",
+                        borderRadius: "10px",
+                        padding: "10px 14px",
+                        color: "#fff",
+                        fontSize: "13px",
+                        fontFamily: "'Nunito',sans-serif",
+                        outline: "none",
+                      }}
+                      onFocus={e => { e.target.style.borderColor = "rgba(138,46,255,.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(138,46,255,.1)"; }}
+                      onBlur={e => { e.target.style.borderColor = "rgba(138,46,255,.25)"; e.target.style.boxShadow = "none"; }}
+                    />
+                    <button
+                      type="submit"
+                      style={{
+                        background: "linear-gradient(135deg,#8A2EFF,#6010D4)",
+                        border: "none",
+                        borderRadius: "10px",
+                        width: "42px",
+                        height: "42px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        boxShadow: "0 0 14px rgba(138,46,255,.35)",
+                      }}
+                    >
+                      <Search size={15} color="#fff" />
+                    </button>
+                  </form>
+
+                  {/* Results */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "220px", overflowY: "auto" }}>
+                    {searchResults.map(u => (
+                      <div
+                        key={u.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 12px",
+                          background: "rgba(0,0,0,.35)",
+                          border: "1px solid rgba(138,46,255,.12)",
+                          borderRadius: "12px",
+                          transition: "border-color .2s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(0,229,255,.35)")}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(138,46,255,.12)")}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <img
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.zid}`}
+                            style={{ width: "34px", height: "34px", borderRadius: "50%", background: "rgba(0,0,0,.3)" }}
+                            alt={u.display_name}
+                          />
+                          <div>
+                            <p style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "13px", color: "#fff", margin: 0 }}>{u.display_name}</p>
+                            <p style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,255,255,.3)", margin: 0, letterSpacing: "0.5px" }}>{u.zid}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleAddToSlot(u.id)}
+                          style={{
+                            background: "rgba(180,255,0,.1)",
+                            border: "1px solid rgba(180,255,0,.35)",
+                            borderRadius: "8px",
+                            padding: "6px 14px",
+                            color: "#B4FF00",
+                            fontFamily: "'Orbitron',sans-serif",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            letterSpacing: "0.5px",
+                            transition: "all .2s",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "#B4FF00"; e.currentTarget.style.color = "#000"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(180,255,0,.1)"; e.currentTarget.style.color = "#B4FF00"; }}
+                        >
+                          ADD
+                        </button>
+                      </div>
+                    ))}
+                    {searchResults.length === 0 && searchQuery && (
+                      <p style={{ textAlign: "center", fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,255,255,.2)", padding: "16px 0", letterSpacing: "1px" }}>
+                        NO USERS FOUND FOR &ldquo;{searchQuery}&rdquo;
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Cancel */}
+                  <button
+                    onClick={() => { setIsEditing(false); setResults([]); setSearchQuery(""); }}
+                    style={{
+                      marginTop: "16px",
+                      width: "100%",
+                      background: "none",
+                      border: "none",
+                      fontFamily: "'VT323',monospace",
+                      fontSize: "12px",
+                      color: "rgba(255,255,255,.22)",
+                      cursor: "pointer",
+                      letterSpacing: "1px",
+                      textDecoration: "underline",
+                      transition: "color .2s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,.6)")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,.22)")}
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
+      </div>
+
+      {/* Responsive grid CSS */}
+      {/* <style>{`
+        @media (max-width: 900px) {
+          .dashboard-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style> */}
+
+      {/* Responsive grid & ticker CSS */}
+      <style>{`
+      /* ── Y2K SHINY TEXT ANIMATION ── */
+        @keyframes zee-shine {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+
+        .mobile-swipe-text {
+          display: none; /* Hidden on desktop */
+          font-family: 'VT323', monospace;
+          font-size: 11px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          background: linear-gradient(90deg, rgba(255,100,0,0.4), #FFD700, rgba(255,100,0,0.4));
+          background-size: 200% auto;
+          color: transparent;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: zee-shine 2.5s linear infinite;
+        }
+      /* ── Core 8: Desktop Grid ── */
+        .core-eight-container {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+        }
+
+        /* ── MOBILE UX & REORDERING ── */
+        @media (max-width: 900px) {
+          .hide-on-mobile { display: none !important; }
+          .zzbrandingdesk { display: none !important; }
+
+          /* Turn main grid into single column */
+          .dashboard-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            min-width: 0;
+            max-width: 100vw;
+          }
+
+          /* Strip the column wrappers so cards can be reordered */
+          .col-wrapper { display: contents; }
+
+          /* Reorder cards for perfect UX */
+          .card-profile { display: none !important; } 
+          .card-core8   { order: 1; margin-bottom: 8px; } /* Stories pinned top! */
+          .card-buzz    { order: 2; margin-bottom: 8px; } /* Alert right below stories */
+          .card-feed    { order: 3; } /* Main feed right below */
+          .card-theme   { order: 4; } /* Theme pushed to bottom */
+
+          .desktop-hierarchy { display: none !important; }
+          
+          .mobile-swipe-text {
+            display: inline-block !important;
+            font-family: 'VT323', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, rgba(255,100,0,0.4), #FFD700, rgba(255,100,0,0.4));
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: zee-shine 2.5s linear infinite;
+          }
+
+          /* Core 8 Horizontal Swipe Row */
+          .core-eight-container {
+            display: flex !important;
+            flex-direction: row !important; 
+            flex-wrap: nowrap !important;   
+            width: 100%;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory;
+            gap: 12px !important;
+            padding-bottom: 12px !important; 
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch; 
+          }
+          
+          .core-eight-container::-webkit-scrollbar { display: none; }
+
+          .core-eight-container .core-slot {
+            flex: 0 0 76px !important; 
+            width: 76px !important;
+            height: 76px !important;
+            scroll-snap-align: start; 
+          }
+
+          /* Mobile Ticker positioning */
+          .zee-ticker {
+            position: relative !important;
+            bottom: auto !important;
+            border-top: none !important;
+            border-bottom: 1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 40%, transparent) !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }

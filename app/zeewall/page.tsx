@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import GlobalFeed from "@/components/GlobalFeed";
 import { Loader2, MessageCircle, Zap } from "lucide-react";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
 
 type UserData = {
   id: string;
@@ -13,6 +15,9 @@ type UserData = {
   display_name: string;
   avatar_url: string | null;
   primary_color?: string;
+  birth_year?: number | null;
+  birth_month?: number | null;
+  birth_day?: number | null;
 };
 
 const getAvatar = (user: { zid: string; avatar_url?: string | null }) =>
@@ -48,7 +53,7 @@ export default function MyZeeWall() {
         { data: customData },
         { data: postsData },
       ] = await Promise.all([
-        supabase.from("users").select("id, zid, display_name, avatar_url").eq("id", authUser.id).single(),
+        supabase.from("users").select("id, zid, display_name, avatar_url, birth_year, birth_month, birth_day").eq("id", authUser.id).single(),
         supabase.from("profile_customization").select("primary_color, secondary_color").eq("user_id", authUser.id).single(),
         supabase.from("zeewall").select("zaps").eq("owner_id", authUser.id),
       ]);
@@ -107,8 +112,15 @@ export default function MyZeeWall() {
                 >
                   My ZeeWall
                 </h1>
-                <p className="text-[10px] text-gray-600 font-mono mt-0.5">
-                  {userData.display_name} · {stats.posts} posts · {stats.zaps} zaps
+                <p className="text-[10px] text-gray-600 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <span>{userData.display_name}</span>
+                    {(() => {
+                      const gen = getGeneration(userData.birth_year, userData.birth_month, userData.birth_day);
+                      return gen ? <GenBadge gen={gen} size="sm" /> : null;
+                    })()}
+                  </span>
+                  · {stats.posts} posts · {stats.zaps} zaps
                 </p>
               </div>
             </div>

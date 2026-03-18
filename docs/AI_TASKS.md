@@ -1,7 +1,7 @@
 # Zeezu — Task Tracker
 
 > Authoritative list of completed, in-progress, and planned work.
-> Last updated: 2026-03-12
+> Last updated: 2026-03-14
 
 ---
 
@@ -60,7 +60,7 @@
 - [x] Public profile uses `users.avatar_url` (falls back to dicebear)
 - [x] **Vibes Rating System** — 1–5 widget (trust/cool/sexy), aggregates via `rate_vibes` RPC, loads existing rating
 
-### DB Schema (live in Supabase as of 2026-03-12)
+### DB Schema (live in Supabase as of 2026-03-14)
 - [x] `users.social_links` JSONB DEFAULT '{}'
 - [x] `users.personal_info` JSONB DEFAULT '{}'
 - [x] `profile_customization.show_vibes` BOOLEAN DEFAULT true
@@ -68,6 +68,11 @@
 - [x] `profile_customization.wall_friends_only` BOOLEAN DEFAULT false
 - [x] `profile_customization.show_online` BOOLEAN DEFAULT true
 - [x] `vibes_ratings` table with RLS + `rate_vibes` RPC
+
+### Real Visitor Counter (completed 2026-03-14)
+- [x] `users.visit_count` INTEGER DEFAULT 0
+- [x] `increment_visit(p_user_id UUID)` RPC — increments and returns new count
+- [x] Public profile (`/u/[zid]`) calls RPC on every page load
 
 ---
 
@@ -79,10 +84,7 @@
 
 ## 📋 Next Up
 
-### Real Visitor Counter
-- Add `visit_count` INTEGER to `users` table, increment on profile view via RPC
-- One-liner SQL: `ALTER TABLE users ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0;`
-- RPC: `CREATE OR REPLACE FUNCTION increment_visit(p_user_id UUID) ...`
+*(Nothing queued — pick from Future Roadmap)*
 
 ---
 

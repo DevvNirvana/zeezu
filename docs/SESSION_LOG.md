@@ -4,6 +4,51 @@
 
 ---
 
+## Session: 2026-03-14
+
+**Focus:** Real Visitor Counter — SQL migration + frontend wiring
+
+### What was done
+- Connected existing `increment_visit` RPC call in `app/u/[zid]/page.tsx` to real Supabase backend
+- Provided SQL migration for user to run in Supabase SQL editor:
+  - `ALTER TABLE users ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0;`
+  - `CREATE OR REPLACE FUNCTION increment_visit(p_user_id UUID) RETURNS INTEGER ...`
+- No frontend changes needed — `page.tsx` already had the RPC call wired up from prior session
+- Updated `AI_TASKS.md`: moved Real Visitor Counter to Completed, cleared Next Up
+- Created `docs/AI_STATE.md` with current project state snapshot
+
+### Key decisions made
+- Self-visits count (profile owner increments their own counter) — acceptable for now
+- Graceful degradation: `visitCount ?? 1` means counter shows `1` until SQL is applied
+
+### Files modified
+- `docs/AI_TASKS.md` — Real Visitor Counter moved to Completed
+- `docs/SESSION_LOG.md` — This entry
+- `docs/AI_STATE.md` — Created
+
+### SQL to run (user must apply in Supabase)
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION increment_visit(p_user_id UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_count INTEGER;
+BEGIN
+  UPDATE users
+  SET visit_count = COALESCE(visit_count, 0) + 1
+  WHERE id = p_user_id
+  RETURNING visit_count INTO new_count;
+  RETURN new_count;
+END;
+$$;
+```
+
+---
+
 ## Session: 2026-03-12
 
 **Focus:** AI docs layer + profile system completion + Vibes Rating System
@@ -78,3 +123,11 @@ CREATE OR REPLACE FUNCTION rate_vibes(...) ...      -- see AI_TASKS.md In Progre
 ## Session: ~2026-03-09 (inferred from commit `9223602`)
 
 **Focus:** Search & Discovery, realtime fixes, production audit
+
+---
+
+## Taste Signals — Running Log
+> Corrections and approvals that reveal preferences. Used for future evaluator.
+
+| Date | Command | What Claude did | Why it was wrong/right |
+|------|---------|-----------------|------------------------|

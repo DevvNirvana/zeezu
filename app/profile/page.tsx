@@ -14,12 +14,15 @@ import CountUp from "@/components/reactbits/CountUp";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import ClickSpark from "@/components/reactbits/ClickSpark";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
 import {
   Edit3, Palette, Link as LinkIcon, Shield, Settings, Camera, X, ExternalLink,
   Music, Flame, Snowflake, RotateCcw, CheckCircle2, Save, Loader2, Upload,
   MessageCircle, Zap, Users, Eye, EyeOff, LogOut, Trash2, Copy, Check,
-  Globe, Github, Instagram,
+  Globe, Github, Instagram, ChevronDown,
 } from "lucide-react";
+import { updateOnlineStatus, type OnlineStatus } from "@/lib/supabase/queries";
 
 
 
@@ -34,6 +37,9 @@ type UserProfile = {
   status_message: string | null;
   avatar_url: string | null;
   social_links?: Record<string, string> | null;
+  birth_year?:  number | null;
+  birth_month?: number | null;
+  birth_day?:   number | null;
 };
 
 type Vibes = {
@@ -115,6 +121,10 @@ export default function ProfileSettings() {
   const [zidCopied, setZidCopied] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
 
+  // Online status
+  const [onlineStatus, setOnlineStatus] = useState<OnlineStatus>("online");
+  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
+
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
@@ -175,6 +185,7 @@ export default function ProfileSettings() {
         setUser(userData);
         setDisplayName(userData.display_name || "");
         setStatusMsg(userData.status_message || "");
+        setOnlineStatus((userData.online_status as OnlineStatus) ?? "online");
         setBio(userData.mdx_profile || "");
         setThemeUrl(userData.theme_track_url || "");
         setAvatarUrl(userData.avatar_url || null);
@@ -247,6 +258,18 @@ export default function ProfileSettings() {
     if (finalAvatarUrl) setAvatarUrl(finalAvatarUrl);
     if (avatarPreview) { setAvatarPreview(null); setAvatarFile(null); }
 
+    // Extract birth date parts from personal_info for generation tag
+    let birth_year:  number | null = null;
+    let birth_month: number | null = null;
+    let birth_day:   number | null = null;
+    const bday = (personalInfo as PersonalInfoData | null)?.birthday?.value;
+    if (bday) {
+      const [y, m, d] = bday.split('-').map(Number);
+      if (y > 1900 && y < 2030) birth_year  = y;
+      if (m >= 1 && m <= 12)    birth_month = m;
+      if (d >= 1 && d <= 31)    birth_day   = d;
+    }
+
     // Save users table (profile data)
     const userSave = supabase.from("users").update({
       display_name: displayName,
@@ -257,6 +280,9 @@ export default function ProfileSettings() {
       avatar_url: finalAvatarUrl,
       social_links: socialLinks,
       personal_info: personalInfo,
+      birth_year,
+      birth_month,
+      birth_day,
     }).eq("id", user.id);
 
     // Save theme customization (excludes privacy fields that may not exist)
@@ -414,26 +440,103 @@ export default function ProfileSettings() {
           <div className="w-full lg:w-[260px] xl:w-[280px] flex-shrink-0 space-y-4">
 
             {/* 3D ProfileCard */}
-            <ProfileCard
-              name={displayName || user?.display_name || "Unknown"}
-              title={user?.zid || "ZID-????"}
-              handle={(displayName || "user").toLowerCase().replace(/\s+/g, "_")}
-              status={statusMsg || "Online"}
-              contactText="⚡ Buzz"
-              avatarUrl={liveAvatar}
-              miniAvatarUrl={liveAvatar}
-              showUserInfo={true}
-              enableTilt={true}
-              enableMobileTilt={true}
-              onContactClick={() => { }}
-              behindGlowColor={custom.primary_color}
-              behindGlowSize="60%"
-              innerGradient={`linear-gradient(145deg, #0f0c29 0%, ${custom.primary_color}22 50%, #1a0533 100%)`}
-              hexItems={liveHexItems.length > 0 ? liveHexItems : undefined}
-              trustScore={vibes?.trustworthy_score}
-              coolScore={vibes?.cool_score}
-              sexyScore={vibes?.sexy_score}
-            />
+            {(() => {
+              const gen = getGeneration(user?.birth_year, user?.birth_month, user?.birth_day);
+              const glowColor = gen?.accentGlow ?? 'rgba(138,46,255,0.2)';
+              return (
+                <div style={{ borderRadius: '1.25rem', boxShadow: `0 0 40px ${glowColor}, 0 0 80px ${glowColor}`, transition: 'box-shadow 0.5s ease' }}>
+                  <ProfileCard
+                    name={displayName || user?.display_name || "Unknown"}
+                    title={user?.zid || "ZID-????"}
+                    handle={(displayName || "user").toLowerCase().replace(/\s+/g, "_")}
+                    status={statusMsg || "Online"}
+                    contactText="⚡ Buzz"
+                    avatarUrl={liveAvatar}
+                    miniAvatarUrl={liveAvatar}
+                    showUserInfo={true}
+                    enableTilt={true}
+                    enableMobileTilt={true}
+                    onContactClick={() => { }}
+                    behindGlowColor={custom.primary_color}
+                    behindGlowSize="60%"
+                    innerGradient={`linear-gradient(145deg, #0f0c29 0%, ${custom.primary_color}22 50%, #1a0533 100%)`}
+                    hexItems={liveHexItems.length > 0 ? liveHexItems : undefined}
+                    trustScore={vibes?.trustworthy_score}
+                    coolScore={vibes?.cool_score}
+                    sexyScore={vibes?.sexy_score}
+                    onlineStatus={onlineStatus}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* ── ONLINE STATUS PICKER ── */}
+            {(() => {
+              const STATUSES: { key: OnlineStatus; label: string; color: string; desc: string }[] = [
+                { key: "online",  label: "Online",  color: "#6BCB77", desc: "Active and available" },
+                { key: "busy",    label: "Busy",    color: "#F97316", desc: "Do not disturb" },
+                { key: "away",    label: "Away",    color: "#F59E0B", desc: "Be right back" },
+                { key: "offline", label: "Offline", color: "#6B7280", desc: "Appear offline" },
+              ];
+              const cur = STATUSES.find(s => s.key === onlineStatus) ?? STATUSES[0];
+              return (
+                <div style={{ position: "relative" }} className="mb-2">
+                  <button
+                    onClick={() => setStatusPickerOpen(v => !v)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                      padding: "8px 12px", borderRadius: "10px",
+                      background: "rgba(0,0,0,.4)",
+                      border: `1px solid ${cur.color}40`,
+                      cursor: "pointer", transition: "all .18s",
+                    }}
+                  >
+                    <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: cur.color, boxShadow: `0 0 6px ${cur.color}`, flexShrink: 0, display: "block" }} />
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, color: cur.color, letterSpacing: "1px", flex: 1, textAlign: "left" }}>{cur.label.toUpperCase()}</span>
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.3)" }}>{cur.desc}</span>
+                    <ChevronDown size={10} style={{ color: "rgba(255,255,255,.3)", transition: "transform .2s", transform: statusPickerOpen ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }} />
+                  </button>
+                  {statusPickerOpen && (
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                      background: "rgba(8,14,36,.97)", border: "1px solid rgba(138,46,255,.25)",
+                      borderRadius: "10px", overflow: "hidden",
+                      boxShadow: "0 8px 24px rgba(0,0,0,.7)", zIndex: 50,
+                    }}>
+                      {STATUSES.map((s, i) => (
+                        <button key={s.key} onClick={async () => {
+                          setOnlineStatus(s.key);
+                          setStatusPickerOpen(false);
+                          await updateOnlineStatus(s.key);
+                        }} style={{
+                          display: "flex", alignItems: "center", gap: "10px",
+                          width: "100%", textAlign: "left", padding: "9px 13px",
+                          background: onlineStatus === s.key ? `${s.color}15` : "transparent",
+                          border: "none",
+                          borderBottom: i < 3 ? "1px solid rgba(255,255,255,.05)" : "none",
+                          cursor: "pointer", transition: "background .15s",
+                        }}
+                        onMouseEnter={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,.04)"; }}
+                        onMouseLeave={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                        >
+                          <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: s.color, boxShadow: `0 0 5px ${s.color}80`, flexShrink: 0, display: "block" }} />
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, color: onlineStatus === s.key ? s.color : "rgba(255,255,255,.75)", margin: 0, letterSpacing: "0.5px" }}>{s.label}</p>
+                            <p style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.3)", margin: 0 }}>{s.desc}</p>
+                          </div>
+                          {onlineStatus === s.key && <Check size={10} style={{ color: s.color, flexShrink: 0 }} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const gen = getGeneration(user?.birth_year, user?.birth_month, user?.birth_day);
+              return gen ? <div className="flex justify-center -mt-2 mb-2"><GenBadge gen={gen} size="md" /></div> : null;
+            })()}
 
             {/* Stats strip */}
             <div className="grid grid-cols-3 gap-2">

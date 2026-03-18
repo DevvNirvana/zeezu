@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import RadioPlayer from "@/components/RadioPlayer";
 import ToastProvider from "@/components/ToastProvider";
+// If you want NavBar on every single page, you could import it here:
+// import NavBar from "@/components/NavBar";
 
 export const metadata: Metadata = {
   title: "Zeezu — The Internet After Dark",
@@ -13,21 +15,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-[#0B0B12] text-white antialiased">
-        {children}
 
-        {/* 
-          RadioPlayer lives here at the root layout level.
-          This means it persists across page navigations without
-          interrupting the audio — user can browse between 
-          /dashboard and /profile without the music cutting out.
-        */}
+        {/* If NavBar is meant to be global, uncomment it here */}
+        {/* <NavBar /> */}
+
+        {/* ── RESPONSIVE MAIN WRAPPER ─────────────────────────────
+            This prevents the top Nav and bottom Mobile Dock from 
+            overlapping your page content. 
+        ──────────────────────────────────────────────────────── */}
+        <main
+          style={{
+            paddingTop: "var(--nav-height, 0px)",
+            paddingBottom: "var(--mobile-dock-height, 0px)",
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column"
+          }}
+        >
+          {children}
+        </main>
+
         <RadioPlayer />
-
-        {/* 
-          ToastProvider — global realtime toast notifications.
-          Listens to notifications + messages tables and shows
-          slide-in toasts for DMs, buzzes, friend requests, etc.
-        */}
         <ToastProvider />
       </body>
     </html>

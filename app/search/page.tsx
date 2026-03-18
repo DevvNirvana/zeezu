@@ -15,6 +15,9 @@ import {
     Search, Loader2, Users, UserPlus, UserCheck, Clock,
     MessageSquare, Sparkles, TrendingUp, Globe,
 } from "lucide-react";
+import GenBadge from "@/components/GenBadge";
+import { getGeneration } from "@/lib/generation";
+import { AGENT_IDS } from "@/lib/agents";
 import { formatDistanceToNow } from "date-fns";
 
 type UserResult = {
@@ -24,6 +27,9 @@ type UserResult = {
     avatar_url: string | null;
     status_message: string | null;
     created_at: string;
+    birth_year?: number | null;
+    birth_month?: number | null;
+    birth_day?: number | null;
 };
 
 type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "loading";
@@ -238,6 +244,10 @@ export default function SearchPage() {
                             {user.display_name}
                         </h3>
                         <span className="text-[9px] font-mono text-gray-600 flex-shrink-0">{user.zid}</span>
+                        {(() => {
+                            const gen = getGeneration(user.birth_year, user.birth_month, user.birth_day, AGENT_IDS.has(user.id ?? ''));
+                            return gen ? <GenBadge gen={gen} size="sm" /> : null;
+                        })()}
                     </div>
                     {user.status_message && (
                         <p className="text-[11px] text-gray-500 mt-0.5 truncate">{user.status_message}</p>
