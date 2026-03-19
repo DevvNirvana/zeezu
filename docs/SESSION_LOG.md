@@ -4,6 +4,64 @@
 
 ---
 
+## Session: 2026-03-18
+
+**Focus:** Zlogger long-form blogging system + full platform component overhaul
+
+### What was done
+
+#### Zlogger (new feature — full implementation)
+- Designed and implemented complete long-form blogging system from scratch
+- `lib/zlogger-renderer.ts` — `renderZlog()` (marked v17 + DOMPurify), `generateSlug()`, `readingTimeMinutes()`, `ZLOG_CSS` constants, Z-tag preprocessor (6 custom tags)
+- `app/zlogger/page.tsx` — public feed with 6 filter modes (Latest/Trending/Anonymous/Network/Gen Z/Millennial), ZlogCard component, search, load more pagination
+- `app/zlogger/new/page.tsx` — split-pane markdown editor + live preview, Z-tag toolbar with cursor-aware insertion, full publishing settings panel (theme/mood/visibility/toggles/response-to)
+- `app/zlogger/[slug]/page.tsx` — themed reading page with: hero cover image, author row + GenBadge, response chain indicator, rendered HTML body, engagement row (zap/vibe/save toggle), text highlight-to-share tooltip (tweet + copy), Echo button, realtime comments via Supabase channel
+- `app/zlogger/edit/[id]/page.tsx` — edit page, pre-fills all fields from DB, saves via `updateZlog`
+- 10 new query functions appended to `lib/supabase/queries.ts`
+- NavBar dock: ZeeWall item → Zlogger (BookOpen icon, `#B4FF00` lime accent, `/zlogger` route with `startsWith` match)
+- Profile `/u/[zid]`: added `"zlogger"` tab type, lazy-load effect, `ZlogListItem[]` state, full tab panel with owner "+ NEW POST" button
+- Packages installed: `marked` (v17), `dompurify`, `@types/dompurify`
+- SQL provided for: `zlogs`, `zlog_engagement`, `zlog_comments` tables + RLS policies + `set_updated_at` trigger
+
+#### Platform overhaul (from earlier work committed this session)
+- `components/BootScreen.tsx` — animated boot sequence
+- `components/Dock.tsx` + `Dock.css` — macOS-style dock
+- `components/GenBadge.tsx` — generation label badge
+- `components/ReflectiveCard.tsx` — glossy card surface
+- `components/reactbits/DecryptedText.tsx` — text decryption animation
+- `lib/generation.ts` — birth year → generation metadata
+- `lib/agents.ts` — agent definitions
+- `app/login/` + `app/onboarding/` — auth + new user flows
+- Full rebuilds: NavBar, RadioPlayer, ProfileCard, GlobalFeed, NotificationBell, Dashboard, Friends, Messages, Search, ZeeWall pages
+
+### Key decisions made
+- Z-tag preprocessing happens before `marked()` so custom tags survive the markdown parser
+- DOMPurify sanitization is skipped on SSR (no `window`) — safe because Zlogger pages are client components
+- `getPublicZlogs` returns `engagementCounts: {0,0,0,0}` for feed cards (performance trade-off — real counts need a separate join, flagged as Next Up)
+- Editor uses `{ async: false }` marked option to get synchronous string return type
+- Slug is auto-generated from title but user can override; regenerate button resets to auto
+
+### Files modified/created
+- `lib/zlogger-renderer.ts` — new
+- `app/zlogger/page.tsx` — new
+- `app/zlogger/new/page.tsx` — new
+- `app/zlogger/[slug]/page.tsx` — new
+- `app/zlogger/edit/[id]/page.tsx` — new
+- `lib/supabase/queries.ts` — 10 Zlogger functions appended (~260 lines)
+- `components/NavBar.tsx` — BookOpen import, dock item changed
+- `app/u/[zid]/page.tsx` — zlogger tab, state, lazy-load effect, tab panel
+- `docs/AI_TASKS.md`, `docs/SESSION_LOG.md` — updated
+- `package.json` / `package-lock.json` — 3 new packages
+
+### SQL still needed (user to confirm)
+```sql
+-- Full SQL provided in session — creates:
+-- zlogs, zlog_engagement, zlog_comments tables
+-- RLS policies, indexes, set_updated_at trigger
+```
+
+---
+
 ## Session: 2026-03-14
 
 **Focus:** Real Visitor Counter — SQL migration + frontend wiring

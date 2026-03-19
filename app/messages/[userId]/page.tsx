@@ -12,9 +12,10 @@ import GenBadge from "@/components/GenBadge";
 import { getGeneration } from "@/lib/generation";
 import { AGENT_IDS } from "@/lib/agents";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
+import ThemeEngine, { type ThemeConfig } from "@/components/ThemeEngine";
 
 // ─────────────────────────────────────────────────────────────
-//  TYPES — unchanged
+//  TYPES
 // ─────────────────────────────────────────────────────────────
 
 type Message = {
@@ -36,10 +37,11 @@ type Partner = {
     birth_year?: number | null;
     birth_month?: number | null;
     birth_day?: number | null;
+    online_status?: string | null;
 };
 
 // ─────────────────────────────────────────────────────────────
-//  HELPERS — unchanged
+//  HELPERS
 // ─────────────────────────────────────────────────────────────
 
 const getAvatar = (zid: string, url?: string | null) =>
@@ -51,49 +53,61 @@ const formatMsgTime = (date: Date) => {
     return format(date, "MMM d, h:mm a");
 };
 
-// ─────────────────────────────────────────────────────────────
-//  GLOBAL STYLES — injected once
-// ─────────────────────────────────────────────────────────────
-
-const STYLE_ID = "zee-chat-styles";
-if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
-    const s = document.createElement("style");
-    s.id = STYLE_ID;
-    s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Nunito:wght@400;600;700;800;900&display=swap');
-
-    @keyframes zc-msg-in  { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-    @keyframes zc-buzz-glow { 0%,100%{box-shadow:0 0 8px rgba(138,46,255,.4)} 50%{box-shadow:0 0 20px rgba(138,46,255,.8),0 0 40px rgba(138,46,255,.3)} }
-    @keyframes zc-typing  { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-3px);opacity:1} }
-    @keyframes zc-read    { from{color:#555} to{color:#00F7FF;filter:drop-shadow(0 0 4px #00F7FF)} }
-    @keyframes zc-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
-    @keyframes zc-online  { 0%,100%{opacity:1} 50%{opacity:.28} }
-    @keyframes spin        { to{transform:rotate(360deg)} }
-
-    .zc-msg { animation: zc-msg-in 0.25s ease-out forwards; }
-    .zc-bubble-buzz { animation: zc-buzz-glow 2s infinite; }
-
-    /* Custom scrollbar */
-    .zc-scroll::-webkit-scrollbar       { width: 4px; }
-    .zc-scroll::-webkit-scrollbar-track { background: transparent; }
-    .zc-scroll::-webkit-scrollbar-thumb { background: rgba(138,46,255,.3); border-radius: 4px; }
-
-    /* MSN-style typing indicator dots */
-    .zc-td:nth-child(1) { animation: zc-typing 1.2s ease-in-out infinite 0s; }
-    .zc-td:nth-child(2) { animation: zc-typing 1.2s ease-in-out infinite .15s; }
-    .zc-td:nth-child(3) { animation: zc-typing 1.2s ease-in-out infinite .30s; }
-
-    /* Input placeholder */
-    .zc-input::placeholder { color: rgba(255,255,255,.25); font-family: 'Nunito', sans-serif; }
-  `;
-    document.head.appendChild(s);
+function onlineDotColor(status?: string | null): string {
+    if (status === "online") return "#6BCB77";
+    if (status === "busy") return "#FF007A";
+    if (status === "away") return "#FFD93D";
+    return "rgba(255,255,255,.2)";
 }
+
+// ─────────────────────────────────────────────────────────────
+//  GLOBAL STYLES
+// ─────────────────────────────────────────────────────────────
+
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  @keyframes zc-msg-in  { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes zc-buzz-glow { 0%,100%{box-shadow:0 0 8px rgba(138,46,255,.4)} 50%{box-shadow:0 0 20px rgba(138,46,255,.8),0 0 40px rgba(138,46,255,.3)} }
+  @keyframes zc-typing  { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-3px);opacity:1} }
+  @keyframes zc-read    { from{color:#555} to{color:#00F7FF;filter:drop-shadow(0 0 4px #00F7FF)} }
+  @keyframes zc-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
+  @keyframes zc-online  { 0%,100%{opacity:1} 50%{opacity:.28} }
+  @keyframes spin        { to{transform:rotate(360deg)} }
+
+  .zc-msg { animation: zc-msg-in 0.25s ease-out forwards; }
+  .zc-bubble-buzz { animation: zc-buzz-glow 2s infinite; }
+
+  /* Custom scrollbar */
+  .zc-scroll::-webkit-scrollbar       { width: 4px; }
+  .zc-scroll::-webkit-scrollbar-track { background: transparent; }
+  .zc-scroll::-webkit-scrollbar-thumb { background: rgba(138,46,255,.3); border-radius: 4px; }
+
+  /* MSN-style typing indicator dots */
+  .zc-td:nth-child(1) { animation: zc-typing 1.2s ease-in-out infinite 0s; }
+  .zc-td:nth-child(2) { animation: zc-typing 1.2s ease-in-out infinite .15s; }
+  .zc-td:nth-child(3) { animation: zc-typing 1.2s ease-in-out infinite .30s; }
+
+  /* Input placeholder */
+  .zc-input::placeholder { color: rgba(255,255,255,.25); font-family: 'Nunito', sans-serif; }
+`;
+
+// ─────────────────────────────────────────────────────────────
+//  EMOJI CONSTANTS
+// ─────────────────────────────────────────────────────────────
+
+const EMOJIS = [
+    "😀", "😂", "🥹", "😍", "🤔", "😎", "🥳", "😭", "💀", "🔥",
+    "💜", "⚡", "🌊", "✨", "💫", "🎵", "🎮", "👾", "🤖", "👽",
+    "💯", "🫡", "🙌", "👀", "💬", "💌", "🧠", "🫶", "🤝", "🎯",
+    "🚀", "🌙", "⭐", "❤️", "💙", "💚", "💛", "🟣", "🔮", "🌈",
+];
 
 // ─────────────────────────────────────────────────────────────
 //  TYPING INDICATOR — MSN "is typing a message..."
 // ─────────────────────────────────────────────────────────────
 
-function TypingIndicator({ name }: { name: string }) {
+function TypingIndicator({ name, primary }: { name: string; primary: string }) {
     return (
         <div
             style={{
@@ -108,7 +122,7 @@ function TypingIndicator({ name }: { name: string }) {
                 style={{
                     fontFamily: "'VT323',monospace",
                     fontSize: "11px",
-                    color: "rgba(138,46,255,.7)",
+                    color: `${primary}B3`,
                     letterSpacing: "0.5px",
                     fontStyle: "italic",
                 }}
@@ -124,8 +138,8 @@ function TypingIndicator({ name }: { name: string }) {
                             width: "4px",
                             height: "4px",
                             borderRadius: "50%",
-                            background: "#8A2EFF",
-                            boxShadow: "0 0 4px #8A2EFF",
+                            background: primary,
+                            boxShadow: `0 0 4px ${primary}`,
                         }}
                     />
                 ))}
@@ -164,8 +178,6 @@ function TimeSeparator({ date }: { date: Date }) {
 
 // ─────────────────────────────────────────────────────────────
 //  MESSAGE BUBBLE — MSN/BBM hybrid
-//  My messages: right-aligned, violet
-//  Their messages: left-aligned, with avatar + colored name (MSN style)
 // ─────────────────────────────────────────────────────────────
 
 function MsgBubble({
@@ -175,6 +187,7 @@ function MsgBubble({
     partnerZid,
     partnerAvatar,
     myName,
+    primary,
 }: {
     msg: Message;
     isMe: boolean;
@@ -182,6 +195,7 @@ function MsgBubble({
     partnerZid: string;
     partnerAvatar: string | null;
     myName: string;
+    primary: string;
 }) {
     return (
         <div
@@ -202,7 +216,7 @@ function MsgBubble({
                         width: "28px",
                         height: "28px",
                         borderRadius: "7px",
-                        border: "1px solid rgba(0,229,255,.3)",
+                        border: "1px solid rgba(0,247,255,.3)",
                         flexShrink: 0,
                         alignSelf: "flex-end",
                         marginBottom: "2px",
@@ -224,7 +238,7 @@ function MsgBubble({
                         fontFamily: "'VT323',monospace",
                         fontSize: "10px",
                         letterSpacing: "0.5px",
-                        color: isMe ? "rgba(138,46,255,.7)" : "rgba(0,229,255,.8)",
+                        color: isMe ? `${primary}B3` : "rgba(0,247,255,.8)",
                         marginBottom: "2px",
                         paddingLeft: isMe ? 0 : "4px",
                         paddingRight: isMe ? "4px" : 0,
@@ -241,16 +255,16 @@ function MsgBubble({
                         borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         background: isMe
                             ? msg.is_buzz
-                                ? "linear-gradient(135deg,rgba(138,46,255,.35),rgba(138,46,255,.12))"
-                                : "linear-gradient(135deg,rgba(138,46,255,.22),rgba(138,46,255,.08))"
+                                ? `linear-gradient(135deg,${primary}59,${primary}1F)`
+                                : `linear-gradient(135deg,${primary}38,${primary}14)`
                             : msg.is_buzz
-                                ? "linear-gradient(135deg,rgba(0,229,255,.18),rgba(0,229,255,.06))"
+                                ? "linear-gradient(135deg,rgba(0,247,255,.18),rgba(0,247,255,.06))"
                                 : "rgba(255,255,255,.05)",
                         border: msg.is_buzz
-                            ? `1px solid ${isMe ? "rgba(138,46,255,.5)" : "rgba(0,229,255,.35)"}`
-                            : `1px solid ${isMe ? "rgba(138,46,255,.2)" : "rgba(255,255,255,.08)"}`,
+                            ? `1px solid ${isMe ? `${primary}80` : "rgba(0,247,255,.35)"}`
+                            : `1px solid ${isMe ? `${primary}33` : "rgba(255,255,255,.08)"}`,
                         boxShadow: isMe
-                            ? "0 2px 12px rgba(138,46,255,.12)"
+                            ? `0 2px 12px ${primary}1F`
                             : "0 2px 8px rgba(0,0,0,.2)",
                         position: "relative",
                     }}
@@ -258,8 +272,8 @@ function MsgBubble({
                     {/* Buzz label */}
                     {msg.is_buzz && (
                         <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "4px" }}>
-                            <Zap size={10} style={{ color: "#8A2EFF", fill: "#8A2EFF", filter: "drop-shadow(0 0 4px #8A2EFF)" }} />
-                            <span style={{ fontFamily: "'VT323',monospace", fontSize: "8px", color: "#8A2EFF", letterSpacing: "2px", fontWeight: 700 }}>
+                            <Zap size={10} style={{ color: primary, fill: primary, filter: `drop-shadow(0 0 4px ${primary})` }} />
+                            <span style={{ fontFamily: "'VT323',monospace", fontSize: "8px", color: primary, letterSpacing: "2px", fontWeight: 700 }}>
                                 BUZZ
                             </span>
                         </div>
@@ -293,7 +307,7 @@ function MsgBubble({
                         </span>
                         {isMe && (
                             msg.is_read
-                                ? <CheckCheck size={11} style={{ color: "#00E5FF", filter: "drop-shadow(0 0 4px #00E5FF)", animation: "zc-read .5s ease-out" }} />
+                                ? <CheckCheck size={11} style={{ color: "#00F7FF", filter: "drop-shadow(0 0 4px #00F7FF)", animation: "zc-read .5s ease-out" }} />
                                 : <Check size={11} style={{ color: "rgba(255,255,255,.25)" }} />
                         )}
                     </div>
@@ -312,15 +326,22 @@ function ActionBtn({
     label,
     onClick,
     glow = false,
+    disabled = false,
+    title,
+    primary,
 }: {
     icon: React.ReactNode;
     label: string;
     onClick?: () => void;
     glow?: boolean;
+    disabled?: boolean;
+    title?: string;
+    primary: string;
 }) {
     return (
         <button
-            onClick={onClick}
+            onClick={disabled ? undefined : onClick}
+            title={title}
             style={{
                 display: "flex",
                 flexDirection: "column",
@@ -328,12 +349,13 @@ function ActionBtn({
                 gap: "2px",
                 padding: "5px 8px",
                 borderRadius: "8px",
-                background: glow ? "rgba(138,46,255,.15)" : "transparent",
-                border: glow ? "1px solid rgba(138,46,255,.35)" : "1px solid transparent",
-                cursor: "pointer",
+                background: glow ? `${primary}26` : "transparent",
+                border: glow ? `1px solid ${primary}59` : "1px solid transparent",
+                cursor: disabled ? "not-allowed" : "pointer",
                 minWidth: "44px",
-                color: glow ? "#8A2EFF" : "rgba(255,255,255,.45)",
+                color: glow ? primary : "rgba(255,255,255,.45)",
                 transition: "all .18s",
+                opacity: disabled ? 0.35 : 1,
             }}
         >
             <span style={{ fontSize: "16px", lineHeight: 1 }}>{icon}</span>
@@ -351,7 +373,6 @@ export default function ChatThread() {
     const router = useRouter();
     const partnerId = typeof params?.userId === "string" ? params.userId : "";
 
-    // ── State — all unchanged ─────────────────────────────────
     const [loading, setLoading] = useState(true);
     const [myId, setMyId] = useState<string | null>(null);
     const [myName, setMyName] = useState("You");
@@ -361,17 +382,25 @@ export default function ChatThread() {
     const [sending, setSending] = useState(false);
     const [buzzFlash, setBuzzFlash] = useState<string | null>(null);
     const [showScrollBtn, setShowBtn] = useState(false);
-    const [isTyping, setIsTyping] = useState(false); // simulated
+    const [custom, setCustom] = useState<ThemeConfig | null>(null);
+    const [partnerTyping, setPartnerTyping] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const typingChannelRef = useRef<any>(null);
+    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const primary = custom?.primary_color ?? "#8A2EFF";
+    const secondary = custom?.secondary_color ?? "#00F7FF";
+    const pageBg = custom?.page_bg ?? "#080E24";
 
     const scrollToBottom = useCallback((smooth = true) => {
         bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
     }, []);
 
-    // ── Initial load — unchanged ──────────────────────────────
+    // ── Initial load ──────────────────────────────────────────
     useEffect(() => {
         if (!partnerId) return;
         async function load() {
@@ -381,12 +410,19 @@ export default function ChatThread() {
 
             const [{ data: meData }, { data: partnerData }] = await Promise.all([
                 supabase.from("users").select("display_name").eq("id", user.id).single(),
-                supabase.from("users").select("id,display_name,zid,avatar_url,status_message,birth_year,birth_month,birth_day").eq("id", partnerId).single(),
+                supabase.from("users")
+                    .select("id,display_name,zid,avatar_url,status_message,birth_year,birth_month,birth_day,online_status")
+                    .eq("id", partnerId).single(),
             ]);
 
             if (!partnerData) { router.push("/messages"); return; }
             setPartner(partnerData);
             if (meData?.display_name) setMyName(meData.display_name);
+
+            // Load theme
+            const { data: custData } = await supabase
+                .from("profile_customization").select("*").eq("user_id", user.id).single();
+            if (custData) setCustom(custData as ThemeConfig);
 
             const msgs = await getMessages(partnerId, 100);
             setMessages(msgs);
@@ -397,7 +433,7 @@ export default function ChatThread() {
         load();
     }, [partnerId, router, scrollToBottom]);
 
-    // ── Realtime — unchanged ──────────────────────────────────
+    // ── Realtime messages ─────────────────────────────────────
     useEffect(() => {
         if (!myId || !partnerId) return;
         const channel = supabase
@@ -423,6 +459,26 @@ export default function ChatThread() {
         return () => { supabase.removeChannel(channel); };
     }, [myId, partnerId, partner?.display_name, scrollToBottom]);
 
+    // ── Presence-based typing indicator ──────────────────────
+    useEffect(() => {
+        if (!myId || !partnerId) return;
+        const key = [myId, partnerId].sort().join("-");
+        const ch = supabase.channel(`presence-typing-${key}`)
+            .on("presence", { event: "sync" }, () => {
+                const state = ch.presenceState<{ user_id: string; typing: boolean }>();
+                const found = Object.values(state).flat()
+                    .find((p) => (p as any).user_id === partnerId);
+                setPartnerTyping((found as any)?.typing === true);
+            })
+            .subscribe(async (status) => {
+                if (status === "SUBSCRIBED") {
+                    await ch.track({ user_id: myId, typing: false });
+                }
+            });
+        typingChannelRef.current = ch;
+        return () => { supabase.removeChannel(ch); };
+    }, [myId, partnerId]);
+
     // ── Scroll FAB ────────────────────────────────────────────
     useEffect(() => {
         const el = scrollRef.current;
@@ -432,13 +488,16 @@ export default function ChatThread() {
         return () => el.removeEventListener("scroll", onScroll);
     }, [loading]);
 
-    // ── Send — unchanged ──────────────────────────────────────
+    // ── Send ──────────────────────────────────────────────────
     const handleSend = async (isBuzz = false) => {
         if (!partnerId || sending) return;
         if (!isBuzz && !input.trim()) return;
         setSending(true);
         const msgContent = input.trim();
         setInput("");
+        // Reset typing state
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingChannelRef.current?.track({ user_id: myId, typing: false });
         const result = await sendMessage(partnerId, msgContent, isBuzz);
         if (result) {
             setMessages(prev => prev.some(m => m.id === result.id) ? prev : [...prev, result]);
@@ -448,16 +507,28 @@ export default function ChatThread() {
         inputRef.current?.focus();
     };
 
-    // ── Simulate typing indicator on input focus ──────────────
-    // (visual only — just shows occasionally when partner "responds")
-    useEffect(() => {
-        if (!input || messages.length === 0) { setIsTyping(false); return; }
-        const t = setTimeout(() => setIsTyping(false), 3000);
-        return () => clearTimeout(t);
-    }, [input, messages.length]);
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInput(e.target.value);
+        // Broadcast typing state
+        if (e.target.value.length > 0) {
+            typingChannelRef.current?.track({ user_id: myId, typing: true });
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+                typingChannelRef.current?.track({ user_id: myId, typing: false });
+            }, 2000);
+        } else {
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingChannelRef.current?.track({ user_id: myId, typing: false });
+        }
+    };
 
     if (loading) return (
-        <div style={{ minHeight: "100vh", background: "#080E24", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+        <div style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            zIndex: 40,
+            overflowY: "auto", background: "#080E24", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px"
+        }}>
             <Loader2 size={28} style={{ color: "#8A2EFF", animation: "spin 1s linear infinite" }} />
             <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
                 LOADING THREAD...
@@ -468,14 +539,19 @@ export default function ChatThread() {
 
     const isAgent = AGENT_IDS.has(partner?.id ?? "");
     const gen = getGeneration(partner?.birth_year, partner?.birth_month, partner?.birth_day, isAgent);
+    const headerDotColor = onlineDotColor(partner?.online_status);
+    const headerDotAnimates = partner?.online_status && partner.online_status !== "offline";
 
     return (
         <div
             style={{
-                height: "100vh",
-                background: "#080E24",
+                // height: "100vh",
+                position: "fixed",
+                top: 0, left: 0, right: 0, bottom: 0,
+                zIndex: 40,
+                background: pageBg,
                 backgroundImage: `
-          radial-gradient(ellipse 70% 40% at 50% 0%, rgba(138,46,255,.1) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 0%, ${primary}1A 0%, transparent 55%),
           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='.8' fill='rgba(255,255,255,.03)'/%3E%3C/svg%3E")
         `,
                 display: "flex",
@@ -485,18 +561,19 @@ export default function ChatThread() {
                 overflow: "hidden",
             }}
         >
-            {/* ── BUZZ FLASH — unchanged ────────────────────────── */}
+            <ThemeEngine config={custom} />
+            <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+
+            {/* ── BUZZ FLASH ────────────────────────────────── */}
             {buzzFlash && <BuzzFlash senderName={buzzFlash} onDismiss={() => setBuzzFlash(null)} />}
 
-            {/* ══ CHAT HEADER — BBM/Skype style ═════════════════════
-          Portal header with avatar, name, status, gen badge
-      ══════════════════════════════════════════════════════ */}
+            {/* ══ CHAT HEADER ════════════════════════════════════════ */}
             <div
                 style={{
                     flexShrink: 0,
-                    background: "linear-gradient(135deg,rgba(109,16,232,.9) 0%,rgba(59,13,168,.9) 40%,rgba(11,75,143,.9) 100%)",
+                    background: `linear-gradient(135deg,${primary}E6 0%,${primary}99 40%,rgba(11,75,143,.9) 100%)`,
                     backdropFilter: "blur(16px)",
-                    borderBottom: "1px solid rgba(138,46,255,.25)",
+                    borderBottom: `1px solid ${primary}40`,
                     boxShadow: "0 4px 24px rgba(0,0,0,.4)",
                     position: "relative",
                     overflow: "hidden",
@@ -548,7 +625,7 @@ export default function ChatThread() {
                                     width: "40px",
                                     height: "40px",
                                     borderRadius: "10px",
-                                    border: "1.5px solid rgba(0,229,255,.4)",
+                                    border: `1.5px solid ${secondary}66`,
                                     display: "block",
                                 }}
                             />
@@ -561,10 +638,10 @@ export default function ChatThread() {
                                     width: "10px",
                                     height: "10px",
                                     borderRadius: "50%",
-                                    background: "#B4FF00",
-                                    boxShadow: "0 0 6px #B4FF00",
+                                    background: headerDotColor,
+                                    boxShadow: headerDotAnimates ? `0 0 6px ${headerDotColor}` : "none",
                                     border: "2px solid #080E24",
-                                    animation: "zc-online 2.2s ease-in-out infinite",
+                                    animation: headerDotAnimates ? "zc-online 2.2s ease-in-out infinite" : "none",
                                 }}
                             />
                         </div>
@@ -653,7 +730,7 @@ export default function ChatThread() {
                             <div
                                 style={{
                                     background: "rgba(14,22,48,.8)",
-                                    border: "1px solid rgba(138,46,255,.25)",
+                                    border: `1px solid ${primary}40`,
                                     borderRadius: "16px",
                                     padding: "20px",
                                     textAlign: "center",
@@ -667,10 +744,16 @@ export default function ChatThread() {
                                 <div style={{ position: "relative" }}>
                                     <img
                                         src={getAvatar(partner?.zid ?? "", partner?.avatar_url)}
-                                        style={{ width: "56px", height: "56px", borderRadius: "14px", border: "2px solid rgba(138,46,255,.4)" }}
+                                        style={{ width: "56px", height: "56px", borderRadius: "14px", border: `2px solid ${primary}66` }}
                                         alt=""
                                     />
-                                    <div style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "14px", height: "14px", borderRadius: "50%", background: "#B4FF00", boxShadow: "0 0 6px #B4FF00", border: "2px solid #080E24" }} />
+                                    <div style={{
+                                        position: "absolute", bottom: "-2px", right: "-2px",
+                                        width: "14px", height: "14px", borderRadius: "50%",
+                                        background: onlineDotColor(partner?.online_status),
+                                        boxShadow: `0 0 6px ${onlineDotColor(partner?.online_status)}`,
+                                        border: "2px solid #080E24",
+                                    }} />
                                 </div>
                                 <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "12px", fontWeight: 700, color: "#fff", margin: 0 }}>
                                     {partner?.display_name}
@@ -707,9 +790,9 @@ export default function ChatThread() {
                                     style={{
                                         padding: "7px 14px",
                                         borderRadius: "8px",
-                                        background: "rgba(138,46,255,.15)",
-                                        border: "1px solid rgba(138,46,255,.4)",
-                                        color: "#8A2EFF",
+                                        background: `${primary}26`,
+                                        border: `1px solid ${primary}66`,
+                                        color: primary,
                                         fontFamily: "'Orbitron',sans-serif",
                                         fontSize: "10px",
                                         fontWeight: 700,
@@ -721,7 +804,7 @@ export default function ChatThread() {
                                         gap: "5px",
                                     }}
                                 >
-                                    <Zap size={11} style={{ fill: "#8A2EFF" }} /> BUZZ
+                                    <Zap size={11} style={{ fill: primary }} /> BUZZ
                                 </button>
                             </div>
                         </div>
@@ -741,6 +824,7 @@ export default function ChatThread() {
                                         partnerZid={partner?.zid ?? ""}
                                         partnerAvatar={partner?.avatar_url ?? null}
                                         myName={myName}
+                                        primary={primary}
                                     />
                                 </div>
                             );
@@ -748,7 +832,7 @@ export default function ChatThread() {
                     )}
 
                     {/* MSN "is typing a message..." */}
-                    {isTyping && partner && <TypingIndicator name={partner.display_name} />}
+                    {partnerTyping && partner && <TypingIndicator name={partner.display_name} primary={primary} />}
 
                     <div ref={bottomRef} />
                 </div>
@@ -765,14 +849,14 @@ export default function ChatThread() {
                         width: "36px",
                         height: "36px",
                         borderRadius: "50%",
-                        background: "rgba(138,46,255,.9)",
+                        background: `${primary}E6`,
                         border: "none",
                         color: "#fff",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         cursor: "pointer",
-                        boxShadow: "0 0 16px rgba(138,46,255,.5)",
+                        boxShadow: `0 0 16px ${primary}80`,
                         zIndex: 50,
                     }}
                 >
@@ -780,19 +864,46 @@ export default function ChatThread() {
                 </button>
             )}
 
-            {/* ══ INPUT BAR — BBM action strip + MSN send bar ═════════
-          Top row: Attach / Emoji / Buzz action strip (BBM)
-          Bottom row: text input + send button (MSN)
-      ══════════════════════════════════════════════════════ */}
+            {/* ══ INPUT BAR ═══════════════════════════════════════════ */}
             <div
                 style={{
                     flexShrink: 0,
-                    borderTop: "1px solid rgba(138,46,255,.2)",
+                    borderTop: `1px solid ${primary}33`,
                     background: "rgba(8,14,36,.96)",
                     backdropFilter: "blur(16px)",
                     backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.008) 3px,rgba(255,255,255,.008) 4px)",
+                    position: "relative",
                 }}
             >
+                {/* Emoji picker */}
+                {showEmojiPicker && (
+                    <div style={{
+                        position: "absolute", bottom: "100%", left: 0, right: 0,
+                        background: "rgba(8,14,36,.97)", border: `1px solid ${primary}30`,
+                        borderRadius: "12px 12px 0 0", padding: "10px",
+                        display: "grid", gridTemplateColumns: "repeat(10,1fr)", gap: "4px",
+                        zIndex: 10,
+                    }}>
+                        {EMOJIS.map(e => (
+                            <button
+                                key={e}
+                                onClick={() => {
+                                    setInput(p => p + e);
+                                    setShowEmojiPicker(false);
+                                    inputRef.current?.focus();
+                                }}
+                                style={{
+                                    background: "none", border: "none", fontSize: "18px",
+                                    cursor: "pointer", padding: "4px", borderRadius: "6px",
+                                    transition: "background .1s",
+                                }}
+                            >
+                                {e}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {/* BBM-style action strip */}
                 <div
                     style={{
@@ -802,16 +913,22 @@ export default function ChatThread() {
                         alignItems: "center",
                         justifyContent: "space-around",
                         padding: "4px 8px 0",
-                        borderBottom: "1px solid rgba(138,46,255,.08)",
+                        borderBottom: `1px solid ${primary}14`,
                     }}
                 >
-                    <ActionBtn icon="📎" label="ATTACH" />
-                    <ActionBtn icon="🎵" label="AUDIO" />
-                    <ActionBtn icon="😊" label="EMOJI" />
-                    <ClickSpark sparkColor="#8A2EFF" sparkSize={12} sparkRadius={28} sparkCount={10} duration={500} extraScale={1.4}>
-                        <ActionBtn icon="⚡" label="BUZZ" glow onClick={() => handleSend(true)} />
+                    <ActionBtn icon="📎" label="ATTACH" disabled title="Attachments coming soon" primary={primary} />
+                    <ActionBtn icon="🎵" label="AUDIO" disabled title="Audio messages coming soon" primary={primary} />
+                    <ActionBtn
+                        icon="😊"
+                        label="EMOJI"
+                        onClick={() => setShowEmojiPicker(p => !p)}
+                        glow={showEmojiPicker}
+                        primary={primary}
+                    />
+                    <ClickSpark sparkColor={primary} sparkSize={12} sparkRadius={28} sparkCount={10} duration={500} extraScale={1.4}>
+                        <ActionBtn icon="⚡" label="BUZZ" glow onClick={() => handleSend(true)} primary={primary} />
                     </ClickSpark>
-                    <ActionBtn icon="⋯" label="MORE" />
+                    <ActionBtn icon="⋯" label="MORE" primary={primary} />
                 </div>
 
                 {/* MSN-style text + send row */}
@@ -823,13 +940,26 @@ export default function ChatThread() {
                         gap: "8px",
                         padding: "8px 10px 10px",
                         alignItems: "center",
+                        position: "relative",
                     }}
                 >
+                    {/* Character counter */}
+                    {input.length > 400 && (
+                        <span style={{
+                            position: "absolute", bottom: "100%", right: "52px",
+                            fontFamily: "'VT323',monospace", fontSize: "10px",
+                            color: input.length > 480 ? "#FF007A" : "rgba(255,255,255,.4)",
+                            letterSpacing: "1px",
+                        }}>
+                            {500 - input.length}
+                        </span>
+                    )}
+
                     <input
                         ref={inputRef}
                         type="text"
                         value={input}
-                        onChange={e => { setInput(e.target.value); setIsTyping(e.target.value.length > 0); }}
+                        onChange={handleInputChange}
                         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(false); } }}
                         placeholder="Type a message..."
                         disabled={sending}
@@ -838,7 +968,7 @@ export default function ChatThread() {
                             flex: 1,
                             minWidth: 0,
                             background: "rgba(0,0,0,.4)",
-                            border: "1px solid rgba(138,46,255,.2)",
+                            border: `1px solid ${primary}33`,
                             borderRadius: "10px",
                             padding: "10px 14px",
                             color: "#fff",
@@ -847,8 +977,8 @@ export default function ChatThread() {
                             outline: "none",
                             transition: "border-color .2s, box-shadow .2s",
                         }}
-                        onFocus={e => { e.target.style.borderColor = "rgba(138,46,255,.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(138,46,255,.1)"; }}
-                        onBlur={e => { e.target.style.borderColor = "rgba(138,46,255,.2)"; e.target.style.boxShadow = "none"; }}
+                        onFocus={e => { e.target.style.borderColor = `${primary}99`; e.target.style.boxShadow = `0 0 0 3px ${primary}1A`; }}
+                        onBlur={e => { e.target.style.borderColor = `${primary}33`; e.target.style.boxShadow = "none"; }}
                     />
 
                     {/* Send button — MSN style */}
@@ -861,16 +991,16 @@ export default function ChatThread() {
                             flexShrink: 0,
                             borderRadius: "10px",
                             background: input.trim()
-                                ? "linear-gradient(135deg,#8A2EFF,#6010D4)"
+                                ? `linear-gradient(135deg,${primary},${primary}CC)`
                                 : "rgba(255,255,255,.04)",
-                            border: "1px solid rgba(138,46,255,.3)",
+                            border: `1px solid ${primary}4D`,
                             color: "#fff",
                             cursor: !input.trim() ? "not-allowed" : "pointer",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             opacity: !input.trim() ? .35 : 1,
-                            boxShadow: input.trim() ? "0 0 14px rgba(138,46,255,.4)" : "none",
+                            boxShadow: input.trim() ? `0 0 14px ${primary}66` : "none",
                             transition: "all .18s",
                         }}
                     >

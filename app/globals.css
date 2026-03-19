@@ -685,3 +685,294 @@ body>* {
     animation: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   ZEEZU Y2K DESIGN SYSTEM — append to app/globals.css
+   ════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Accessible Y2K palette ──────────────────────────────────── */
+  --color-void: #0A0014;
+  /* near-black, violet undertone    */
+  --color-surface: #120022;
+  /* elevated surface                */
+  --color-elevated: #1A0035;
+  /* card/modal level                */
+  --color-border: rgba(138, 46, 255, 0.25);
+
+  /* Accessible text colors (all pass 4.5:1 on --void) */
+  --color-purple: #A246FF;
+  /* 4.75:1 AA ✅  (was #8A2EFF 3.83 FAIL) */
+  --color-indigo: #6F66FF;
+  /* 4.91:1 AA ✅  (was #4F46E5 3.26 FAIL) */
+  --color-pink: #FF007A;
+  /* 5.41:1 AA ✅  */
+  --color-cyan: #00F7FF;
+  /* 15.39:1 AAA ✅ */
+  --color-lime: #B4FF00;
+  /* 16.86:1 AAA ✅ */
+
+  /* Chrome/holographic text (AAA on void) */
+  --color-chrome-1: #E8D5FF;
+  /* near-white violet  */
+  --color-chrome-2: #C084FC;
+  /* violet  7.77:1 AAA */
+  --color-chrome-3: #A78BFA;
+  /* lavender 7.54:1 AAA */
+
+  /* Decorative (glow/bg — no contrast req) */
+  --color-glow-purple: #8A2EFF;
+  --color-glow-pink: #FF007A;
+  --color-glow-cyan: #00F7FF;
+
+  /* Typography */
+  --font-display: 'Space Grotesk', 'Syne', sans-serif;
+  --font-mono: 'Space Mono', 'IBM Plex Mono', monospace;
+  --font-body: 'DM Sans', 'Nunito', sans-serif;
+
+  /* Spacing */
+  --section-gap: 7rem;
+  --card-radius: 1.25rem;
+}
+
+/* ── Y2K Chrome Text ─────────────────────────────────────────── */
+.chrome-text {
+  background: linear-gradient(135deg,
+      #FFFFFF 0%,
+      #E8D5FF 20%,
+      #C084FC 40%,
+      #00F7FF 60%,
+      #B4FF00 75%,
+      #FF007A 90%,
+      #FFFFFF 100%);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: chrome-shift 6s ease-in-out infinite;
+}
+
+@keyframes chrome-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ── Holographic Card Border ─────────────────────────────────── */
+.holo-border {
+  position: relative;
+  isolation: isolate;
+}
+
+.holo-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(var(--holo-angle, 135deg),
+      #8A2EFF, #FF007A, #00F7FF, #B4FF00, #8A2EFF);
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: holo-rotate 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes holo-rotate {
+  to {
+    --holo-angle: 495deg;
+    background-position: 100% 50%;
+  }
+}
+
+/* ── Scanline Overlay ───────────────────────────────────────── */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Star / Sparkle decorations ─────────────────────────────── */
+.star-field {
+  position: relative;
+}
+
+.star-field .s {
+  position: absolute;
+  font-size: 0.6rem;
+  animation: star-pulse 2s ease-in-out infinite;
+  color: var(--color-cyan);
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes star-pulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ── Y2K Pill Badge ──────────────────────────────────────────── */
+.y2k-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 247, 255, 0.35);
+  background: rgba(0, 247, 255, 0.06);
+  color: var(--color-cyan);
+  backdrop-filter: blur(8px);
+}
+
+/* ── Marquee (ticker) ────────────────────────────────────────── */
+.marquee-track {
+  animation: marquee 22s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Floating card animations ────────────────────────────────── */
+@keyframes float-card-1 {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(1deg);
+  }
+
+  50% {
+    transform: translateY(-12px) rotate(-0.5deg);
+  }
+}
+
+@keyframes float-card-2 {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(-1.5deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+@keyframes float-card-3 {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0.5deg);
+  }
+
+  50% {
+    transform: translateY(-14px) rotate(-1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="float-card"] {
+    animation: none !important;
+  }
+}
+
+/* ── Dot grid background ────────────────────────────────────── */
+.dot-grid-bg {
+  background-image: radial-gradient(circle, rgba(138, 46, 255, 0.18) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+}
+
+/* ── Glitch micro on hover ──────────────────────────────────── */
+@keyframes glitch-shift {
+
+  0%,
+  100% {
+    clip-path: inset(0 0 95% 0);
+    transform: translateX(0);
+  }
+
+  20% {
+    clip-path: inset(30% 0 50% 0);
+    transform: translateX(-3px);
+  }
+
+  40% {
+    clip-path: inset(60% 0 20% 0);
+    transform: translateX(3px);
+  }
+
+  60% {
+    clip-path: inset(80% 0 5% 0);
+    transform: translateX(-2px);
+  }
+}
+
+/* ── Y2K CTA button glow pulse ──────────────────────────────── */
+@keyframes cta-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 30px -8px rgba(255, 0, 122, 0.7), 0 0 60px -20px rgba(162, 70, 255, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 45px -6px rgba(255, 0, 122, 0.9), 0 0 80px -15px rgba(162, 70, 255, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-pulse {
+    animation: none;
+  }
+}
+
+/* ── Section retro divider ──────────────────────────────────── */
+.retro-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #A246FF, #FF007A, #00F7FF, #B4FF00, transparent);
+  opacity: 0.4;
+}

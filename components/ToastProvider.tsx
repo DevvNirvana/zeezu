@@ -16,16 +16,16 @@ type Toast = {
 };
 
 const TOAST_ICONS: Record<string, React.ReactNode> = {
-    message: <MessageSquare className="w-4 h-4" />,
-    buzz: <Zap className="w-4 h-4 fill-current" />,
-    friend_request: <UserPlus className="w-4 h-4" />,
-    friend_accept: <UserCheck className="w-4 h-4" />,
-    zap: <Zap className="w-4 h-4" />,
-    system: <Bell className="w-4 h-4" />,
-    comment: <MessageSquare className="w-4 h-4" />,
-    reply: <Reply className="w-4 h-4" />,
-    upvote: <ArrowUp className="w-4 h-4" />,
-    milestone: <Trophy className="w-4 h-4" />,
+    message: <MessageSquare style={{ width: 16, height: 16 }} />,
+    buzz: <Zap style={{ width: 16, height: 16 }} />,
+    friend_request: <UserPlus style={{ width: 16, height: 16 }} />,
+    friend_accept: <UserCheck style={{ width: 16, height: 16 }} />,
+    zap: <Zap style={{ width: 16, height: 16 }} />,
+    system: <Bell style={{ width: 16, height: 16 }} />,
+    comment: <MessageSquare style={{ width: 16, height: 16 }} />,
+    reply: <Reply style={{ width: 16, height: 16 }} />,
+    upvote: <ArrowUp style={{ width: 16, height: 16 }} />,
+    milestone: <Trophy style={{ width: 16, height: 16 }} />,
 };
 
 const TOAST_COLORS: Record<string, string> = {
@@ -46,16 +46,22 @@ const TOAST_DURATION = 5000;
 export default function ToastProvider() {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [mounted, setMounted] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const router = useRouter();
     const recentNotifIds = useRef<Set<number>>(new Set());
 
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        setMounted(true);
+        const check = () => setIsMobile(window.innerWidth < 640);
+        check();
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
+    }, []);
 
     const addToast = useCallback((toast: Omit<Toast, "id" | "timestamp">) => {
         const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setToasts((prev) => [...prev.slice(-4), { ...toast, id, timestamp: Date.now() }]);
 
-        // Auto-remove
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
         }, TOAST_DURATION);
@@ -75,23 +81,16 @@ export default function ToastProvider() {
 
             const channel = supabase
                 .channel("toast_notifications")
-                // Listen to all notification inserts, filter client-side
                 .on(
                     "postgres_changes",
-                    {
-                        event: "INSERT",
-                        schema: "public",
-                        table: "notifications",
-                    },
+                    { event: "INSERT", schema: "public", table: "notifications" },
                     async (payload: any) => {
                         const notif = payload.new;
-                        // Client-side filter: only this user's notifications
                         if (notif.user_id !== user.id) return;
-                        // Dedup: skip if already shown
                         if (recentNotifIds.current.has(notif.id)) return;
                         recentNotifIds.current.add(notif.id);
                         setTimeout(() => recentNotifIds.current.delete(notif.id), 10000);
-                        // Fetch actor info
+
                         const { data: actor } = await supabase
                             .from("users")
                             .select("display_name, zid")
@@ -113,7 +112,6 @@ export default function ToastProvider() {
                             system: "System update",
                         };
 
-                        // Determine toast link based on type
                         let link: string | undefined;
                         if (notif.type === "friend_request" || notif.type === "friend_accept") {
                             link = "/friends";
@@ -142,77 +140,172 @@ export default function ToastProvider() {
 
     if (!mounted) return null;
 
+    // ── Container positioning ─────────────────────────────────────
+    // Mobile: full-width banners slide down from top of screen
+    // Desktop: compact cards in top-right corner below NavBar
+    const containerStyle: React.CSSProperties = isMobile
+        ? {
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: "auto",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            gap: 0,
+            pointerEvents: "none",
+        }
+        : {
+            position: "fixed",
+            top: "68px",
+            right: "16px",
+            left: "auto",
+            bottom: "auto",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            width: "320px",
+            maxWidth: "calc(100vw - 32px)",
+            pointerEvents: "none",
+        };
+
     return createPortal(
-        <div className="fixed top-16 right-4 z-[9999] flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)] pointer-events-none">
-            {toasts.map((toast, i) => (
-                <div
-                    key={toast.id}
-                    className="pointer-events-auto cursor-pointer rounded-xl border backdrop-blur-xl shadow-2xl overflow-hidden"
-                    style={{
+        <div style={containerStyle}>
+            {toasts.map((toast) => {
+                const color = TOAST_COLORS[toast.type] ?? "#8A2EFF";
+                const toastStyle: React.CSSProperties = isMobile
+                    ? {
+                        // Full-width banner — no side rounding at top
+                        width: "100%",
+                        borderRadius: "0 0 12px 12px",
+                        border: `1px solid ${color}40`,
+                        borderTop: `2px solid ${color}`,
+                        background: `linear-gradient(135deg, ${color}18, rgba(11,11,18,0.98))`,
+                        boxShadow: `0 4px 24px rgba(0,0,0,0.6), 0 0 16px ${color}25`,
+                        animation: "toastSlideDown 0.3s ease-out",
+                        pointerEvents: "auto",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        backdropFilter: "blur(20px)",
+                    }
+                    : {
+                        borderRadius: "12px",
+                        border: `1px solid ${color}40`,
+                        background: `linear-gradient(135deg, ${color}15, rgba(11,11,18,0.95))`,
+                        boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${color}20`,
                         animation: "toastSlideIn 0.3s ease-out",
-                        borderColor: `${TOAST_COLORS[toast.type]}40`,
-                        background: `linear-gradient(135deg, ${TOAST_COLORS[toast.type]}15, rgba(11,11,18,0.95))`,
-                        boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${TOAST_COLORS[toast.type]}20`,
-                    }}
-                    onClick={() => {
-                        if (toast.link) router.push(toast.link);
-                        removeToast(toast.id);
-                    }}
-                >
-                    {/* Color accent bar at top */}
-                    <div className="h-[2px] w-full" style={{ background: TOAST_COLORS[toast.type] }} />
+                        pointerEvents: "auto",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        backdropFilter: "blur(16px)",
+                    };
 
-                    <div className="p-3 flex items-start gap-3">
-                        {/* Icon */}
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{
-                                backgroundColor: `${TOAST_COLORS[toast.type]}20`,
-                                color: TOAST_COLORS[toast.type],
-                            }}
-                        >
-                            {TOAST_ICONS[toast.type]}
+                return (
+                    <div
+                        key={toast.id}
+                        style={toastStyle}
+                        onClick={() => {
+                            if (toast.link) router.push(toast.link);
+                            removeToast(toast.id);
+                        }}
+                    >
+                        {/* Color accent bar at top */}
+                        <div style={{ height: "2px", width: "100%", background: color }} />
+
+                        <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
+                            {/* Icon */}
+                            <div
+                                style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "8px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                    backgroundColor: `${color}20`,
+                                    color: color,
+                                }}
+                            >
+                                {TOAST_ICONS[toast.type]}
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: "12px",
+                                    fontWeight: 800,
+                                    color: "#fff",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    fontFamily: "system-ui, sans-serif",
+                                }}>
+                                    {toast.title}
+                                </p>
+                                <p style={{
+                                    margin: "2px 0 0",
+                                    fontSize: "11px",
+                                    color: "rgba(255,255,255,.5)",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    fontFamily: "system-ui, sans-serif",
+                                }}>
+                                    {toast.body}
+                                </p>
+                            </div>
+
+                            {/* Close */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeToast(toast.id);
+                                }}
+                                style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "rgba(255,255,255,.4)",
+                                    padding: "2px",
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <X style={{ width: 12, height: 12 }} />
+                            </button>
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-white truncate">{toast.title}</p>
-                            <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2">{toast.body}</p>
+                        {/* Auto-dismiss progress bar */}
+                        <div style={{ height: "2px", width: "100%", background: "rgba(255,255,255,.06)" }}>
+                            <div
+                                style={{
+                                    height: "100%",
+                                    background: color,
+                                    animation: `toastProgress ${TOAST_DURATION}ms linear`,
+                                }}
+                            />
                         </div>
-
-                        {/* Close */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                removeToast(toast.id);
-                            }}
-                            className="text-gray-600 hover:text-white transition-colors p-0.5 flex-shrink-0"
-                        >
-                            <X className="w-3 h-3" />
-                        </button>
                     </div>
-
-                    {/* Auto-dismiss progress bar */}
-                    <div className="h-[2px] w-full bg-gray-800">
-                        <div
-                            className="h-full"
-                            style={{
-                                background: TOAST_COLORS[toast.type],
-                                animation: `toastProgress ${TOAST_DURATION}ms linear`,
-                            }}
-                        />
-                    </div>
-                </div>
-            ))}
+                );
+            })}
 
             <style>{`
         @keyframes toastSlideIn {
           from { opacity: 0; transform: translateX(100px) scale(0.95); }
-          to   { opacity: 1; transform: translateX(0) scale(1); }
+          to   { opacity: 1; transform: translateX(0)      scale(1);    }
+        }
+        @keyframes toastSlideDown {
+          from { opacity: 0; transform: translateY(-100%); }
+          to   { opacity: 1; transform: translateY(0);      }
         }
         @keyframes toastProgress {
           from { width: 100%; }
-          to   { width: 0%; }
+          to   { width: 0%;   }
         }
       `}</style>
         </div>,

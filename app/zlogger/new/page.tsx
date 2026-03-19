@@ -2,45 +2,136 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import NavBar from "@/components/NavBar";
 import { createZlog } from "@/lib/supabase/queries";
 import { renderZlog, generateSlug, readingTimeMinutes, ZLOG_CSS } from "@/lib/zlogger-renderer";
-import { Zap, Waves, Bookmark, RefreshCw, Eye, Edit3, Loader2 } from "lucide-react";
+import {
+  Zap, Waves, Bookmark, RefreshCw, Eye, Edit3, Loader2,
+  ArrowLeft, Globe, Users, Lock, Image as ImageIcon,
+} from "lucide-react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STYLES — injected once
+// ─────────────────────────────────────────────────────────────────────────────
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Nunito:wght@400;600;700;800;900&display=swap');
+
   body, html { overflow-x: hidden !important; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  textarea:focus, input:focus { outline: none; }
-  .editor-textarea { resize: none; }
-  .z-tag-btn { transition: all .15s ease; }
-  .z-tag-btn:hover { opacity: .8; }
+
+  @keyframes spin        { to{transform:rotate(360deg)} }
+  @keyframes zee-entry   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes zee-led     { 0%,100%{opacity:.5} 50%{opacity:1} }
+  @keyframes zee-blink   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes zee-scanbar { 0%{transform:translateY(-100%);opacity:.55} 100%{transform:translateY(300%);opacity:0} }
+  @keyframes zee-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
+  @keyframes zee-pulse   { 0%,100%{box-shadow:0 0 4px rgba(138,46,255,.5)} 50%{box-shadow:0 0 16px rgba(138,46,255,.9),0 0 32px rgba(138,46,255,.3)} }
+  @keyframes caret-blink { 0%,100%{opacity:1} 49%{opacity:1} 50%{opacity:0} }
+
+  .zee-entry { animation: zee-entry .32s ease both; }
+  .zee-led   { animation: zee-led 2.4s ease-in-out infinite; }
+  .zee-cursor::after { content:"▌"; animation:zee-blink .85s step-end infinite; color:inherit; opacity:.65; }
+
+  /* textarea / input focus glow */
+  textarea:focus, input:focus, select:focus { outline: none; }
+
+  /* Z-tag toolbar buttons */
+  .z-tag-btn {
+    transition: all .14s ease;
+    position: relative; overflow: hidden;
+  }
+  .z-tag-btn::before {
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,transparent 100%);
+    transform:translateY(-100%); pointer-events:none; opacity:0;
+  }
+  .z-tag-btn:hover::before { opacity:1; animation:zee-scanbar 1.6s ease-in infinite; }
+  .z-tag-btn:hover { opacity:.88; box-shadow:0 0 8px rgba(138,46,255,.35); }
+
+  /* Editor textarea — monospace feel */
+  .editor-ta {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.75;
+    resize: none;
+    tab-size: 2;
+    caret-color: #8A2EFF;
+  }
+
+  /* Toggle pill hover */
+  .toggle-btn { transition: all .15s ease; }
+  .toggle-btn:hover { filter: brightness(1.1); }
+
+  /* Theme swatch hover */
+  .theme-btn { transition: all .15s ease; }
+  .theme-btn:hover { transform: translateY(-1px); }
+
+  /* Visibility btn */
+  .vis-btn { transition: all .15s ease; }
+  .vis-btn:hover { filter: brightness(1.08); }
+
+  /* Publish button glow on hover */
+  .publish-btn { transition: all .2s ease; }
+  .publish-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 24px rgba(138,46,255,.5), 0 0 40px rgba(0,229,255,.2) !important;
+  }
+
+  /* Mobile: stack editor/preview */
+  @media (max-width: 860px) {
+    .editor-grid { grid-template-columns: 1fr !important; }
+    .settings-grid { grid-template-columns: 1fr !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zee-led, .z-tag-btn::before, .zee-entry { animation: none !important; }
+  }
 `;
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONSTANTS — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
+
 const THEMES = ["void_chrome", "neon_vapor", "midnight_run", "candy_chrome", "arctic_ghost"] as const;
-const THEME_LABELS: Record<string, string> = {
-  void_chrome:  "VOID CHROME",
-  neon_vapor:   "NEON VAPOR",
-  midnight_run: "MIDNIGHT RUN",
-  candy_chrome: "CANDY CHROME",
-  arctic_ghost: "ARCTIC GHOST",
+const THEME_META: Record<string, { label: string; color: string; bg: string }> = {
+  void_chrome: { label: "VOID", color: "#8A2EFF", bg: "rgba(138,46,255,.2)" },
+  neon_vapor: { label: "VAPOR", color: "#FF007A", bg: "rgba(255,0,122,.2)" },
+  midnight_run: { label: "MIDNIGHT", color: "#00E5FF", bg: "rgba(0,229,255,.2)" },
+  candy_chrome: { label: "CANDY", color: "#FF6B9D", bg: "rgba(255,107,157,.2)" },
+  arctic_ghost: { label: "ARCTIC", color: "#A5F3FC", bg: "rgba(165,243,252,.2)" },
 };
 
 const MOODS = [
-  "💀 Dark", "🔥 Lit", "💜 Vibe", "🌊 Chill",
-  "⚡ Charged", "🌹 Romantic", "🤖 Glitch", "🌙 Dreamy",
+  { val: "💀 Dark", emoji: "💀", color: "#9333EA" },
+  { val: "🔥 Lit", emoji: "🔥", color: "#EF4444" },
+  { val: "💜 Vibe", emoji: "💜", color: "#8A2EFF" },
+  { val: "🌊 Chill", emoji: "🌊", color: "#0EA5E9" },
+  { val: "⚡ Charged", emoji: "⚡", color: "#EAB308" },
+  { val: "🌹 Romantic", emoji: "🌹", color: "#EC4899" },
+  { val: "🤖 Glitch", emoji: "🤖", color: "#10B981" },
+  { val: "🌙 Dreamy", emoji: "🌙", color: "#6366F1" },
 ];
 
 const VISIBILITY_OPTIONS = ["public", "friends", "private"] as const;
+const VIS_META: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+  public: { icon: <Globe size={11} />, label: "PUBLIC", color: "#B4FF00" },
+  friends: { icon: <Users size={11} />, label: "FRIENDS", color: "#00E5FF" },
+  private: { icon: <Lock size={11} />, label: "PRIVATE", color: "#8A2EFF" },
+};
 
 const Z_TAGS = [
-  { label: "NEON",    open: "[z-neon]",    close: "[/z-neon]" },
-  { label: "GLITCH",  open: "[z-glitch]",  close: "[/z-glitch]" },
-  { label: "BLINK",   open: "[z-blink]",   close: "[/z-blink]" },
-  { label: "MARQUEE", open: "[z-marquee]", close: "[/z-marquee]" },
-  { label: "DIVIDER", open: "[z-divider]", close: "" },
-  { label: "TRACK",   open: "[z-track]",   close: "[/z-track]" },
+  { label: "NEON", open: "[z-neon]", close: "[/z-neon]", tip: "Glowing neon text" },
+  { label: "GLITCH", open: "[z-glitch]", close: "[/z-glitch]", tip: "Glitch distortion" },
+  { label: "BLINK", open: "[z-blink]", close: "[/z-blink]", tip: "Blinking text" },
+  { label: "MARQUEE", open: "[z-marquee]", close: "[/z-marquee]", tip: "Scrolling ticker text" },
+  { label: "DIVIDER", open: "[z-divider]", close: "", tip: "Section separator" },
+  { label: "TRACK", open: "[z-track]", close: "[/z-track]", tip: "Music track embed" },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 
 function insertAtCursor(
   ref: React.RefObject<HTMLTextAreaElement | null>,
@@ -63,10 +154,54 @@ function insertAtCursor(
   }, 0);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHARED PORTAL UI PRIMITIVES
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PortalCard({ children, accent = "rgba(138,46,255,.22)", style }: {
+  children: React.ReactNode; accent?: string; style?: React.CSSProperties;
+}) {
+  return (
+    <div style={{
+      background: "rgba(10,16,42,.92)", backdropFilter: "blur(14px)",
+      border: `1px solid ${accent}`, borderRadius: "12px", overflow: "hidden",
+      boxShadow: "0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04)",
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function ModuleHeader({ icon, title, accent = "#8A2EFF", right }: {
+  icon: React.ReactNode; title: string; accent?: string; right?: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "9px 14px 9px 12px",
+      background: `linear-gradient(90deg,${accent}22 0%,transparent 100%)`,
+      borderBottom: `1px solid ${accent}30`,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+        <div className="zee-led" style={{ width: "3px", height: "16px", background: `linear-gradient(180deg,${accent},${accent}44)`, borderRadius: "1px", flexShrink: 0, boxShadow: `0 0 6px ${accent}` }} />
+        <span style={{ color: accent, display: "flex", alignItems: "center" }}>{icon}</span>
+        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "10px", fontWeight: 700, color: "#fff", letterSpacing: "0.8px" }}>{title}</span>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  MAIN COMPONENT — all Supabase logic UNCHANGED
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ZloggerNewPage() {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // ── State — ALL UNCHANGED ──────────────────────────────────────
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [slugManual, setSlugManual] = useState(false);
@@ -83,21 +218,25 @@ export default function ZloggerNewPage() {
   const [responseToSlug, setResponseToSlug] = useState("");
   const [responseToId, setResponseToId] = useState<string | undefined>(undefined);
   const [publishing, setPublishing] = useState(false);
-  const [primary] = useState("#8A2EFF");
 
-  // Auto-slug from title
+  const primary = "#8A2EFF";
+  const secondary = "#00E5FF";
+
+  // ── Auto-slug — UNCHANGED ─────────────────────────────────────
   useEffect(() => {
     if (!slugManual && title) setSlug(generateSlug(title));
   }, [title, slugManual]);
 
-  // Live preview
+  // ── Live preview — UNCHANGED ──────────────────────────────────
   useEffect(() => {
     setPreviewHtml(renderZlog(markdown));
   }, [markdown]);
 
   const wordCount = markdown.split(/\s+/).filter(Boolean).length;
+  const charCount = markdown.length;
   const readTime = readingTimeMinutes(markdown);
 
+  // ── handlePublish — UNCHANGED ─────────────────────────────────
   const handlePublish = async () => {
     if (!title.trim() || !markdown.trim()) return;
     setPublishing(true);
@@ -120,72 +259,229 @@ export default function ZloggerNewPage() {
     if (result) router.push(`/zlogger/${result.slug}`);
   };
 
-  const inputStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
-    width: "100%", padding: "10px 14px", background: "rgba(138,46,255,.07)",
-    border: `1px solid ${primary}30`, borderRadius: "8px", color: "#fff",
-    fontFamily: "'Nunito',sans-serif", fontSize: "13px", outline: "none",
-    boxSizing: "border-box", ...extra,
-  });
+  // ── Active mood meta ──────────────────────────────────────────
+  const activeMood = MOODS.find(m => m.val === mood);
+
+  // ─────────────────────────────────────────────────────────────
+  //  RENDER
+  // ─────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0B0B12", color: "#fff", fontFamily: "'Nunito',sans-serif", paddingBottom: "80px" }}>
+    <div style={{
+      minHeight: "100vh",
+      background: "#070C1E",
+      backgroundImage: `
+        radial-gradient(ellipse 70% 45% at 50% 0%, rgba(138,46,255,.12) 0%, transparent 60%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='.65' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E")
+      `,
+      color: "#fff",
+      fontFamily: "'Nunito',sans-serif",
+      paddingBottom: "80px",
+    }}>
       <style dangerouslySetInnerHTML={{ __html: STYLES + ZLOG_CSS }} />
+
+      {/* CRT scanline overlay */}
+      <div aria-hidden="true" style={{ pointerEvents: "none", position: "fixed", inset: 0, zIndex: 999, opacity: 0.028, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.45) 2px,rgba(0,0,0,.45) 4px)" }} />
+
       <NavBar />
 
-      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "72px 16px 0" }}>
-        {/* Title + slug */}
-        <div style={{ marginBottom: "20px" }}>
-          <input
-            type="text"
-            placeholder="TITLE OF YOUR ZLOG..."
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            style={{ ...inputStyle({ fontSize: "20px", fontFamily: "'Orbitron',sans-serif", fontWeight: 900, marginBottom: "8px" }) }}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: `${primary}60`, letterSpacing: "1px", whiteSpace: "nowrap" }}>SLUG:</span>
-            <input
-              type="text"
-              placeholder="auto-generated-slug"
-              value={slug}
-              onChange={e => { setSlug(e.target.value); setSlugManual(true); }}
-              style={{ ...inputStyle({ fontSize: "11px", fontFamily: "'VT323',monospace", letterSpacing: "1px", flex: 1 }) }}
-            />
-            <button
-              onClick={() => { setSlug(generateSlug(title)); setSlugManual(false); }}
-              title="Regenerate slug"
-              style={{ padding: "10px", background: `${primary}18`, border: `1px solid ${primary}30`, borderRadius: "8px", cursor: "pointer", color: primary, display: "flex", alignItems: "center" }}
-            >
-              <RefreshCw size={12} />
-            </button>
-          </div>
-        </div>
+      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "80px 16px 0" }}>
 
-        {/* Two-column editor/preview */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-          {/* ── EDITOR ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            {/* Module header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", background: `${primary}18`, borderRadius: "10px 10px 0 0", border: `1px solid ${primary}30`, borderBottom: "none" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Edit3 size={11} color={primary} />
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, color: primary, letterSpacing: "1px" }}>EDITOR</span>
-                <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}60` }}>· {wordCount} WORDS</span>
+        {/* ════════════════════════════════════════════════════════
+            PAGE HEADER — Y2K portal title bar
+        ════════════════════════════════════════════════════════ */}
+        <PortalCard accent={`${primary}30`} style={{ marginBottom: "20px" }}>
+          <div style={{
+            background: "linear-gradient(135deg,#6D10E8 0%,#3B0DA8 40%,#0B4B8F 100%)",
+            padding: "14px 20px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexWrap: "wrap", gap: "10px",
+            position: "relative", overflow: "hidden",
+            borderBottom: "1px solid rgba(255,255,255,.07)",
+          }}>
+            {/* Scanlines on header */}
+            <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.02) 3px,rgba(255,255,255,.02) 4px)", pointerEvents: "none" }} />
+            {/* Corner glow */}
+            <div aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: "200px", height: "100%", background: "radial-gradient(ellipse at 100% 50%,rgba(0,229,255,.14) 0%,transparent 60%)", pointerEvents: "none" }} />
+
+            {/* Left — back + title */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 1 }}>
+              <button
+                onClick={() => router.push("/zlogger")}
+                style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "6px", background: "rgba(0,0,0,.3)", border: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,.5)", fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1px", cursor: "pointer", flexShrink: 0 }}
+              >
+                <ArrowLeft size={11} /> BACK
+              </button>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "16px", fontWeight: 900, color: "#fff", margin: 0, letterSpacing: "-0.3px", textShadow: "0 0 20px rgba(138,46,255,.4)" }}>
+                    NEW ZLOG
+                  </h1>
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "2px", background: "rgba(0,0,0,.3)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "3px", padding: "1px 6px" }}>
+                    COMPOSE
+                  </span>
+                </div>
+                <p style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,255,255,.4)", letterSpacing: "1.5px", margin: "2px 0 0" }}>
+                  ZEEZU NETWORK · PERSONAL WEBLOG
+                </p>
               </div>
             </div>
 
-            {/* Z-tag toolbar */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "8px 10px", background: "rgba(0,0,0,.3)", border: `1px solid ${primary}20`, borderBottom: "none" }}>
+            {/* Right — publish button */}
+            <button
+              className="publish-btn"
+              onClick={handlePublish}
+              disabled={publishing || !title.trim() || !markdown.trim()}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                padding: "9px 20px", borderRadius: "8px",
+                background: publishing || !title.trim() || !markdown.trim()
+                  ? "rgba(138,46,255,.25)"
+                  : "linear-gradient(135deg,#8A2EFF 0%,#00E5FF 100%)",
+                border: "none",
+                color: publishing || !title.trim() || !markdown.trim() ? "rgba(255,255,255,.3)" : "#000",
+                fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700,
+                letterSpacing: "1px",
+                cursor: publishing ? "wait" : (!title.trim() || !markdown.trim()) ? "not-allowed" : "pointer",
+                boxShadow: !publishing && title.trim() && markdown.trim() ? "0 0 20px rgba(138,46,255,.45)" : "none",
+                zIndex: 1, flexShrink: 0,
+              }}
+            >
+              {publishing
+                ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> PUBLISHING...</>
+                : <>⊕ PUBLISH ZLOG</>
+              }
+            </button>
+          </div>
+        </PortalCard>
+
+        {/* ════════════════════════════════════════════════════════
+            TITLE + SLUG ROW
+        ════════════════════════════════════════════════════════ */}
+        <PortalCard accent={`${primary}22`} style={{ marginBottom: "16px" }}>
+          <ModuleHeader
+            icon={<Edit3 size={11} />}
+            title="TITLE & SLUG"
+            accent={primary}
+            right={
+              title
+                ? <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}55`, letterSpacing: "1px" }}>
+                  {title.length} CHARS
+                </span>
+                : undefined
+            }
+          />
+          <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            {/* Title — large Orbitron input */}
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                placeholder="TITLE OF YOUR ZLOG..."
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                style={{
+                  width: "100%", padding: "12px 14px",
+                  background: "rgba(138,46,255,.07)",
+                  border: `1px solid ${title ? `${primary}45` : `${primary}25`}`,
+                  borderRadius: "8px", color: "#fff",
+                  fontFamily: "'Orbitron',sans-serif", fontSize: "17px", fontWeight: 900,
+                  letterSpacing: "-0.5px",
+                  outline: "none", boxSizing: "border-box",
+                  transition: "border-color .2s, box-shadow .2s",
+                  boxShadow: title ? `0 0 16px ${primary}18` : "none",
+                }}
+                onFocus={e => { e.target.style.borderColor = `${primary}70`; e.target.style.boxShadow = `0 0 20px ${primary}22`; }}
+                onBlur={e => { e.target.style.borderColor = title ? `${primary}45` : `${primary}25`; e.target.style.boxShadow = title ? `0 0 16px ${primary}18` : "none"; }}
+              />
+              {/* Mood color accent if mood selected */}
+              {activeMood && (
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", borderRadius: "8px 0 0 8px", background: activeMood.color, boxShadow: `0 0 8px ${activeMood.color}` }} />
+              )}
+            </div>
+
+            {/* Slug row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: `${primary}55`, letterSpacing: "1.5px", whiteSpace: "nowrap", flexShrink: 0 }}>
+                zeezu.net/zlogger/
+              </span>
+              <div style={{ flex: 1, position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="auto-generated-slug"
+                  value={slug}
+                  onChange={e => { setSlug(e.target.value); setSlugManual(true); }}
+                  style={{
+                    width: "100%", padding: "7px 36px 7px 10px",
+                    background: "rgba(0,0,0,.35)",
+                    border: `1px solid rgba(255,255,255,.1)`,
+                    borderRadius: "6px", color: "rgba(255,255,255,.55)",
+                    fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1.5px",
+                    outline: "none", boxSizing: "border-box",
+                    transition: "border-color .2s",
+                  }}
+                  onFocus={e => e.target.style.borderColor = `${primary}45`}
+                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.1)"}
+                />
+                <button
+                  onClick={() => { setSlug(generateSlug(title)); setSlugManual(false); }}
+                  title="Regenerate slug"
+                  style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", padding: "3px 4px", background: "transparent", border: "none", color: `${primary}55`, cursor: "pointer", display: "flex", alignItems: "center", transition: "color .15s" }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = primary}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = `${primary}55`}
+                >
+                  <RefreshCw size={10} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </PortalCard>
+
+        {/* ════════════════════════════════════════════════════════
+            EDITOR + PREVIEW GRID
+        ════════════════════════════════════════════════════════ */}
+        <div
+          className="editor-grid"
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}
+        >
+          {/* ── EDITOR PANEL ── */}
+          <PortalCard accent={`${primary}28`} style={{ display: "flex", flexDirection: "column" }}>
+            <ModuleHeader
+              icon={<Edit3 size={11} />}
+              title="EDITOR"
+              accent={primary}
+              right={
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}55`, letterSpacing: "1px" }}>
+                    {wordCount} WORDS
+                  </span>
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.2)", letterSpacing: "1px" }}>
+                    {charCount} CHARS
+                  </span>
+                </div>
+              }
+            />
+
+            {/* Z-tag toolbar — Y2K custom tag buttons */}
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: "4px",
+              padding: "8px 12px",
+              background: "rgba(0,0,0,.35)",
+              borderBottom: `1px solid ${primary}18`,
+            }}>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.2)", letterSpacing: "1px", alignSelf: "center", marginRight: "4px" }}>Z-TAGS:</span>
               {Z_TAGS.map(tag => (
                 <button
                   key={tag.label}
                   className="z-tag-btn"
                   onClick={() => insertAtCursor(textareaRef, tag.open, tag.close, setMarkdown)}
+                  title={tag.tip}
                   style={{
-                    padding: "3px 8px", borderRadius: "4px",
-                    background: `${primary}18`, border: `1px solid ${primary}35`,
-                    color: primary, fontFamily: "'VT323',monospace",
-                    fontSize: "10px", letterSpacing: "1px", cursor: "pointer",
+                    padding: "3px 9px", borderRadius: "4px",
+                    background: `${primary}14`,
+                    border: `1px solid ${primary}30`,
+                    color: primary,
+                    fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px",
+                    cursor: "pointer",
                   }}
                 >
                   {tag.label}
@@ -193,184 +489,394 @@ export default function ZloggerNewPage() {
               ))}
             </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={textareaRef}
-              className="editor-textarea"
-              value={markdown}
-              onChange={e => setMarkdown(e.target.value)}
-              placeholder={"# Your story begins here...\n\nUse **markdown** or Z-tags like [z-neon]glowing text[/z-neon]"}
-              style={{
-                flex: 1, minHeight: "55vh", padding: "14px",
-                background: "rgba(8,14,36,.85)", border: `1px solid ${primary}25`,
-                borderRadius: "0 0 10px 10px", color: "rgba(255,255,255,.85)",
-                fontFamily: "'Courier New', monospace", fontSize: "13px", lineHeight: "1.7",
-                resize: "none", outline: "none",
-              }}
-            />
-          </div>
+            {/* Textarea — monospace Y2K terminal */}
+            <div style={{ flex: 1, position: "relative" }}>
+              {/* Line number gutter (decorative) */}
+              <div aria-hidden="true" style={{
+                position: "absolute", left: 0, top: 0, bottom: 0, width: "36px",
+                background: "rgba(0,0,0,.3)",
+                borderRight: `1px solid ${primary}12`,
+                pointerEvents: "none",
+                display: "flex", flexDirection: "column", padding: "14px 0",
+                overflow: "hidden",
+              }}>
+                {Array.from({ length: 40 }, (_, i) => (
+                  <span key={i} style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}28`, letterSpacing: 0, height: "23px", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "7px", flexShrink: 0 }}>
+                    {i + 1}
+                  </span>
+                ))}
+              </div>
 
-          {/* ── PREVIEW ── */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", background: "rgba(0,247,255,.08)", borderRadius: "10px 10px 0 0", border: "1px solid rgba(0,247,255,.2)", borderBottom: "none" }}>
-              <Eye size={11} color="#00F7FF" />
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, color: "#00F7FF", letterSpacing: "1px" }}>PREVIEW</span>
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(0,247,255,.5)" }}>· ~{readTime} MIN READ</span>
+              <textarea
+                ref={textareaRef}
+                className="editor-ta"
+                value={markdown}
+                onChange={e => setMarkdown(e.target.value)}
+                placeholder={"# Your story begins here...\n\nUse **markdown** or Z-tags:\n[z-neon]glowing text[/z-neon]\n[z-glitch]glitching text[/z-glitch]\n[z-blink]blinking text[/z-blink]\n[z-marquee]scrolling text[/z-marquee]"}
+                style={{
+                  display: "block", width: "100%", minHeight: "55vh",
+                  padding: "14px 14px 14px 46px",
+                  background: "rgba(7,10,26,.9)",
+                  border: "none",
+                  color: "rgba(255,255,255,.85)",
+                  fontSize: "13px",
+                  lineHeight: "1.75",
+                  resize: "none",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+
+              {/* Word count progress bar at bottom */}
+              {wordCount > 0 && (
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "2px", background: "rgba(0,0,0,.3)" }}>
+                  <div style={{ height: "100%", width: `${Math.min(100, (wordCount / 1000) * 100)}%`, background: `linear-gradient(90deg,${primary},${secondary})`, boxShadow: `0 0 6px ${primary}`, transition: "width .3s ease", borderRadius: "0 1px 1px 0" }} />
+                </div>
+              )}
             </div>
+          </PortalCard>
+
+          {/* ── PREVIEW PANEL ── */}
+          <PortalCard accent="rgba(0,229,255,.22)" style={{ display: "flex", flexDirection: "column" }}>
+            <ModuleHeader
+              icon={<Eye size={11} />}
+              title="LIVE PREVIEW"
+              accent={secondary}
+              right={
+                readTime > 0
+                  ? <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${secondary}55`, letterSpacing: "1px" }}>
+                    ~{readTime} MIN READ
+                  </span>
+                  : undefined
+              }
+            />
+
+            {/* Theme preview strip */}
+            {theme && (
+              <div style={{
+                height: "3px",
+                background: `linear-gradient(90deg,${THEME_META[theme].color} 0%,${primary} 50%,${secondary} 100%)`,
+                boxShadow: `0 0 8px ${THEME_META[theme].color}50`,
+              }} />
+            )}
+
             <div
               className="zlog-body"
-              dangerouslySetInnerHTML={{ __html: previewHtml || '<p style="color:rgba(255,255,255,.2);font-style:italic;font-family:Nunito,sans-serif;font-size:13px">Preview will appear here…</p>' }}
+              dangerouslySetInnerHTML={{
+                __html: previewHtml || `
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:200px;gap:12px;padding:40px 16px">
+                    <div style="font-family:'VT323',monospace;font-size:11px;color:rgba(0,229,255,.35);letter-spacing:1.5px;text-align:left;align-self:stretch">
+                      <span style="color:rgba(180,255,0,.6)">zeezu@preview</span><span style="color:rgba(255,255,255,.2)">:</span><span style="color:#00E5FF;opacity:.6">~$</span> render ./post.md<br/>
+                      <span style="color:rgba(255,255,255,.1)">awaiting input...</span>
+                    </div>
+                    <p style="font-family:'VT323',monospace;font-size:13px;color:rgba(255,255,255,.2);letter-spacing:2px;margin:0">PREVIEW WILL APPEAR HERE</p>
+                  </div>
+                `,
+              }}
               style={{
-                flex: 1, minHeight: "55vh", padding: "14px",
-                background: "rgba(4,8,20,.9)", border: "1px solid rgba(0,247,255,.15)",
-                borderRadius: "0 0 10px 10px", overflowY: "auto",
+                flex: 1, minHeight: "55vh", padding: "16px",
+                background: "rgba(4,8,20,.92)",
+                overflowY: "auto",
+                lineHeight: "1.8",
               }}
             />
-          </div>
+          </PortalCard>
         </div>
 
-        {/* ── Settings ── */}
-        <div style={{ background: "rgba(8,14,36,.8)", border: `1px solid ${primary}22`, borderRadius: "14px", padding: "20px", marginBottom: "20px" }}>
-          <h3 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "10px", fontWeight: 700, color: primary, letterSpacing: "2px", margin: "0 0 16px" }}>PUBLISHING SETTINGS</h3>
+        {/* ════════════════════════════════════════════════════════
+            PUBLISHING SETTINGS PANEL
+        ════════════════════════════════════════════════════════ */}
+        <PortalCard accent={`${primary}22`} style={{ marginBottom: "20px" }}>
+          <ModuleHeader
+            icon={<span style={{ fontSize: "11px" }}>⚙</span>}
+            title="PUBLISHING SETTINGS"
+            accent={primary}
+          />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            {/* Cover URL */}
-            <div>
-              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px", display: "block", marginBottom: "6px" }}>COVER IMAGE URL</label>
-              <input type="text" value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="https://..." style={inputStyle()} />
-            </div>
+          <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "18px" }}>
 
-            {/* Mood */}
-            <div>
-              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px", display: "block", marginBottom: "6px" }}>MOOD</label>
-              <select value={mood} onChange={e => setMood(e.target.value)} style={{ ...inputStyle(), appearance: "none" }}>
-                <option value="">None</option>
-                {MOODS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-
-            {/* Theme */}
-            <div>
-              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px", display: "block", marginBottom: "6px" }}>THEME</label>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {THEMES.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setTheme(t)}
+            {/* ── ROW 1: Cover + Mood ── */}
+            <div className="settings-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              {/* Cover image URL */}
+              <div>
+                <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "7px" }}>
+                  <ImageIcon size={9} style={{ display: "inline", marginRight: "5px" }} />
+                  COVER IMAGE URL
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    value={coverUrl}
+                    onChange={e => setCoverUrl(e.target.value)}
+                    placeholder="https://..."
                     style={{
-                      padding: "5px 10px", borderRadius: "6px",
-                      background: theme === t ? `${primary}25` : "rgba(255,255,255,.04)",
-                      border: `1px solid ${theme === t ? primary : "rgba(255,255,255,.1)"}`,
-                      color: theme === t ? primary : "rgba(255,255,255,.45)",
-                      fontFamily: "'VT323',monospace", fontSize: "9px", letterSpacing: "1px", cursor: "pointer",
+                      width: "100%", padding: "9px 12px",
+                      background: "rgba(138,46,255,.07)",
+                      border: `1px solid ${coverUrl ? `${primary}40` : `${primary}22`}`,
+                      borderRadius: "7px", color: "#fff",
+                      fontFamily: "'Nunito',sans-serif", fontSize: "12px",
+                      outline: "none", boxSizing: "border-box", transition: "border-color .2s",
+                    }}
+                    onFocus={e => e.target.style.borderColor = `${primary}60`}
+                    onBlur={e => e.target.style.borderColor = coverUrl ? `${primary}40` : `${primary}22`}
+                  />
+                  {/* Cover preview thumbnail */}
+                  {coverUrl && (
+                    <div style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", width: "24px", height: "24px", borderRadius: "4px", overflow: "hidden", border: `1px solid ${primary}35` }}>
+                      <img src={coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => (e.target as HTMLImageElement).style.display = "none"} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mood selector — emoji grid */}
+              <div>
+                <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "7px" }}>
+                  ✦ MOOD
+                </label>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {/* No mood option */}
+                  <button
+                    onClick={() => setMood("")}
+                    style={{
+                      padding: "4px 8px", borderRadius: "5px", cursor: "pointer",
+                      background: mood === "" ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.03)",
+                      border: `1px solid ${mood === "" ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)"}`,
+                      color: mood === "" ? "#fff" : "rgba(255,255,255,.3)",
+                      fontFamily: "'VT323',monospace", fontSize: "9px", letterSpacing: "1px",
+                      transition: "all .15s",
                     }}
                   >
-                    {THEME_LABELS[t]}
+                    NONE
+                  </button>
+                  {MOODS.map(m => (
+                    <button
+                      key={m.val}
+                      onClick={() => setMood(m.val)}
+                      title={m.val}
+                      style={{
+                        width: "30px", height: "28px", borderRadius: "5px", cursor: "pointer",
+                        background: mood === m.val ? `${m.color}25` : "rgba(255,255,255,.03)",
+                        border: `1px solid ${mood === m.val ? m.color : "rgba(255,255,255,.1)"}`,
+                        fontSize: "14px", transition: "all .15s",
+                        boxShadow: mood === m.val ? `0 0 8px ${m.color}50` : "none",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      {m.emoji}
+                    </button>
+                  ))}
+                </div>
+                {activeMood && (
+                  <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: activeMood.color, letterSpacing: "1px", margin: "5px 0 0" }}>
+                    {activeMood.emoji} {activeMood.val}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ── ROW 2: Theme + Visibility ── */}
+            <div className="settings-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              {/* Theme swatches */}
+              <div>
+                <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "7px" }}>
+                  ◈ READING THEME
+                </label>
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  {THEMES.map(t => {
+                    const meta = THEME_META[t];
+                    return (
+                      <button
+                        key={t}
+                        className="theme-btn"
+                        onClick={() => setTheme(t)}
+                        title={meta.label}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "5px",
+                          padding: "5px 10px", borderRadius: "5px", cursor: "pointer",
+                          background: theme === t ? meta.bg : "rgba(255,255,255,.04)",
+                          border: `1px solid ${theme === t ? meta.color : "rgba(255,255,255,.1)"}`,
+                          color: theme === t ? meta.color : "rgba(255,255,255,.4)",
+                          fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px",
+                          boxShadow: theme === t ? `0 0 10px ${meta.color}40` : "none",
+                          transition: "all .15s",
+                        }}
+                      >
+                        {/* Color dot */}
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: meta.color, flexShrink: 0, boxShadow: theme === t ? `0 0 5px ${meta.color}` : "none" }} />
+                        {meta.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Visibility */}
+              <div>
+                <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "7px" }}>
+                  👁 VISIBILITY
+                </label>
+                <div style={{ display: "flex", gap: "5px" }}>
+                  {VISIBILITY_OPTIONS.map(v => {
+                    const meta = VIS_META[v];
+                    return (
+                      <button
+                        key={v}
+                        className="vis-btn"
+                        onClick={() => setVisibility(v)}
+                        style={{
+                          flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
+                          padding: "8px 6px", borderRadius: "6px", cursor: "pointer",
+                          background: visibility === v ? `${meta.color}15` : "rgba(255,255,255,.04)",
+                          border: `1px solid ${visibility === v ? meta.color : "rgba(255,255,255,.1)"}`,
+                          color: visibility === v ? meta.color : "rgba(255,255,255,.38)",
+                          fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px",
+                          boxShadow: visibility === v ? `0 0 8px ${meta.color}30` : "none",
+                          transition: "all .15s",
+                        }}
+                      >
+                        {meta.icon} {meta.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* ── ROW 3: Toggle flags ── */}
+            <div>
+              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "8px" }}>
+                ✦ OPTIONS
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {[
+                  { label: "ANONYMOUS", val: isAnonymous, set: setIsAnonymous, emoji: "👤", color: "#8A2EFF" },
+                  { label: "NOTIFY CORE 8", val: notifyCore8, set: setNotifyCore8, emoji: "⚡", color: "#FFD700" },
+                  { label: "NOTIFY FRIENDS", val: notifyFriends, set: setNotifyFriends, emoji: "🌊", color: "#00E5FF" },
+                  { label: "SHARE TO WALL", val: shareToZeewall, set: setShareToZeewall, emoji: "📌", color: "#B4FF00" },
+                ].map(({ label, val, set, emoji, color }) => (
+                  <button
+                    key={label}
+                    className="toggle-btn"
+                    onClick={() => set(!val)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      padding: "7px 13px", borderRadius: "7px", cursor: "pointer",
+                      background: val ? `${color}15` : "rgba(255,255,255,.03)",
+                      border: `1px solid ${val ? color : "rgba(255,255,255,.1)"}`,
+                      color: val ? color : "rgba(255,255,255,.32)",
+                      fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px",
+                      boxShadow: val ? `0 0 8px ${color}30` : "none",
+                    }}
+                  >
+                    <span style={{ fontSize: "12px" }}>{emoji}</span>
+                    {label}
+                    {/* On/off indicator */}
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: val ? color : "rgba(255,255,255,.15)", marginLeft: "2px", boxShadow: val ? `0 0 5px ${color}` : "none", animation: val ? "zee-led 2.4s ease-in-out infinite" : "none" }} />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Visibility */}
+            {/* ── ROW 4: Response-to ── */}
             <div>
-              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px", display: "block", marginBottom: "6px" }}>VISIBILITY</label>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {VISIBILITY_OPTIONS.map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setVisibility(v)}
-                    style={{
-                      flex: 1, padding: "8px 6px", borderRadius: "6px",
-                      background: visibility === v ? `${primary}22` : "rgba(255,255,255,.04)",
-                      border: `1px solid ${visibility === v ? primary : "rgba(255,255,255,.1)"}`,
-                      color: visibility === v ? primary : "rgba(255,255,255,.4)",
-                      fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", cursor: "pointer",
-                    }}
-                  >
-                    {v.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Toggles */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "16px" }}>
-            {[
-              { label: "ANONYMOUS", val: isAnonymous, set: setIsAnonymous, icon: <span>👤</span> },
-              { label: "NOTIFY CORE 8", val: notifyCore8, set: setNotifyCore8, icon: <Zap size={11} /> },
-              { label: "NOTIFY FRIENDS", val: notifyFriends, set: setNotifyFriends, icon: <Waves size={11} /> },
-              { label: "SHARE TO ZEEWALL", val: shareToZeewall, set: setShareToZeewall, icon: <Bookmark size={11} /> },
-            ].map(({ label, val, set, icon }) => (
-              <button
-                key={label}
-                onClick={() => set(!val)}
-                style={{
-                  display: "flex", alignItems: "center", gap: "6px",
-                  padding: "6px 12px", borderRadius: "6px",
-                  background: val ? `${primary}20` : "rgba(255,255,255,.03)",
-                  border: `1px solid ${val ? primary : "rgba(255,255,255,.1)"}`,
-                  color: val ? primary : "rgba(255,255,255,.35)",
-                  fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", cursor: "pointer",
+              <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1.5px", display: "block", marginBottom: "7px" }}>
+                ↩ RESPONSE TO (slug)
+              </label>
+              <input
+                type="text"
+                value={responseToSlug}
+                onChange={e => setResponseToSlug(e.target.value)}
+                onBlur={async () => {
+                  if (!responseToSlug.trim()) { setResponseToId(undefined); return; }
+                  const { data } = await (await import("@/lib/supabase/client")).supabase
+                    .from("zlogs").select("id").eq("slug", responseToSlug.trim()).single();
+                  if (data?.id) setResponseToId(data.id);
+                  else setResponseToId(undefined);
                 }}
-              >
-                {icon} {label}
-              </button>
-            ))}
+                placeholder="responding-to-this-post-slug"
+                style={{
+                  width: "100%", padding: "9px 12px",
+                  background: "rgba(138,46,255,.06)",
+                  border: `1px solid ${responseToId ? "#B4FF0040" : `${primary}20`}`,
+                  borderRadius: "7px", color: "rgba(255,255,255,.65)",
+                  fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1.5px",
+                  outline: "none", boxSizing: "border-box", transition: "border-color .2s",
+                }}
+                onFocus={e => e.target.style.borderColor = `${primary}50`}
+                onBlur={e => e.target.style.borderColor = responseToId ? "#B4FF0040" : `${primary}20`}
+              />
+              {responseToId && (
+                <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "#B4FF00", margin: "5px 0 0", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#B4FF00", boxShadow: "0 0 5px #B4FF00", display: "inline-block" }} />
+                  ✓ ZLOG FOUND · LINKED
+                </p>
+              )}
+            </div>
           </div>
+        </PortalCard>
 
-          {/* Response-to */}
-          <div style={{ marginTop: "16px" }}>
-            <label style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px", display: "block", marginBottom: "6px" }}>RESPONSE TO (slug)</label>
-            <input
-              type="text"
-              value={responseToSlug}
-              onChange={e => setResponseToSlug(e.target.value)}
-              onBlur={async () => {
-                if (!responseToSlug.trim()) { setResponseToId(undefined); return; }
-                const { data } = await (await import("@/lib/supabase/client")).supabase
-                  .from("zlogs").select("id").eq("slug", responseToSlug.trim()).single();
-                if (data?.id) setResponseToId(data.id);
-                else setResponseToId(undefined);
-              }}
-              placeholder="responding-to-this-post-slug"
-              style={inputStyle()}
-            />
-            {responseToId && <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "#B4FF00", margin: "4px 0 0", letterSpacing: "1px" }}>✓ FOUND</p>}
-          </div>
-        </div>
+        {/* ════════════════════════════════════════════════════════
+            ACTION BUTTONS ROW
+        ════════════════════════════════════════════════════════ */}
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", alignItems: "center" }}>
+          {/* Word count summary */}
+          {wordCount > 0 && (
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,255,255,.22)", letterSpacing: "1px", marginRight: "auto" }}>
+              {wordCount} WORDS · {charCount} CHARS · ~{readTime} MIN READ
+            </span>
+          )}
 
-        {/* ── Publish / Draft buttons ── */}
-        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
           <button
             onClick={() => router.back()}
             style={{
-              padding: "12px 24px", borderRadius: "8px",
-              background: "transparent", border: "1px solid rgba(255,255,255,.15)",
-              color: "rgba(255,255,255,.5)", fontFamily: "'Orbitron',sans-serif",
-              fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: "pointer",
+              padding: "11px 22px", borderRadius: "8px",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,.14)",
+              color: "rgba(255,255,255,.4)",
+              fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "1px", cursor: "pointer", transition: "all .18s",
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,.28)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,.6)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,.14)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,.4)"; }}
           >
             CANCEL
           </button>
+
           <button
+            className="publish-btn"
             onClick={handlePublish}
             disabled={publishing || !title.trim() || !markdown.trim()}
             style={{
-              padding: "12px 28px", borderRadius: "8px",
-              background: publishing || !title.trim() || !markdown.trim()
-                ? "rgba(138,46,255,.3)"
-                : `linear-gradient(135deg, ${primary}, #00F7FF)`,
-              border: "none", color: "#000",
-              fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700,
-              letterSpacing: "1px", cursor: publishing ? "wait" : "pointer",
               display: "flex", alignItems: "center", gap: "6px",
+              padding: "11px 28px", borderRadius: "8px",
+              background: publishing || !title.trim() || !markdown.trim()
+                ? "rgba(138,46,255,.25)"
+                : `linear-gradient(135deg, ${primary}, ${secondary})`,
+              border: "none",
+              color: publishing || !title.trim() || !markdown.trim() ? "rgba(255,255,255,.3)" : "#000",
+              fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "1px",
+              cursor: publishing ? "wait" : (!title.trim() || !markdown.trim()) ? "not-allowed" : "pointer",
+              boxShadow: !publishing && title.trim() && markdown.trim()
+                ? `0 0 20px rgba(138,46,255,.4), 0 0 40px rgba(0,229,255,.15)`
+                : "none",
               opacity: !title.trim() || !markdown.trim() ? 0.5 : 1,
             }}
           >
-            {publishing ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : null}
-            {publishing ? "PUBLISHING..." : "PUBLISH ZLOG"}
+            {publishing
+              ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> PUBLISHING...</>
+              : <>⊕ PUBLISH ZLOG</>
+            }
           </button>
+        </div>
+      </div>
+
+      {/* ── MARQUEE TICKER ── */}
+      <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: "26px", background: `linear-gradient(90deg,${primary}60 0%,#0B4B8F 50%,${primary}60 100%)`, borderTop: `1px solid ${primary}50`, display: "flex", alignItems: "center", overflow: "hidden", zIndex: 20 }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 3px)", pointerEvents: "none" }} />
+        <div style={{ display: "flex", whiteSpace: "nowrap", animation: "zee-marquee 40s linear infinite", fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,255,255,.45)", letterSpacing: "2px", position: "relative", zIndex: 1 }}>
+          {"✦ ZLOGGER · COMPOSE · ZEEZU NETWORK · WRITE YOUR STORY · NO ALGORITHM · JUST PEOPLE · ".repeat(4)}
         </div>
       </div>
     </div>

@@ -207,11 +207,10 @@ function LandingNav() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-void/90 backdrop-blur-md border-b border-electric/20 shadow-[0_0_30px_-10px_rgba(138,46,255,0.2)]"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
+        ? "bg-void/90 backdrop-blur-md border-b border-electric/20 shadow-[0_0_30px_-10px_rgba(138,46,255,0.2)]"
+        : "bg-transparent"
+        }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
@@ -595,9 +594,9 @@ function FeatureHighlights() {
 function StatsSection() {
   const stats = [
     { label: "ZIDs Claimed", value: 1847, suffix: "+" },
-    { label: "Vibes Rated",  value: 9300, suffix: "+" },
-    { label: "Active Themes", value: 6,   suffix: "" },
-    { label: "Wall Posts",    value: 22400, suffix: "+" },
+    { label: "Vibes Rated", value: 9300, suffix: "+" },
+    { label: "Active Themes", value: 6, suffix: "" },
+    { label: "Wall Posts", value: 22400, suffix: "+" },
   ];
 
   return (
