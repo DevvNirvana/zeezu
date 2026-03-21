@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
 import ThemeEngine from "@/components/ThemeEngine";
-import { createZone, generateZoneSlug } from "@/lib/supabase/queries";
+import { createZone, isZoneSlugAvailable, resolveUniqueZoneSlug } from "@/lib/supabase/queries";
 import { supabase } from "@/lib/supabase/client";
-import { Radio, ArrowLeft, Loader2 } from "lucide-react";
+import { Radio, ArrowLeft, Loader2, Check, X } from "lucide-react";
 
 const TOPICS = ["general","tech","music","art","gaming","film","writing","fashion","sports","science","random"];
 const EMOJIS = ["⚡","🔥","🌙","💫","🎵","🎮","🎨","📡","🛸","💀","🌊","🦋","🔮","👾","🌐","🎭","🧪","🌌","⚔️","🎯"];
 const ACCENTS = ["#FF2D87","#00E5FF","#B4FF00","#8A2EFF","#FF9500","#FF007A","#00F7FF","#6BCB77"];
+
+type SlugStatus = "idle" | "checking" | "available" | "taken";
 
 export default function NewZonePage() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function NewZonePage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugManual, setSlugManual] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
+  const [suggestedSlug, setSuggestedSlug] = useState("");
   const [description, setDescription] = useState("");
   const [iconEmoji, setIconEmoji] = useState("⚡");
   const [accentColor, setAccentColor] = useState("#FF2D87");
@@ -26,6 +30,7 @@ export default function NewZonePage() {
   const [isNsfw, setIsNsfw] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -42,14 +47,54 @@ export default function NewZonePage() {
     }
   }, [name, slugManual]);
 
+  // Debounced live slug availability check
+  const checkSlug = useCallback((value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value || value.length < 2) { setSlugStatus("idle"); setSuggestedSlug(""); return; }
+    setSlugStatus("checking");
+    setSuggestedSlug("");
+    debounceRef.current = setTimeout(async () => {
+      const available = await isZoneSlugAvailable(value);
+      if (available) {
+        setSlugStatus("available");
+        setSuggestedSlug("");
+      } else {
+        setSlugStatus("taken");
+        // Find the next clean number suffix as suggestion
+        for (let i = 2; i <= 20; i++) {
+          const candidate = `${value.slice(0, 29)}-${i}`;
+          const free = await isZoneSlugAvailable(candidate);
+          if (free) { setSuggestedSlug(candidate); break; }
+        }
+      }
+    }, 400);
+  }, []);
+
+  useEffect(() => {
+    checkSlug(slug);
+  }, [slug, checkSlug]);
+
   const handleSubmit = async () => {
     if (!name.trim() || !slug.trim()) { setError("Name and slug are required."); return; }
     if (!/^[a-z0-9-]+$/.test(slug)) { setError("Slug can only contain lowercase letters, numbers, and hyphens."); return; }
     setSaving(true);
     setError("");
-    const finalSlug = slug + "-" + Math.random().toString(36).slice(2, 6);
-    const zone = await createZone({ name: name.trim(), slug: finalSlug, description: description.trim(), icon_emoji: iconEmoji, accent_color: accentColor, topic_tag: topicTag, rules: rules.trim(), is_nsfw: isNsfw });
-    if (!zone) { setError("A zone with this name already exists or an error occurred. Try a different name."); setSaving(false); return; }
+
+    // Final server-side resolution — handles race conditions where two users grab the same slug simultaneously
+    const finalSlug = await resolveUniqueZoneSlug(slug);
+
+    const zone = await createZone({
+      name: name.trim(),
+      slug: finalSlug,
+      description: description.trim(),
+      icon_emoji: iconEmoji,
+      accent_color: accentColor,
+      topic_tag: topicTag,
+      rules: rules.trim(),
+      is_nsfw: isNsfw,
+    });
+
+    if (!zone) { setError("Something went wrong. Please try again."); setSaving(false); return; }
     router.push(`/zones/${zone.slug}`);
   };
 
@@ -120,11 +165,54 @@ export default function NewZonePage() {
             <div style={{ textAlign: "right", fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.2)", marginTop: "3px" }}>{name.length}/50</div>
           </div>
 
-          {/* Slug */}
+          {/* Slug with live availability */}
           <div>
             <label style={labelStyle}>URL SLUG * <span style={{ color: "rgba(255,255,255,.2)" }}>(lowercase, hyphens only)</span></label>
-            <input style={inputStyle} value={slug} onChange={e => { setSlugManual(true); setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32)); }} placeholder="dark-ambient-collective" />
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.2)", marginTop: "3px" }}>zeezu.net/zones/{slug || "zone-slug"}</div>
+            <div style={{ position: "relative" }}>
+              <input
+                style={{
+                  ...inputStyle,
+                  paddingRight: "36px",
+                  borderColor: slugStatus === "available" ? "rgba(180,255,0,.4)"
+                    : slugStatus === "taken" ? "rgba(255,45,135,.4)"
+                    : "rgba(255,255,255,.1)",
+                }}
+                value={slug}
+                onChange={e => { setSlugManual(true); setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32)); }}
+                placeholder="dark-ambient-collective"
+              />
+              {/* Status icon inside input */}
+              <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                {slugStatus === "checking" && <Loader2 size={13} style={{ color: "rgba(255,255,255,.3)", animation: "spin 1s linear infinite" }} />}
+                {slugStatus === "available" && <Check size={13} style={{ color: "#B4FF00" }} />}
+                {slugStatus === "taken" && <X size={13} style={{ color: "#FF2D87" }} />}
+              </div>
+            </div>
+
+            {/* Status line */}
+            <div style={{ marginTop: "5px", minHeight: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px" }}>
+                {slugStatus === "available" && (
+                  <span style={{ color: "#B4FF00" }}>✓ AVAILABLE · zeezu.net/zones/{slug}</span>
+                )}
+                {slugStatus === "taken" && (
+                  <span style={{ color: "#FF2D87" }}>✗ TAKEN{suggestedSlug ? ` — TRY: ${suggestedSlug}` : ""}</span>
+                )}
+                {slugStatus === "idle" && slug && (
+                  <span style={{ color: "rgba(255,255,255,.2)" }}>zeezu.net/zones/{slug}</span>
+                )}
+              </div>
+
+              {/* One-click "use suggested" button */}
+              {slugStatus === "taken" && suggestedSlug && (
+                <button
+                  onClick={() => { setSlug(suggestedSlug); setSlugManual(true); }}
+                  style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", color: "#FF2D87", background: "rgba(255,45,135,.1)", border: "1px solid rgba(255,45,135,.3)", borderRadius: "6px", padding: "3px 8px", cursor: "pointer" }}
+                >
+                  USE THIS
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Description */}
@@ -149,7 +237,7 @@ export default function NewZonePage() {
           {/* Rules */}
           <div>
             <label style={labelStyle}>ZONE RULES <span style={{ color: "rgba(255,255,255,.2)" }}>(optional)</span></label>
-            <textarea style={{ ...inputStyle, resize: "vertical", minHeight: "80px" }} value={rules} onChange={e => setRules(e.target.value.slice(0, 1000))} placeholder="1. Be excellent to each other&#10;2. No spam" maxLength={1000} />
+            <textarea style={{ ...inputStyle, resize: "vertical", minHeight: "80px" }} value={rules} onChange={e => setRules(e.target.value.slice(0, 1000))} placeholder={"1. Be excellent to each other\n2. No spam"} maxLength={1000} />
           </div>
 
           {/* NSFW toggle */}
@@ -176,7 +264,7 @@ export default function NewZonePage() {
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={saving || !name.trim() || !slug.trim()}
+            disabled={saving || !name.trim() || !slug.trim() || slugStatus === "checking"}
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px", borderRadius: "10px", background: saving || !name.trim() ? "rgba(255,45,135,.1)" : "rgba(255,45,135,.2)", border: `1px solid rgba(255,45,135,${saving || !name.trim() ? ".15" : ".45"})`, color: saving || !name.trim() ? "rgba(255,45,135,.4)" : "#FF2D87", fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 900, letterSpacing: "1.5px", cursor: saving || !name.trim() ? "not-allowed" : "pointer", transition: "all 0.15s" }}
           >
             {saving ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> CREATING...</> : <><Radio size={13} /> LAUNCH ZONE</>}

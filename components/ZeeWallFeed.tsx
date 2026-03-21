@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import GenBadge from "@/components/GenBadge";
+import { confirmModal } from "@/components/ConfirmModal";
 import { getGeneration } from "@/lib/generation";
 import { AGENT_IDS } from "@/lib/agents";
 
@@ -190,7 +191,7 @@ export default function ZeeWallFeed() {
 
   // 2. Delete Topic (Owner only)
   const handleDeleteTopic = async (topicId: number) => {
-    if (!window.confirm("Are you sure? This will delete all posts in this topic.")) return;
+    if (!await confirmModal({ title: "Delete Topic", message: "This will permanently delete all posts in this topic.", danger: true, confirmText: "DELETE" })) return;
     await supabase.from('topics').delete().eq('id', topicId);
     setTopics(topics.filter(t => t.id !== topicId));
     setActiveTopic(topics[0]?.id || 1);
@@ -217,7 +218,7 @@ export default function ZeeWallFeed() {
 
   // 4. Delete Post
   const handleDeletePost = async (postId: number) => {
-    if (!window.confirm("Delete this post?")) return;
+    if (!await confirmModal({ title: "Delete Post", message: "Delete this post? This cannot be undone.", danger: true, confirmText: "DELETE" })) return;
     await supabase.from("zeewall").delete().eq('id', postId);
     setPosts(posts.filter(p => p.id !== postId));
   };

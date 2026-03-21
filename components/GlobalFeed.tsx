@@ -15,6 +15,7 @@ import GifPicker from "@/components/GifPicker";
 import PollCreator, { type PollData } from "@/components/PollCreator";
 import PollDisplay from "@/components/PollDisplay";
 import EmbedPreview, { stripEmbedUrls } from "@/components/EmbedPreview";
+import { confirmModal } from "@/components/ConfirmModal";
 import ShareSheet from "@/components/ShareSheet";
 import GenBadge from "@/components/GenBadge";
 import { getGeneration } from "@/lib/generation";
@@ -625,7 +626,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     }, [newTopicTitle, userId]);
 
     const handleDeleteTopic = useCallback(async (tid: number) => {
-        if (!window.confirm("Delete this topic and all its posts?")) return;
+        if (!await confirmModal({ title: "Delete Topic", message: "Delete this topic and all its posts? This cannot be undone.", danger: true, confirmText: "DELETE" })) return;
         await supabase.from("topics").delete().eq("id", tid);
         setTopics(prev => prev.filter(t => t.id !== tid));
         setActiveTopic(prev => prev === tid ? null : prev);
@@ -674,7 +675,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     }, [userId]);
 
     const handleDelete = useCallback(async (pid: number) => {
-        if (!window.confirm("Delete this post? This cannot be undone.")) return;
+        if (!await confirmModal({ title: "Delete Post", message: "Delete this post? This cannot be undone.", danger: true, confirmText: "DELETE" })) return;
         const snapshot = postsRef.current.find(p => p.id === pid);
         setPosts(prev => prev.filter(p => p.id !== pid));
         const { data, error } = await supabase.from("zeewall").delete().eq("id", pid).select("id");

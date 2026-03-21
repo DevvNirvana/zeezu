@@ -1190,8 +1190,31 @@ export default function PublicProfile() {
         }
       }
 
-      const { data: visitCount } = await supabase.rpc("increment_visit", { p_user_id: userData.id });
-      setVisitorNum(visitCount ?? 1);
+      // ── Visit counter + visitor log ───────────────────────────
+      // Rules:
+      //   1. Never count the owner visiting their own profile.
+      //   2. sessionStorage guard prevents double-fire from React Strict Mode.
+      //   3. Insert into profile_visit_log so "Recent Visitors" panel works.
+      const isOwnProfile = authUser?.id === userData.id;
+      if (!isOwnProfile) {
+        const visitKey = `visited_${userData.id}`;
+        if (!sessionStorage.getItem(visitKey)) {
+          sessionStorage.setItem(visitKey, "1");
+          const { data: newCount } = await supabase.rpc("increment_visit", { p_user_id: userData.id });
+          setVisitorNum(newCount ?? ((userData as any).visit_count ?? 0) + 1);
+          if (authUser) {
+            const { error: visitErr } = await supabase.from("profile_visit_log").insert({
+              profile_user_id: userData.id,
+              visitor_id: authUser.id,
+            });
+            if (visitErr) console.error("[profile_visit_log]", visitErr.message);
+          }
+        } else {
+          setVisitorNum((userData as any).visit_count ?? 0);
+        }
+      } else {
+        setVisitorNum((userData as any).visit_count ?? 0);
+      }
 
       const { data: visitLog } = await supabase
         .from("profile_visit_log")

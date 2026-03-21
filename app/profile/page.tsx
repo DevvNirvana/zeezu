@@ -15,6 +15,7 @@ import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import ClickSpark from "@/components/reactbits/ClickSpark";
 import GenBadge from "@/components/GenBadge";
+import { confirmModal } from "@/components/ConfirmModal";
 import { getGeneration } from "@/lib/generation";
 import {
   Edit3, Palette, Link as LinkIcon, Shield, Settings, Camera, X, ExternalLink,
@@ -898,7 +899,7 @@ export default function ProfileSettings() {
                     <p className="text-[10px] text-gray-600 font-mono">Permanently delete your account and all associated data. This action cannot be undone.</p>
                     <button
                       onClick={async () => {
-                        if (!confirm("Are you absolutely sure? This will permanently delete your account and all data. This cannot be undone.")) return;
+                        if (!await confirmModal({ title: "Delete Account", message: "This will permanently delete your account and all data. This cannot be undone.", danger: true, confirmText: "DELETE FOREVER" })) return;
                         if (!user) return;
                         // Delete user data rows (cascade deletes handle related data via FK)
                         await Promise.all([

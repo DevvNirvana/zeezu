@@ -900,7 +900,37 @@ export async function getPublicZlogs(
   cursor?: string,
   userId?: string
 ): Promise<ZlogListItem[]> {
-  void filter;
+  // ── Generation filters — pre-fetch matching user IDs ──────────
+  let genUserIds: string[] | null = null;
+  if (filter === "gen_z" || filter === "millennial" || filter === "gen_x") {
+    const ranges: Record<string, [number, number]> = {
+      gen_z:      [1997, 2012],
+      millennial: [1981, 1996],
+      gen_x:      [1965, 1980],
+    };
+    const [minYear, maxYear] = ranges[filter];
+    const { data: genUsers } = await supabase
+      .from("users")
+      .select("id")
+      .gte("birth_year", minYear)
+      .lte("birth_year", maxYear);
+    genUserIds = (genUsers ?? []).map((u: any) => u.id as string);
+    if (genUserIds.length === 0) return [];
+  }
+
+  // ── Network filter — pre-fetch friend IDs ─────────────────────
+  let networkUserIds: string[] | null = null;
+  if (filter === "network") {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const friends = await getFriends(user.id);
+      networkUserIds = (friends ?? []).map((f: any) => f.id as string);
+      if (networkUserIds.length === 0) return [];
+    }
+  }
+
+  // Trending fetches more posts so we can score + slice client-side
+  const fetchLimit = filter === "trending" ? 60 : 20;
 
   let query = supabase
     .from("zlogs")
@@ -912,24 +942,23 @@ export async function getPublicZlogs(
     `)
     .eq("visibility", "public")
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(fetchLimit);
 
-  if (filter === "anonymous") {
-    query = query.eq("is_anonymous", true);
-  }
-
-  if (userId) query = query.eq("user_id", userId);
-  if (cursor) query = query.lt("created_at", cursor);
+  if (filter === "anonymous") query = query.eq("is_anonymous", true);
+  if (genUserIds)             query = query.in("user_id", genUserIds);
+  if (networkUserIds)         query = query.in("user_id", networkUserIds);
+  if (userId)                 query = query.eq("user_id", userId);
+  // Cursor pagination doesn't apply to trending (client-sorted)
+  if (cursor && filter !== "trending") query = query.lt("created_at", cursor);
 
   const { data, error } = await query;
   if (error) { console.error("getPublicZlogs:", error); return []; }
 
   const rows = (data ?? []) as any[];
   const ids = rows.map((r) => r.id);
-
   const engMap = await fetchEngagementCounts(ids);
 
-  return rows.map((row) => ({
+  const mapped: ZlogListItem[] = rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     title: row.title,
@@ -942,6 +971,18 @@ export async function getPublicZlogs(
     engagementCounts: engMap[row.id] ?? { zap: 0, vibe: 0, save: 0, comment: 0 },
     excerpt: (row.content_markdown ?? "").replace(/[#*`>\[\]]/g, "").slice(0, 160),
   }));
+
+  // Trending: sort by total engagement score, return top 20
+  if (filter === "trending") {
+    return mapped
+      .sort((a, b) => {
+        const s = (e: ZlogListItem["engagementCounts"]) => e.zap + e.vibe + e.save + e.comment;
+        return s(b.engagementCounts) - s(a.engagementCounts);
+      })
+      .slice(0, 20);
+  }
+
+  return mapped;
 }
 
 /** Get all zlogs for a user profile. Owner sees all; others see public only. */
@@ -1299,9 +1340,27 @@ export async function banUserFromZone(zoneId: string, userId: string, reason = "
   return true;
 }
 
-/** Generate a URL-safe slug from a zone name, with a short random suffix for uniqueness. */
+/** Generate a URL-safe base slug from a zone name (no suffix). */
 export function generateZoneSlug(name: string): string {
-  const base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
-  const suffix = Math.random().toString(36).slice(2, 6);
-  return `${base}-${suffix}`;
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
+}
+
+/** Check if a zone slug is available. Returns true if free. */
+export async function isZoneSlugAvailable(slug: string): Promise<boolean> {
+  const { count } = await supabase
+    .from("zones")
+    .select("id", { count: "exact", head: true })
+    .eq("slug", slug);
+  return count === 0;
+}
+
+/** Find the next available slug — e.g. "gaming" → "gaming-2" → "gaming-3". */
+export async function resolveUniqueZoneSlug(base: string): Promise<string> {
+  if (await isZoneSlugAvailable(base)) return base;
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${base.slice(0, 29)}-${i}`;
+    if (await isZoneSlugAvailable(candidate)) return candidate;
+  }
+  // Absolute fallback (practically unreachable)
+  return `${base.slice(0, 27)}-${Date.now().toString(36).slice(-4)}`;
 }

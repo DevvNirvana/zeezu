@@ -586,7 +586,7 @@ export default function ZloggerFeedPage() {
             )}
 
             {/* Load more */}
-            {hasMore && !loading && filtered.length > 0 && !searchQuery && (
+            {hasMore && !loading && filtered.length > 0 && !searchQuery && filter !== "trending" && (
               <div style={{ textAlign: "center", marginTop: "16px", paddingTop: "12px", borderTop: `1px solid ${primary}12` }}>
                 <button
                   onClick={() => loadZlogs(false)}

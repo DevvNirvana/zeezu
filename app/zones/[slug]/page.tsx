@@ -9,6 +9,7 @@ import { getZoneBySlug, getMyZoneMembership, joinZone, leaveZone, getZoneMembers
 import { supabase } from "@/lib/supabase/client";
 import { ArrowLeft, Users, Radio, Lock, Settings, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
+import { confirmModal } from "@/components/ConfirmModal";
 
 export default function ZonePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -64,7 +65,7 @@ export default function ZonePage({ params }: { params: Promise<{ slug: string }>
 
   const handleLeave = async () => {
     if (!zone || !userId || myRole === "owner") return;
-    if (!confirm(`Leave z/${zone.slug}?`)) return;
+    if (!await confirmModal({ title: "Leave Zone", message: `Leave z/${zone.slug}?`, confirmText: "LEAVE" })) return;
     setJoining(true);
     await leaveZone(zone.id);
     setMyRole(null);

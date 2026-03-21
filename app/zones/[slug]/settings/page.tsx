@@ -7,6 +7,7 @@ import ThemeEngine from "@/components/ThemeEngine";
 import { getZoneBySlug, getMyZoneMembership, updateZone, deleteZone, type Zone } from "@/lib/supabase/queries";
 import { supabase } from "@/lib/supabase/client";
 import { ArrowLeft, Loader2, Radio, Trash2 } from "lucide-react";
+import { confirmModal } from "@/components/ConfirmModal";
 
 const EMOJIS = ["⚡","🔥","🌙","💫","🎵","🎮","🎨","📡","🛸","💀","🌊","🦋","🔮","👾","🌐","🎭","🧪","🌌","⚔️","🎯"];
 const ACCENTS = ["#FF2D87","#00E5FF","#B4FF00","#8A2EFF","#FF9500","#FF007A","#00F7FF","#6BCB77"];
@@ -65,7 +66,7 @@ export default function ZoneSettingsPage({ params }: { params: Promise<{ slug: s
   };
 
   const handleDelete = async () => {
-    if (!zone || !confirm(`Permanently delete z/${zone.slug}? This cannot be undone.`)) return;
+    if (!zone || !await confirmModal({ title: "Delete Zone", message: `Permanently delete z/${zone.slug}? All posts and members will be removed. This cannot be undone.`, danger: true, confirmText: "DELETE ZONE" })) return;
     setDeleting(true);
     await deleteZone(zone.id);
     router.push("/zones");

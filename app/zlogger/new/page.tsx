@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NavBar from "@/components/NavBar";
@@ -194,6 +194,50 @@ function ModuleHeader({ icon, title, accent = "#FF2D87", right }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  DRAFT AUTOSAVE
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DRAFT_KEY = "zlog_draft_v1";
+
+interface ZlogDraft {
+  title: string;
+  slug: string;
+  slugManual: boolean;
+  markdown: string;
+  coverUrl: string;
+  theme: string;
+  mood: string;
+  visibility: "public" | "friends" | "private";
+  isAnonymous: boolean;
+  notifyCore8: boolean;
+  notifyFriends: boolean;
+  shareToZeewall: boolean;
+  savedAt: number;
+}
+
+function saveDraft(draft: ZlogDraft) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* storage full */ }
+}
+
+function loadDraft(): ZlogDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+}
+
+function timeAgo(ms: number): string {
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  MAIN COMPONENT — all Supabase logic UNCHANGED
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -220,6 +264,11 @@ export default function ZloggerNewPage() {
   const [responseToTitle, setResponseToTitle] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
 
+  // ── Draft autosave ────────────────────────────────────────────
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const primary = "#FF2D87";
   const secondary = "#00E5FF";
 
@@ -232,6 +281,57 @@ export default function ZloggerNewPage() {
   useEffect(() => {
     setPreviewHtml(renderZlog(markdown));
   }, [markdown]);
+
+  // ── Check for saved draft on mount ───────────────────────────
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft && (draft.title || draft.markdown)) {
+      setShowRestoreBanner(true);
+    }
+  }, []);
+
+  // ── Autosave — debounced 2s after any content change ─────────
+  const scheduleAutosave = useCallback(() => {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      const draft: ZlogDraft = {
+        title, slug, slugManual, markdown, coverUrl, theme, mood,
+        visibility, isAnonymous, notifyCore8, notifyFriends, shareToZeewall,
+        savedAt: Date.now(),
+      };
+      saveDraft(draft);
+      setDraftSavedAt(Date.now());
+    }, 2000);
+  }, [title, slug, slugManual, markdown, coverUrl, theme, mood, visibility, isAnonymous, notifyCore8, notifyFriends, shareToZeewall]);
+
+  useEffect(() => {
+    if (title || markdown) scheduleAutosave();
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+  }, [title, markdown, coverUrl, theme, mood, visibility, isAnonymous, notifyCore8, notifyFriends, shareToZeewall, scheduleAutosave]);
+
+  const handleRestoreDraft = () => {
+    const draft = loadDraft();
+    if (!draft) return;
+    setTitle(draft.title);
+    setSlug(draft.slug);
+    setSlugManual(draft.slugManual);
+    setMarkdown(draft.markdown);
+    setCoverUrl(draft.coverUrl);
+    setTheme(draft.theme);
+    setMood(draft.mood);
+    setVisibility(draft.visibility);
+    setIsAnonymous(draft.isAnonymous);
+    setNotifyCore8(draft.notifyCore8);
+    setNotifyFriends(draft.notifyFriends);
+    setShareToZeewall(draft.shareToZeewall);
+    setDraftSavedAt(draft.savedAt);
+    setShowRestoreBanner(false);
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    setShowRestoreBanner(false);
+  };
 
   // ── Pre-fill response_to from ?to=SLUG query param ────────────
   useEffect(() => {
@@ -270,7 +370,7 @@ export default function ZloggerNewPage() {
       response_to: responseToId,
     });
     setPublishing(false);
-    if (result) router.push(`/zlogger/${result.slug}`);
+    if (result) { clearDraft(); router.push(`/zlogger/${result.slug}`); }
   };
 
   // ── Active mood meta ──────────────────────────────────────────
@@ -298,6 +398,39 @@ export default function ZloggerNewPage() {
       <div aria-hidden="true" style={{ pointerEvents: "none", position: "fixed", inset: 0, zIndex: 999, opacity: 0.028, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.45) 2px,rgba(0,0,0,.45) 4px)" }} />
 
       <NavBar />
+
+      {/* ── Restore draft banner ── */}
+      {showRestoreBanner && (
+        <div style={{
+          position: "fixed", top: "64px", left: "50%", transform: "translateX(-50%)",
+          zIndex: 1000, width: "min(520px, calc(100vw - 32px))",
+          background: "rgba(10,16,42,.97)", border: "1px solid rgba(255,45,135,.4)",
+          borderRadius: "10px", padding: "12px 16px",
+          boxShadow: "0 8px 32px rgba(0,0,0,.6), 0 0 20px rgba(255,45,135,.15)",
+          display: "flex", alignItems: "center", gap: "12px",
+          backdropFilter: "blur(12px)",
+        }}>
+          <span style={{ fontSize: "16px", flexShrink: 0 }}>📝</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 900, color: "#FF2D87", letterSpacing: "1px", marginBottom: "2px" }}>UNSAVED DRAFT FOUND</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px" }}>
+              {(() => { const d = loadDraft(); return d ? `"${d.title || "Untitled"}" · saved ${timeAgo(d.savedAt)}` : ""; })()}
+            </div>
+          </div>
+          <button
+            onClick={handleRestoreDraft}
+            style={{ padding: "6px 14px", borderRadius: "6px", background: "rgba(255,45,135,.2)", border: "1px solid rgba(255,45,135,.5)", color: "#FF2D87", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", flexShrink: 0 }}
+          >
+            RESTORE
+          </button>
+          <button
+            onClick={handleDiscardDraft}
+            style={{ padding: "6px 14px", borderRadius: "6px", background: "transparent", border: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,.35)", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", flexShrink: 0 }}
+          >
+            DISCARD
+          </button>
+        </div>
+      )}
 
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "80px 16px 0" }}>
 
@@ -474,6 +607,12 @@ export default function ZloggerNewPage() {
               accent={primary}
               right={
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  {draftSavedAt && (
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "#B4FF0070", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#B4FF00", boxShadow: "0 0 5px #B4FF00", display: "inline-block", flexShrink: 0 }} />
+                      DRAFT SAVED · {timeAgo(draftSavedAt)}
+                    </span>
+                  )}
                   <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}55`, letterSpacing: "1px" }}>
                     {wordCount} WORDS
                   </span>

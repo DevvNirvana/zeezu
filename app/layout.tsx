@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import RadioPlayer from "@/components/RadioPlayer";
 import ToastProvider from "@/components/ToastProvider";
+import ConfirmModal from "@/components/ConfirmModal";
 import PwaRegister from "./pwa-register";
 // If you want NavBar on every single page, you could import it here:
 // import NavBar from "@/components/NavBar";
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <RadioPlayer />
         <ToastProvider />
+        <ConfirmModal />
         <PwaRegister />
       </body>
     </html>

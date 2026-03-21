@@ -8,6 +8,7 @@ import { getZoneBySlug, getZoneMembers, getMyZoneMembership, banUserFromZone, pr
 import { supabase } from "@/lib/supabase/client";
 import { ArrowLeft, Loader2, Shield, UserX, ShieldPlus, ShieldMinus } from "lucide-react";
 import Link from "next/link";
+import { confirmModal } from "@/components/ConfirmModal";
 
 export default function ZoneMembersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -43,8 +44,7 @@ export default function ZoneMembersPage({ params }: { params: Promise<{ slug: st
   const handlePromote = async (targetUserId: string, currentRole: string, displayName: string) => {
     if (!zone) return;
     const isPromotion = currentRole === "member";
-    const action = isPromotion ? "promote" : "demote";
-    if (!confirm(`${isPromotion ? "Promote" : "Demote"} ${displayName} ${isPromotion ? "to mod" : "to member"} in z/${zone.slug}?`)) return;
+    if (!await confirmModal({ title: isPromotion ? "Promote Member" : "Demote Mod", message: `${isPromotion ? "Promote" : "Demote"} ${displayName} ${isPromotion ? "to mod" : "to member"} in z/${zone.slug}?`, confirmText: isPromotion ? "PROMOTE" : "DEMOTE" })) return;
     setPromoting(targetUserId);
     const ok = isPromotion
       ? await promoteToMod(zone.id, targetUserId)
@@ -60,8 +60,8 @@ export default function ZoneMembersPage({ params }: { params: Promise<{ slug: st
   };
 
   const handleBan = async (targetUserId: string, displayName: string) => {
-    if (!zone || !confirm(`Ban ${displayName} from z/${zone.slug}?`)) return;
-    const reason = prompt("Reason (optional):") ?? "";
+    if (!zone || !await confirmModal({ title: "Ban Member", message: `Ban ${displayName} from z/${zone.slug}?`, danger: true, confirmText: "BAN" })) return;
+    const reason = "";
     setBanning(targetUserId);
     await banUserFromZone(zone.id, targetUserId, reason);
     setMembers(prev => prev.filter(m => (m.user as any)?.id !== targetUserId));
