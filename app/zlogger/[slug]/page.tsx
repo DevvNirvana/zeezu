@@ -10,12 +10,14 @@ import GenBadge from "@/components/GenBadge";
 import { getGeneration } from "@/lib/generation";
 import {
   getZlogBySlug, getZlogComments, addZlogComment, engageZlog,
+  setFeaturedZlog, unsetFeaturedZlog,
   type ZlogFull, type ZlogComment,
 } from "@/lib/supabase/queries";
 import { ZLOG_CSS } from "@/lib/zlogger-renderer";
 import {
   Zap, Waves, Bookmark, MessageCircle, Edit3,
-  Loader2, Twitter, Copy, ArrowLeft,
+  Loader2, Twitter, Copy, ArrowLeft, Reply, CornerDownRight,
+  Star, Pin,
 } from "lucide-react";
 
 const STYLES = `
@@ -31,7 +33,7 @@ const STYLES = `
 `;
 
 const ZLOG_THEMES: Record<string, Partial<ThemeConfig>> = {
-  void_chrome:  { primary_color: "#8A2EFF", secondary_color: "#00F7FF", page_bg: "#0B0B12" },
+  void_chrome:  { primary_color: "#FF2D87", secondary_color: "#00F7FF", page_bg: "#0E0B0D" },
   neon_vapor:   { primary_color: "#FF007A", secondary_color: "#00F7FF", page_bg: "#0D0D1A" },
   midnight_run: { primary_color: "#00E5FF", secondary_color: "#B4FF00", page_bg: "#060610" },
   candy_chrome: { primary_color: "#FF6B9D", secondary_color: "#FFD93D", page_bg: "#0E0814" },
@@ -64,14 +66,17 @@ export default function ZlogReadingPage() {
   const [engCounts, setEngCounts] = useState({ zap: 0, vibe: 0, save: 0, comment: 0 });
   const [loading, setLoading] = useState(true);
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [responses, setResponses] = useState<{ id: string; slug: string; title: string; created_at: string; author: any }[]>([]);
   const [highlightTooltip, setHighlightTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [echoed, setEchoed] = useState(false);
+  const [pinning, setPinning] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(false);
   const articleRef = useRef<HTMLElement | null>(null);
 
   const themeConf = zlog ? ZLOG_THEMES[zlog.theme] ?? ZLOG_THEMES.void_chrome : ZLOG_THEMES.void_chrome;
   const fullTheme: ThemeConfig = { ...DEFAULT_THEME, ...themeConf } as ThemeConfig;
-  const primary = themeConf?.primary_color ?? "#8A2EFF";
-  const pageBg = themeConf?.page_bg ?? "#0B0B12";
+  const primary = themeConf?.primary_color ?? "#FF2D87";
+  const pageBg = themeConf?.page_bg ?? "#0E0B0D";
 
   const gen = zlog?.author
     ? getGeneration(zlog.author.birth_year, zlog.author.birth_month, zlog.author.birth_day, false)
@@ -88,8 +93,18 @@ export default function ZlogReadingPage() {
     setZlog(data);
     setMyEngagement(data.myEngagement ?? []);
     setEngCounts(data.engagementCounts);
-    const cmts = await getZlogComments(data.id);
+    setIsFeatured(data.is_featured ?? false);
+    const [cmts, respData] = await Promise.all([
+      getZlogComments(data.id),
+      supabase.from("zlogs")
+        .select("id, slug, title, created_at, author:users!user_id(id, display_name, zid, avatar_url)")
+        .eq("response_to", data.id)
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
     setComments(cmts);
+    setResponses((respData.data ?? []) as any);
     setLoading(false);
   }, [slug]);
 
@@ -134,6 +149,19 @@ export default function ZlogReadingPage() {
     setCommentPosting(false);
   };
 
+  const handlePin = async () => {
+    if (!zlog || pinning) return;
+    setPinning(true);
+    if (isFeatured) {
+      const ok = await unsetFeaturedZlog(zlog.id);
+      if (ok) setIsFeatured(false);
+    } else {
+      const ok = await setFeaturedZlog(zlog.id);
+      if (ok) setIsFeatured(true);
+    }
+    setPinning(false);
+  };
+
   const handleEcho = () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     navigator.clipboard.writeText(`"${zlog?.title}" — ${url}`).then(() => {
@@ -166,13 +194,13 @@ export default function ZlogReadingPage() {
   };
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#0B0B12", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Loader2 size={28} color="#8A2EFF" style={{ animation: "spin 1s linear infinite" }} />
+    <div style={{ minHeight: "100vh", background: "#0E0B0D", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Loader2 size={28} color="#FF2D87" style={{ animation: "spin 1s linear infinite" }} />
     </div>
   );
 
   if (!zlog) return (
-    <div style={{ minHeight: "100vh", background: "#0B0B12", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>
+    <div style={{ minHeight: "100vh", background: "#0E0B0D", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>
       <span style={{ fontFamily: "'VT323',monospace", fontSize: "18px", color: "rgba(255,255,255,.4)", letterSpacing: "2px" }}>ZLOG NOT FOUND</span>
       <button onClick={() => router.push("/zlogger")} style={{ padding: "8px 20px", borderRadius: "8px", background: "transparent", border: "1px solid rgba(255,255,255,.2)", color: "rgba(255,255,255,.5)", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", cursor: "pointer" }}>BACK TO FEED</button>
     </div>
@@ -245,10 +273,25 @@ export default function ZlogReadingPage() {
             </>
           )}
 
+          {isFeatured && (
+            <span style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 9px", borderRadius: "6px", background: "rgba(255,215,0,.12)", border: "1px solid rgba(255,215,0,.35)", color: "#FFD700", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px" }}>
+              <Star size={9} style={{ fill: "#FFD700" }} /> FEATURED
+            </span>
+          )}
           {isOwner && (
-            <Link href={`/zlogger/edit/${zlog.id}`} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "6px", background: `${primary}18`, border: `1px solid ${primary}30`, color: primary, fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", textDecoration: "none" }}>
-              <Edit3 size={10} /> EDIT
-            </Link>
+            <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+              <button
+                onClick={handlePin}
+                disabled={pinning}
+                style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "6px", background: isFeatured ? "rgba(255,215,0,.12)" : "rgba(255,255,255,.05)", border: `1px solid ${isFeatured ? "rgba(255,215,0,.35)" : "rgba(255,255,255,.15)"}`, color: isFeatured ? "#FFD700" : "rgba(255,255,255,.4)", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", cursor: pinning ? "wait" : "pointer", transition: "all .15s" }}
+              >
+                {pinning ? <Loader2 size={9} style={{ animation: "spin 1s linear infinite" }} /> : <Pin size={9} />}
+                {isFeatured ? "UNPIN" : "PIN"}
+              </button>
+              <Link href={`/zlogger/edit/${zlog.id}`} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "6px", background: `${primary}18`, border: `1px solid ${primary}30`, color: primary, fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", textDecoration: "none" }}>
+                <Edit3 size={10} /> EDIT
+              </Link>
+            </div>
           )}
         </div>
 
@@ -301,13 +344,49 @@ export default function ZlogReadingPage() {
             <MessageCircle size={11} /> {engCounts.comment} COMMENTS
           </span>
 
-          <button
-            onClick={handleEcho}
-            style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: "8px", background: echoed ? "#B4FF0022" : "rgba(255,255,255,.04)", border: `1px solid ${echoed ? "#B4FF00" : "rgba(255,255,255,.12)"}`, color: echoed ? "#B4FF00" : "rgba(255,255,255,.4)", fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1px", cursor: "pointer", transition: "all .15s" }}
-          >
-            {echoed ? "ECHOED!" : "ECHO"}
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+            {viewerId && (
+              <Link
+                href={`/zlogger/new?to=${zlog.slug}`}
+                style={{ display: "flex", alignItems: "center", gap: "5px", padding: "8px 14px", borderRadius: "8px", background: `${primary}14`, border: `1px solid ${primary}35`, color: primary, fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1px", textDecoration: "none", transition: "all .15s" }}
+              >
+                <Reply size={12} /> RESPOND
+              </Link>
+            )}
+            <button
+              onClick={handleEcho}
+              style={{ padding: "8px 16px", borderRadius: "8px", background: echoed ? "#B4FF0022" : "rgba(255,255,255,.04)", border: `1px solid ${echoed ? "#B4FF00" : "rgba(255,255,255,.12)"}`, color: echoed ? "#B4FF00" : "rgba(255,255,255,.4)", fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "1px", cursor: "pointer", transition: "all .15s" }}
+            >
+              {echoed ? "ECHOED!" : "ECHO"}
+            </button>
+          </div>
         </div>
+
+        {/* ── Responses ── */}
+        {responses.length > 0 && (
+          <div style={{ marginBottom: "36px" }}>
+            <h2 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: primary, letterSpacing: "2px", margin: "0 0 14px", display: "flex", alignItems: "center", gap: "7px" }}>
+              <CornerDownRight size={13} /> RESPONSES ({responses.length})
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {responses.map(r => (
+                <Link key={r.id} href={`/zlogger/${r.slug}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: `${primary}08`, border: `1px solid ${primary}20`, borderRadius: "10px", transition: "border-color .15s" }}>
+                  {r.author?.avatar_url
+                    ? <img src={r.author.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                    : <div style={{ width: 28, height: 28, borderRadius: "50%", background: `${primary}25`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", color: primary, flexShrink: 0 }}>{r.author?.display_name?.[0]?.toUpperCase() ?? "?"}</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "1px", marginTop: "2px" }}>
+                      {r.author?.display_name ?? "Unknown"} · {formatRelTime(r.created_at)}
+                    </div>
+                  </div>
+                  <CornerDownRight size={13} style={{ color: `${primary}60`, flexShrink: 0 }} />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Comments ── */}
         <div>
@@ -347,13 +426,13 @@ export default function ZlogReadingPage() {
                 onChange={e => setCommentText(e.target.value)}
                 placeholder="LEAVE A COMMENT..."
                 rows={3}
-                style={{ width: "100%", padding: "12px 14px", background: "rgba(138,46,255,.07)", border: `1px solid ${primary}30`, borderRadius: "10px", color: "#fff", fontFamily: "'Nunito',sans-serif", fontSize: "13px", resize: "none", outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "12px 14px", background: "rgba(255,45,135,.07)", border: `1px solid ${primary}30`, borderRadius: "10px", color: "#fff", fontFamily: "'Nunito',sans-serif", fontSize: "13px", resize: "none", outline: "none", boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button
                   onClick={handleComment}
                   disabled={commentPosting || !commentText.trim()}
-                  style={{ padding: "10px 24px", borderRadius: "8px", background: commentPosting ? "rgba(138,46,255,.3)" : `linear-gradient(135deg, ${primary}, #00F7FF)`, border: "none", color: "#000", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: commentPosting ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                  style={{ padding: "10px 24px", borderRadius: "8px", background: commentPosting ? "rgba(255,45,135,.3)" : `linear-gradient(135deg, ${primary}, #00F7FF)`, border: "none", color: "#000", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: commentPosting ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
                   {commentPosting ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> : null}
                   {commentPosting ? "POSTING..." : "POST COMMENT"}
                 </button>

@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi, Reply, ArrowUp, Trophy } from "lucide-react";
+import { Bell, Zap, MessageSquare, AtSign, UserPlus, UserCheck, Wifi, Reply, ArrowUp, Trophy, Radio, ChevronRight } from "lucide-react";
 import GenBadge from "@/components/GenBadge";
 import { getGeneration } from "@/lib/generation";
 import { AGENT_IDS } from "@/lib/agents";
@@ -10,10 +11,11 @@ import { formatDistanceToNow } from "date-fns";
 
 type Notification = {
   id: number;
-  type: "zap" | "comment" | "mention" | "system";
+  type: string;
   content: string;
   is_read: boolean;
   created_at: string;
+  reference_id?: string | null;
   actor: {
     id: string;
     display_name: string;
@@ -24,6 +26,27 @@ type Notification = {
     agent_state?: { agent_id: string } | null;
   } | null;
 };
+
+function getNotifUrl(notif: Notification, myZid: string | null): string | null {
+  switch (notif.type) {
+    case "zap":
+    case "comment":
+    case "reply":
+    case "upvote":
+      return myZid ? `/u/${myZid}` : null;
+    case "friend_request":
+    case "friend_accept":
+      return notif.actor?.zid ? `/u/${notif.actor.zid}` : null;
+    case "message":
+    case "buzz":
+      return notif.actor?.id ? `/messages/${notif.actor.id}` : null;
+    case "milestone":
+    case "system":
+      return "/profile";
+    default:
+      return null;
+  }
+}
 
 // Type labels that match Zeezu brand language
 const TYPE_LABEL: Record<string, string> = {
@@ -36,6 +59,7 @@ const TYPE_LABEL: Record<string, string> = {
   system: "updated your Core 8",
   friend_request: "wants to be your friend",
   friend_accept: "accepted your friend request!",
+  zone_post: "posted in your zone",
 };
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
@@ -45,9 +69,10 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   upvote: <ArrowUp className="w-3.5 h-3.5 text-green-400 drop-shadow-[0_0_6px_#22c55e]" />,
   milestone: <Trophy className="w-3.5 h-3.5 text-yellow-400 drop-shadow-[0_0_6px_#fbbf24]" />,
   mention: <AtSign className="w-3.5 h-3.5 text-orange-400 drop-shadow-[0_0_6px_#fb923c]" />,
-  system: <UserPlus className="w-3.5 h-3.5 text-electric drop-shadow-[0_0_6px_#8A2EFF]" />,
+  system: <UserPlus className="w-3.5 h-3.5 text-electric drop-shadow-[0_0_6px_#FF2D87]" />,
   friend_request: <UserPlus className="w-3.5 h-3.5 text-magenta drop-shadow-[0_0_6px_#FF007A]" />,
   friend_accept: <UserCheck className="w-3.5 h-3.5 text-lime drop-shadow-[0_0_6px_#B4FF00]" />,
+  zone_post: <Radio className="w-3.5 h-3.5 text-purple-400 drop-shadow-[0_0_6px_#a855f7]" />,
 };
 
 // Color stripe on the left of each notification card
@@ -61,13 +86,16 @@ const TYPE_STRIPE: Record<string, string> = {
   system: "border-l-electric",
   friend_request: "border-l-magenta",
   friend_accept: "border-l-lime",
+  zone_post: "border-l-purple-400",
 };
 
 export default function NotificationBell() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [myZid, setMyZid] = useState<string | null>(null);
   const [pulse, setPulse] = useState(false); // Ring animation on new notif
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +113,7 @@ export default function NotificationBell() {
     const { data } = await supabase
       .from("notifications")
       .select(`
-        id, type, content, is_read, created_at,
+        id, type, content, is_read, created_at, reference_id,
         actor:users!actor_id (id, display_name, zid, birth_year, birth_month, birth_day, agent_state(agent_id))
       `)
       .eq("user_id", uid)
@@ -104,6 +132,8 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      supabase.from("users").select("zid").eq("id", user.id).single()
+        .then(({ data }) => { if (data?.zid) setMyZid(data.zid); });
       await fetchUnreadCount(user.id);
 
       // Subscribe to realtime inserts — no filter on non-PK columns
@@ -154,6 +184,13 @@ export default function NotificationBell() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [fetchUnreadCount, fetchNotifications]);
+
+  // ── NOTIFICATION CLICK → NAVIGATE ────────────────────────────
+  const handleNotifClick = (notif: Notification) => {
+    const url = getNotifUrl(notif, myZid);
+    setIsOpen(false);
+    if (url) router.push(url);
+  };
 
   // ── TOGGLE DROPDOWN ──────────────────────────────────────────
   const toggleDropdown = async () => {
@@ -216,8 +253,8 @@ export default function NotificationBell() {
       {isOpen && (
         <div className="
           absolute right-0 mt-3 w-[340px]
-          bg-[#0B0B12] border border-gray-800
-          rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(138,46,255,0.1)]
+          bg-[#0E0B0D] border border-gray-800
+          rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(255,45,135,0.1)]
           overflow-hidden z-[100]
           animate-in slide-in-from-top-2 fade-in-0 duration-150
         ">
@@ -247,16 +284,20 @@ export default function NotificationBell() {
               </div>
             ) : (
               <div className="divide-y divide-gray-900">
-                {notifications.map((notif) => (
-                  <div
+                {notifications.map((notif) => {
+                  const url = getNotifUrl(notif, myZid);
+                  return (
+                  <button
                     key={notif.id}
+                    onClick={() => handleNotifClick(notif)}
                     className={`
-                      flex gap-3 px-4 py-3 transition-colors
+                      w-full text-left flex gap-3 px-4 py-3 transition-colors
                       border-l-2 ${TYPE_STRIPE[notif.type] || "border-l-gray-700"}
                       ${!notif.is_read
                         ? "bg-gray-900/40 hover:bg-gray-900/60"
                         : "bg-transparent hover:bg-gray-900/20"
                       }
+                      ${url ? "cursor-pointer" : "cursor-default"}
                     `}
                   >
                     {/* Icon */}
@@ -280,9 +321,12 @@ export default function NotificationBell() {
                             {TYPE_LABEL[notif.type] || notif.type}
                           </span>
                         </div>
-                        <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
-                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-[9px] text-gray-600 whitespace-nowrap">
+                            {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                          </span>
+                          {url && <ChevronRight className="w-3 h-3 text-gray-700" />}
+                        </div>
                       </div>
 
                       {/* Content preview — not for zaps (nothing to preview) */}
@@ -302,10 +346,11 @@ export default function NotificationBell() {
 
                     {/* Unread dot */}
                     {!notif.is_read && (
-                      <div className="w-1.5 h-1.5 bg-electric rounded-full mt-1.5 flex-shrink-0 shadow-[0_0_6px_#8A2EFF]" />
+                      <div className="w-1.5 h-1.5 bg-electric rounded-full mt-1.5 flex-shrink-0 shadow-[0_0_6px_#FF2D87]" />
                     )}
-                  </div>
-                ))}
+                  </button>
+                  );
+                })}
               </div>
             )}
           </div>

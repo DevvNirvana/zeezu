@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -68,18 +68,18 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
     .feed-post-card { animation: feedSlideIn 0.35s ease-out forwards; }
     @keyframes zapPop { 0%{transform:scale(1)} 40%{transform:scale(1.4) rotate(-8deg)} 70%{transform:scale(0.9) rotate(4deg)} 100%{transform:scale(1) rotate(0deg)} }
     .zap-pop { animation: zapPop 0.4s cubic-bezier(0.68,-0.55,0.27,1.55); }
-    @keyframes newGlow { 0%{box-shadow:0 0 0 0 rgba(138,46,255,0.5)} 50%{box-shadow:0 0 20px 4px rgba(138,46,255,0.15)} 100%{box-shadow:0 0 0 0 rgba(138,46,255,0)} }
+    @keyframes newGlow { 0%{box-shadow:0 0 0 0 rgba(255,45,135,0.5)} 50%{box-shadow:0 0 20px 4px rgba(255,45,135,0.15)} 100%{box-shadow:0 0 0 0 rgba(255,45,135,0)} }
     .new-glow { animation: newGlow 2s ease-out; }
     @keyframes broadcastPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
     .broadcast-pulse { animation: broadcastPulse 2s infinite; }
-    .post-card-hover:hover { border-color:rgba(138,46,255,0.2); background:rgba(138,46,255,0.02); }
+    .post-card-hover:hover { border-color:rgba(255,45,135,0.2); background:rgba(255,45,135,0.02); }
     @keyframes commentSlide { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
     .comment-enter { animation: commentSlide 0.2s ease-out forwards; }
     @keyframes replySlide { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:translateX(0)} }
     .reply-enter { animation: replySlide 0.15s ease-out forwards; }
     .topic-scroll::-webkit-scrollbar { height:3px; }
     .topic-scroll::-webkit-scrollbar-track { background:transparent; }
-    .topic-scroll::-webkit-scrollbar-thumb { background:rgba(138,46,255,0.3); border-radius:10px; }
+    .topic-scroll::-webkit-scrollbar-thumb { background:rgba(255,45,135,0.3); border-radius:10px; }
     @keyframes moodFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1px)} }
     .mood-tag { animation: moodFloat 3s ease-in-out infinite; }
     .share-check { animation: zapPop 0.3s cubic-bezier(0.68,-0.55,0.27,1.55); }
@@ -89,7 +89,7 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
     document.head.appendChild(s);
 }
 
-export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer }: { userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean }) {
+export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer, zoneId, zoneName }: { userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean; zoneId?: string; zoneName?: string }) {
     const [mode, setMode] = useState<FeedMode>("all");
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -155,13 +155,19 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
         else query = query.order("created_at", { ascending: false });
         query = query.range(from, to);
         if (topicId !== null) query = query.eq("topic_id", topicId);
-        if (wallOwnerId) {
-            query = query.eq("owner_id", wallOwnerId);
-        } else if (feedMode === "friends") {
-            const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-            const ids = (fr || []).map(r => r.sender_id === userId ? r.receiver_id : r.sender_id);
-            ids.push(userId);
-            query = query.in("author_id", ids);
+        if (zoneId) {
+            query = query.eq("zone_id", zoneId);
+        } else if (wallOwnerId) {
+            query = query.eq("owner_id", wallOwnerId).is("zone_id", null);
+        } else {
+            // Global/Network feed — never show zone posts
+            query = query.is("zone_id", null);
+            if (feedMode === "friends") {
+                const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+                const ids = (fr || []).map(r => r.sender_id === userId ? r.receiver_id : r.sender_id);
+                ids.push(userId);
+                query = query.in("author_id", ids);
+            }
         }
         const { data } = await query;
         const typed = (data || []) as unknown as Post[];
@@ -187,8 +193,10 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
         const ch = supabase.channel("global_feed_rt")
             .on("postgres_changes", { event: "INSERT", schema: "public", table: "zeewall" }, async (p: any) => {
                 if (page !== 0) return;
+                if (zoneId && p.new.zone_id !== zoneId) return;
+                if (!zoneId && !wallOwnerId && p.new.zone_id != null) return;
+                if (!zoneId && wallOwnerId && p.new.owner_id !== wallOwnerId) return;
                 if (activeTopic !== null && p.new.topic_id !== activeTopic) return;
-                if (wallOwnerId && p.new.owner_id !== wallOwnerId) return;
                 const { data } = await supabase.from("zeewall").select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))").eq("id", p.new.id).single();
                 if (!data) return;
                 const t = data as unknown as Post;
@@ -276,6 +284,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
             content: moodLine + newPostText.trim(),
             topic_id: activeTopic || 1,
         };
+        if (zoneId) insertData.zone_id = zoneId;
         if (attachedGif) insertData.gif_url = attachedGif;
         if (attachedPoll) insertData.poll_data = attachedPoll;
         await supabase.from("zeewall").insert(insertData);
@@ -507,7 +516,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
     // Unique gradient for each mood
     const getMoodStyle = (mood: string) => {
         const map: Record<string, { bg: string; border: string; text: string }> = {
-            "⚡ Wired": { bg: "linear-gradient(135deg, rgba(138,46,255,0.15), rgba(168,85,247,0.08))", border: "rgba(138,46,255,0.25)", text: "#a855f7" },
+            "⚡ Wired": { bg: "linear-gradient(135deg, rgba(255,45,135,0.15), rgba(168,85,247,0.08))", border: "rgba(255,45,135,0.25)", text: "#a855f7" },
             "🔥 On Fire": { bg: "linear-gradient(135deg, rgba(249,115,22,0.15), rgba(239,68,68,0.08))", border: "rgba(249,115,22,0.25)", text: "#f97316" },
             "💭 Thinking": { bg: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.08))", border: "rgba(99,102,241,0.25)", text: "#818cf8" },
             "🎵 Vibing": { bg: "linear-gradient(135deg, rgba(20,184,166,0.15), rgba(6,182,212,0.08))", border: "rgba(20,184,166,0.25)", text: "#2dd4bf" },
@@ -542,7 +551,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
     return (
         <div>
             {/* ── TOPIC BAR ── */}
-            {!wallOwnerId && (
+            {!wallOwnerId && !zoneId && (
                 <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-800/60 overflow-x-auto topic-scroll">
                     <button onClick={() => setActiveTopic(null)}
                         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all border ${activeTopic === null ? "bg-electric/15 border-electric/40 text-electric" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
@@ -562,7 +571,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
                 </div>
             )}
 
-            {!wallOwnerId && showNewTopic && (
+            {!wallOwnerId && !zoneId && showNewTopic && (
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800/40 bg-black/20">
                     <Hash className="w-3.5 h-3.5 text-gray-600" />
                     <input type="text" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleCreateTopic(); }}
@@ -574,8 +583,8 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
 
             {/* ── BROADCASTER ── */}
             {(!wallOwnerId || !hideComposer) && (
-            <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(138,46,255,0.04) 0%, transparent 100%)" }}>
-                {!wallOwnerId && (
+            <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(255,45,135,0.04) 0%, transparent 100%)" }}>
+                {!wallOwnerId && !zoneId && (
                     <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
                         <button onClick={() => setMode("all")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "all" ? "bg-electric/10 text-electric" : "text-gray-700 hover:text-gray-400"}`}>
                             <Globe className="w-2.5 h-2.5" /> GLOBAL</button>
@@ -586,14 +595,14 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
                 )}
                 {!hideComposer && (
                 <div className="px-3 pb-3">
-                    <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(138,46,255,0.08)]">
+                    <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(255,45,135,0.08)]">
                         <div className="flex gap-2.5">
                             <img src={getAvatar(userZid || userId)} alt="" className="w-8 h-8 rounded-lg border border-gray-800 object-cover flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Radio className="w-3 h-3 text-electric broadcast-pulse" />
                                     <span className="text-[8px] font-mono text-electric/60 uppercase tracking-[0.15em]">
-                                        Broadcast {activeTopicName ? `to #${activeTopicName.toLowerCase()}` : "to the grid"}
+                                        Broadcast {zoneName ? `to z/${zoneName}` : activeTopicName ? `to #${activeTopicName.toLowerCase()}` : "to the grid"}
                                     </span>
                                 </div>
                                 <textarea ref={textareaRef} value={newPostText} onChange={e => setNewPostText(e.target.value.slice(0, 500))}
@@ -653,7 +662,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
                                 {newPostText.length > 0 && <span className={`text-[8px] font-mono ${newPostText.length > 450 ? "text-magenta" : "text-gray-800"}`}>{newPostText.length}/500</span>}
                                 <button onClick={handlePost} disabled={!newPostText.trim() || posting}
                                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide transition-all disabled:opacity-20"
-                                    style={{ background: newPostText.trim() ? "linear-gradient(135deg,#8A2EFF,#6B1FCC)" : "rgba(255,255,255,0.02)", color: newPostText.trim() ? "#fff" : "#333", boxShadow: newPostText.trim() ? "0 0 14px rgba(138,46,255,0.3)" : "none" }}>
+                                    style={{ background: newPostText.trim() ? "linear-gradient(135deg,#FF2D87,#CC1F70)" : "rgba(255,255,255,0.02)", color: newPostText.trim() ? "#fff" : "#333", boxShadow: newPostText.trim() ? "0 0 14px rgba(255,45,135,0.3)" : "none" }}>
                                     {posting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} BROADCAST
                                 </button>
                             </div>
@@ -738,7 +747,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer 
                                                 <div className="relative">
                                                     <img src={getAvatar(post.author?.zid || "?", post.author?.avatar_url)} alt=""
                                                         className="w-10 h-10 rounded-xl border border-gray-800 group-hover/avatar:border-electric/50 transition-all bg-gray-900" />
-                                                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0B0B12] bg-lime" style={{ boxShadow: "0 0 4px #B4FF00" }} />
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0E0B0D] bg-lime" style={{ boxShadow: "0 0 4px #B4FF00" }} />
                                                 </div>
                                             </Link>
                                             <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,7 @@ import { getGeneration, type GenerationMeta } from "@/lib/generation";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const THEMES = [
-  { id: "neon-void", name: "Neon Void", primary: "#8A2EFF", secondary: "#00F7FF", bg: "#0B0B12", accent: "#B4FF00" },
+  { id: "neon-void", name: "Neon Void", primary: "#FF2D87", secondary: "#00F7FF", bg: "#0E0B0D", accent: "#B4FF00" },
   { id: "cyber-pink", name: "Cyber Pink", primary: "#FF007A", secondary: "#FF6EC7", bg: "#0D0008", accent: "#00F7FF" },
   { id: "matrix-green", name: "Matrix", primary: "#00FF41", secondary: "#008F11", bg: "#001100", accent: "#00FF41" },
   { id: "gold-chrome", name: "Gold Chrome", primary: "#FFD700", secondary: "#FFA500", bg: "#0A0800", accent: "#FF6B00" },
@@ -56,7 +56,7 @@ const KEYFRAMES = `
   @keyframes zee-slide-up  { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
   @keyframes zee-marquee   { 0%{transform:translateX(0)} 100%{transform:translateX(-33.333%)} }
   @keyframes zee-blink     { 0%,100%{opacity:1} 50%{opacity:0} }
-  @keyframes zee-pulse-dot { 0%{box-shadow:0 0 0 0 rgba(138,46,255,.5)} 70%{box-shadow:0 0 0 8px rgba(138,46,255,0)} 100%{box-shadow:0 0 0 0 rgba(138,46,255,0)} }
+  @keyframes zee-pulse-dot { 0%{box-shadow:0 0 0 0 rgba(255,45,135,.5)} 70%{box-shadow:0 0 0 8px rgba(255,45,135,0)} 100%{box-shadow:0 0 0 0 rgba(255,45,135,0)} }
   @keyframes zee-twinkle   { 0%,100%{opacity:.12;transform:scale(1) rotate(0)} 50%{opacity:.55;transform:scale(1.15) rotate(18deg)} }
   @keyframes zee-scan      {
     0%   { background-position: 0 -100%; }
@@ -176,7 +176,7 @@ function GenerationReveal({ gen, onDone }: { gen: GenerationMeta | null; onDone:
             ? <GenBadge gen={gen} size="md" />
             : <span style={{ fontFamily: "'VT323',monospace", fontSize: "14px", color: "rgba(255,255,255,.35)" }}>No era match — badge unlocked later</span>
           }
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,45,135,.6)", letterSpacing: "3px" }}>
             ERA CALIBRATED ✦
           </span>
         </motion.div>
@@ -207,7 +207,7 @@ function StepHeader({ step, total }: { step: number; total: number }) {
         justifyContent: "center",
         gap: "0",
         padding: "12px 20px",
-        borderBottom: "1px solid rgba(138,46,255,.15)",
+        borderBottom: "1px solid rgba(255,45,135,.15)",
         background: "rgba(0,0,0,.2)",
         overflowX: "auto",
         msOverflowStyle: "none",
@@ -228,12 +228,12 @@ function StepHeader({ step, total }: { step: number; total: number }) {
                 padding: "4px 10px",
                 borderRadius: "8px",
                 background: current
-                  ? "rgba(138,46,255,.18)"
+                  ? "rgba(255,45,135,.18)"
                   : done
                     ? "rgba(0,229,255,.07)"
                     : "transparent",
                 border: current
-                  ? "1px solid rgba(138,46,255,.45)"
+                  ? "1px solid rgba(255,45,135,.45)"
                   : done
                     ? "1px solid rgba(0,229,255,.2)"
                     : "1px solid transparent",
@@ -245,7 +245,7 @@ function StepHeader({ step, total }: { step: number; total: number }) {
                 fontFamily: "'VT323', monospace",
                 fontSize: "13px",
                 lineHeight: "1",
-                color: current ? "#8A2EFF" : done ? "#00E5FF" : "rgba(255,255,255,.2)",
+                color: current ? "#FF2D87" : done ? "#00E5FF" : "rgba(255,255,255,.2)",
               }}>
                 {s.icon}
               </span>
@@ -253,7 +253,7 @@ function StepHeader({ step, total }: { step: number; total: number }) {
                 fontFamily: "'VT323', monospace",
                 fontSize: "9px",
                 letterSpacing: "1.5px",
-                color: current ? "rgba(138,46,255,.9)" : done ? "rgba(0,229,255,.7)" : "rgba(255,255,255,.18)",
+                color: current ? "rgba(255,45,135,.9)" : done ? "rgba(0,229,255,.7)" : "rgba(255,255,255,.18)",
                 textTransform: "uppercase",
               }}>
                 {s.label}
@@ -267,7 +267,7 @@ function StepHeader({ step, total }: { step: number; total: number }) {
                   width: "16px",
                   height: "1px",
                   background: i < step
-                    ? "linear-gradient(90deg,rgba(0,229,255,.4),rgba(138,46,255,.4))"
+                    ? "linear-gradient(90deg,rgba(0,229,255,.4),rgba(255,45,135,.4))"
                     : "rgba(255,255,255,.07)",
                   flexShrink: 0,
                 }}
@@ -303,11 +303,11 @@ function PortalModule({
           gap: "3px",
           marginBottom: "20px",
           paddingBottom: "14px",
-          borderBottom: "1px solid rgba(138,46,255,.12)",
+          borderBottom: "1px solid rgba(255,45,135,.12)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "3px", height: "22px", background: "linear-gradient(180deg,#8A2EFF,#00E5FF)", borderRadius: "2px", flexShrink: 0 }} />
+          <div style={{ width: "3px", height: "22px", background: "linear-gradient(180deg,#FF2D87,#00E5FF)", borderRadius: "2px", flexShrink: 0 }} />
           <h2 style={{
             fontFamily: "'Orbitron', sans-serif",
             fontSize: "18px",
@@ -342,7 +342,7 @@ function ZeeInput(props: React.InputHTMLAttributes<HTMLInputElement> & { label?:
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
       {label && (
-        <label style={{ fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "2px", color: "rgba(138,46,255,.7)", textTransform: "uppercase" }}>
+        <label style={{ fontFamily: "'VT323',monospace", fontSize: "11px", letterSpacing: "2px", color: "rgba(255,45,135,.7)", textTransform: "uppercase" }}>
           {label}
         </label>
       )}
@@ -352,14 +352,14 @@ function ZeeInput(props: React.InputHTMLAttributes<HTMLInputElement> & { label?:
         onBlur={e => { setFocused(false); props.onBlur?.(e); }}
         style={{
           background: "rgba(0,0,0,.45)",
-          border: `1px solid ${focused ? "rgba(138,46,255,.7)" : "rgba(138,46,255,.2)"}`,
+          border: `1px solid ${focused ? "rgba(255,45,135,.7)" : "rgba(255,45,135,.2)"}`,
           borderRadius: "10px",
           padding: "11px 14px",
           color: "#fff",
           fontSize: "14px",
           fontFamily: "'Nunito', sans-serif",
           outline: "none",
-          boxShadow: focused ? "0 0 0 3px rgba(138,46,255,.1)" : "none",
+          boxShadow: focused ? "0 0 0 3px rgba(255,45,135,.1)" : "none",
           transition: "border-color .2s, box-shadow .2s",
           width: "100%",
           ...rest.style,
@@ -520,7 +520,7 @@ export default function OnboardingPage() {
   if (!authUser) {
     return (
       <div style={{ minHeight: "100vh", background: "#080E24", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 style={{ color: "#8A2EFF", animation: "spin 1s linear infinite" }} size={32} />
+        <Loader2 style={{ color: "#FF2D87", animation: "spin 1s linear infinite" }} size={32} />
       </div>
     );
   }
@@ -540,7 +540,7 @@ export default function OnboardingPage() {
           minHeight: "100vh",
           backgroundColor: "#080E24",
           backgroundImage: `
-            radial-gradient(ellipse 80% 50% at 50% -5%, rgba(138,46,255,.16) 0%, transparent 60%),
+            radial-gradient(ellipse 80% 50% at 50% -5%, rgba(255,45,135,.16) 0%, transparent 60%),
             radial-gradient(ellipse 40% 30% at 5%  90%, rgba(0,229,255,.07) 0%, transparent 55%),
             radial-gradient(ellipse 35% 25% at 95% 70%, rgba(78,205,196,.05) 0%, transparent 55%),
             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='.8' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E")
@@ -565,7 +565,7 @@ export default function OnboardingPage() {
               left: st.x,
               top: st.y,
               fontSize: `${st.s}px`,
-              color: "#8A2EFF",
+              color: "#FF2D87",
               pointerEvents: "none",
               userSelect: "none",
               animation: `zee-twinkle ${3.2 + i * 0.4}s ease-in-out infinite`,
@@ -596,7 +596,7 @@ export default function OnboardingPage() {
               position: "absolute",
               inset: "-2px",
               borderRadius: "22px",
-              background: "linear-gradient(135deg,#8A2EFF 0%,#00E5FF 50%,#8A2EFF 100%)",
+              background: "linear-gradient(135deg,#FF2D87 0%,#00E5FF 50%,#FF2D87 100%)",
               opacity: .45,
               filter: "blur(1px)",
               zIndex: -1,
@@ -608,7 +608,7 @@ export default function OnboardingPage() {
               background: "#0E1630",
               borderRadius: "20px",
               overflow: "hidden",
-              border: "1px solid rgba(138,46,255,.3)",
+              border: "1px solid rgba(255,45,135,.3)",
               boxShadow: "0 32px 90px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.035) inset",
             }}
           >
@@ -646,7 +646,7 @@ export default function OnboardingPage() {
                   alignItems: "center",
                   gap: "6px",
                   background: "rgba(0,0,0,.3)",
-                  border: "1px solid rgba(138,46,255,.35)",
+                  border: "1px solid rgba(255,45,135,.35)",
                   borderRadius: "20px",
                   padding: "4px 12px",
                 }}
@@ -654,12 +654,12 @@ export default function OnboardingPage() {
                 <span
                   style={{
                     width: "6px", height: "6px", borderRadius: "50%",
-                    background: "#8A2EFF", display: "inline-block",
+                    background: "#FF2D87", display: "inline-block",
                     animation: "zee-online 2s ease-in-out infinite",
-                    boxShadow: "0 0 6px rgba(138,46,255,.8)",
+                    boxShadow: "0 0 6px rgba(255,45,135,.8)",
                   }}
                 />
-                <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(138,46,255,.9)", letterSpacing: "0.5px" }}>
+                <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,45,135,.9)", letterSpacing: "0.5px" }}>
                   {step + 1} / {totalSteps}
                 </span>
               </div>
@@ -770,13 +770,13 @@ export default function OnboardingPage() {
 
                         <div
                           style={{
-                            background: "rgba(138,46,255,.06)",
-                            border: "1px dashed rgba(138,46,255,.2)",
+                            background: "rgba(255,45,135,.06)",
+                            border: "1px dashed rgba(255,45,135,.2)",
                             borderRadius: "10px",
                             padding: "10px 14px",
                             fontFamily: "'VT323',monospace",
                             fontSize: "12px",
-                            color: "rgba(138,46,255,.5)",
+                            color: "rgba(255,45,135,.5)",
                             letterSpacing: "0.5px",
                             lineHeight: "1.6",
                           }}
@@ -808,15 +808,15 @@ export default function OnboardingPage() {
                         <div
                           style={{
                             background: "rgba(0,0,0,.5)",
-                            border: "1px solid rgba(138,46,255,.4)",
+                            border: "1px solid rgba(255,45,135,.4)",
                             borderRadius: "16px",
                             padding: "24px 32px",
                             textAlign: "center",
-                            boxShadow: "0 0 40px -10px rgba(138,46,255,.35)",
+                            boxShadow: "0 0 40px -10px rgba(255,45,135,.35)",
                             width: "100%",
                           }}
                         >
-                          <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(138,46,255,.6)", letterSpacing: "3px", marginBottom: "12px" }}>
+                          <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,45,135,.6)", letterSpacing: "3px", marginBottom: "12px" }}>
                             YOUR ZID
                           </p>
                           <p
@@ -824,7 +824,7 @@ export default function OnboardingPage() {
                               fontFamily: "'Orbitron',sans-serif",
                               fontSize: "28px",
                               fontWeight: 900,
-                              background: "linear-gradient(135deg,#8A2EFF,#00E5FF)",
+                              background: "linear-gradient(135deg,#FF2D87,#00E5FF)",
                               WebkitBackgroundClip: "text",
                               WebkitTextFillColor: "transparent",
                               backgroundClip: "text",
@@ -998,11 +998,11 @@ export default function OnboardingPage() {
                                 gap: "8px",
                                 padding: "14px 8px",
                                 borderRadius: "14px",
-                                border: `2px solid ${selected ? "#8A2EFF" : "rgba(255,255,255,.08)"}`,
-                                background: selected ? "rgba(138,46,255,.1)" : "rgba(0,0,0,.25)",
+                                border: `2px solid ${selected ? "#FF2D87" : "rgba(255,255,255,.08)"}`,
+                                background: selected ? "rgba(255,45,135,.1)" : "rgba(0,0,0,.25)",
                                 cursor: "pointer",
                                 transition: "border-color .2s, background .2s, box-shadow .2s",
-                                boxShadow: selected ? "0 0 18px -4px rgba(138,46,255,.5)" : "none",
+                                boxShadow: selected ? "0 0 18px -4px rgba(255,45,135,.5)" : "none",
                                 outline: "none",
                               }}
                             >
@@ -1015,7 +1015,7 @@ export default function OnboardingPage() {
                                 {av.label.toUpperCase()}
                               </span>
                               {selected && (
-                                <div style={{ position: "absolute", top: "7px", right: "7px", width: "16px", height: "16px", borderRadius: "50%", background: "#8A2EFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <div style={{ position: "absolute", top: "7px", right: "7px", width: "16px", height: "16px", borderRadius: "50%", background: "#FF2D87", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                   <Check size={10} color="#fff" />
                                 </div>
                               )}
@@ -1044,7 +1044,7 @@ export default function OnboardingPage() {
                                 width: "18px",
                                 height: "5px",
                                 borderRadius: "3px",
-                                background: i < interests.length ? "linear-gradient(90deg,#8A2EFF,#00E5FF)" : "rgba(255,255,255,.08)",
+                                background: i < interests.length ? "linear-gradient(90deg,#FF2D87,#00E5FF)" : "rgba(255,255,255,.08)",
                                 transition: "background .25s",
                               }}
                             />
@@ -1072,9 +1072,9 @@ export default function OnboardingPage() {
                               style={{
                                 padding: "8px 14px",
                                 borderRadius: "20px",
-                                border: `1px solid ${selected ? "#8A2EFF" : "rgba(255,255,255,.1)"}`,
+                                border: `1px solid ${selected ? "#FF2D87" : "rgba(255,255,255,.1)"}`,
                                 background: selected
-                                  ? "rgba(138,46,255,.2)"
+                                  ? "rgba(255,45,135,.2)"
                                   : maxed
                                     ? "transparent"
                                     : "rgba(255,255,255,.03)",
@@ -1088,7 +1088,7 @@ export default function OnboardingPage() {
                                 fontWeight: selected ? 700 : 600,
                                 cursor: maxed ? "not-allowed" : "pointer",
                                 transition: "all .18s",
-                                boxShadow: selected ? "0 0 12px -4px rgba(138,46,255,.6)" : "none",
+                                boxShadow: selected ? "0 0 12px -4px rgba(255,45,135,.6)" : "none",
                                 outline: "none",
                                 minHeight: "40px",
                               }}
@@ -1120,7 +1120,7 @@ export default function OnboardingPage() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "16px 26px 20px 26px",
-                  borderTop: "1px solid rgba(138,46,255,.1)",
+                  borderTop: "1px solid rgba(255,45,135,.1)",
                   marginTop: "20px",
                   background: "rgba(0,0,0,.15)",
                 }}
@@ -1166,9 +1166,9 @@ export default function OnboardingPage() {
                         alignItems: "center",
                         gap: "6px",
                         background: (!birthMonth || !birthDay || !birthYear)
-                          ? "rgba(138,46,255,.15)"
-                          : "linear-gradient(135deg,#8A2EFF,#6010D4)",
-                        border: "1px solid rgba(138,46,255,.4)",
+                          ? "rgba(255,45,135,.15)"
+                          : "linear-gradient(135deg,#FF2D87,#CC1870)",
+                        border: "1px solid rgba(255,45,135,.4)",
                         borderRadius: "12px",
                         padding: "10px 22px",
                         color: (!birthMonth || !birthDay || !birthYear) ? "rgba(255,255,255,.25)" : "#fff",
@@ -1178,7 +1178,7 @@ export default function OnboardingPage() {
                         letterSpacing: "0.5px",
                         cursor: (!birthMonth || !birthDay || !birthYear) ? "not-allowed" : "pointer",
                         transition: "all .2s",
-                        boxShadow: (!birthMonth || !birthDay || !birthYear) ? "none" : "0 0 18px -4px rgba(138,46,255,.5)",
+                        boxShadow: (!birthMonth || !birthDay || !birthYear) ? "none" : "0 0 18px -4px rgba(255,45,135,.5)",
                         minHeight: "42px",
                       }}
                     >
@@ -1194,9 +1194,9 @@ export default function OnboardingPage() {
                         alignItems: "center",
                         gap: "6px",
                         background: (step === 0 && !displayName.trim())
-                          ? "rgba(138,46,255,.15)"
-                          : "linear-gradient(135deg,#8A2EFF,#6010D4)",
-                        border: "1px solid rgba(138,46,255,.4)",
+                          ? "rgba(255,45,135,.15)"
+                          : "linear-gradient(135deg,#FF2D87,#CC1870)",
+                        border: "1px solid rgba(255,45,135,.4)",
                         borderRadius: "12px",
                         padding: "10px 22px",
                         color: (step === 0 && !displayName.trim()) ? "rgba(255,255,255,.25)" : "#fff",
@@ -1206,7 +1206,7 @@ export default function OnboardingPage() {
                         letterSpacing: "0.5px",
                         cursor: (step === 0 && !displayName.trim()) ? "not-allowed" : "pointer",
                         transition: "all .2s",
-                        boxShadow: (step === 0 && !displayName.trim()) ? "none" : "0 0 18px -4px rgba(138,46,255,.5)",
+                        boxShadow: (step === 0 && !displayName.trim()) ? "none" : "0 0 18px -4px rgba(255,45,135,.5)",
                         minHeight: "42px",
                       }}
                     >
@@ -1263,7 +1263,7 @@ export default function OnboardingPage() {
             right: 0,
             height: "28px",
             background: "linear-gradient(90deg,#3B0DA8 0%,#0B4B8F 50%,#3B0DA8 100%)",
-            borderTop: "1px solid rgba(138,46,255,.4)",
+            borderTop: "1px solid rgba(255,45,135,.4)",
             display: "flex",
             alignItems: "center",
             overflow: "hidden",

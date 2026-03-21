@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ExternalLink, Play, Music, Film } from "lucide-react";
 
@@ -39,7 +39,7 @@ function extractEmbeds(text: string): EmbedData[] {
 
         // SoundCloud
         if (clean.includes("soundcloud.com/") && !clean.includes("/search")) {
-            embeds.push({ type: "soundcloud", url: clean, embedUrl: `https://w.soundcloud.com/player/?url=${encodeURIComponent(clean)}&color=%238a2eff&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`, label: "SoundCloud" });
+            embeds.push({ type: "soundcloud", url: clean, embedUrl: `https://w.soundcloud.com/player/?url=${encodeURIComponent(clean)}&color=%23FF2D87&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`, label: "SoundCloud" });
             continue;
         }
 
@@ -94,7 +94,7 @@ const typeColors: Record<EmbedType, { bg: string; border: string; text: string; 
     spotify: { bg: "rgba(30,215,96,0.04)", border: "rgba(30,215,96,0.15)", text: "#1ed760", badge: "rgba(30,215,96,0.1)" },
     soundcloud: { bg: "rgba(255,85,0,0.04)", border: "rgba(255,85,0,0.15)", text: "#ff5500", badge: "rgba(255,85,0,0.1)" },
     vimeo: { bg: "rgba(26,183,234,0.04)", border: "rgba(26,183,234,0.15)", text: "#1ab7ea", badge: "rgba(26,183,234,0.1)" },
-    link: { bg: "rgba(138,46,255,0.03)", border: "rgba(138,46,255,0.12)", text: "#8a2eff", badge: "rgba(138,46,255,0.08)" },
+    link: { bg: "rgba(255,45,135,0.03)", border: "rgba(255,45,135,0.12)", text: "#FF2D87", badge: "rgba(255,45,135,0.08)" },
 };
 
 // ── MAIN COMPONENT ───────────────────────────────────────

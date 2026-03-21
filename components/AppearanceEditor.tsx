@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import {
@@ -185,8 +185,8 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
             {/* ═══════════════════ THEME GALLERY ═══════════════════ */}
             <Section
                 id="themes"
-                icon={<Palette className="w-3.5 h-3.5" style={{ color: "#8A2EFF" }} />}
-                title="Theme Gallery" titleColor="#8A2EFF"
+                icon={<Palette className="w-3.5 h-3.5" style={{ color: "#FF2D87" }} />}
+                title="Theme Gallery" titleColor="#FF2D87"
                 desc="12 curated Y2K-inspired presets"
                 isOpen={!!openSections.themes} onToggle={() => toggle("themes")} spotlightColor={spot}
             >
@@ -208,7 +208,7 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                         const primary = preset.primary_color;
                         const secondary = preset.secondary_color;
                         const accent = preset.accent_color;
-                        const bgGrad = preset.bg_gradient || `linear-gradient(135deg, #0B0B12, #1a1a25)`;
+                        const bgGrad = preset.bg_gradient || `linear-gradient(135deg, #0E0B0D, #1a1a25)`;
 
                         return (
                             <button
@@ -284,14 +284,10 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                     <ColorPicker label="Primary" value={custom.primary_color} onChange={v => patchCustom({ primary_color: v, primary_muted: v + '4D', theme_id: "custom" })} />
                     <ColorPicker label="Accent" value={custom.accent_color} onChange={v => patchCustom({ accent_color: v, secondary_color: v, accent_muted: v + '4D', theme_id: "custom" })} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <ColorPicker label="Text" value={custom.text_color} onChange={v => patchCustom({ text_color: v, theme_id: "custom" })} />
-                    <ColorPicker label="Surface Border" value={custom.surface_border?.startsWith('#') ? custom.surface_border : '#1f1f1f'} onChange={v => patchCustom({ surface_border: v, theme_id: "custom" })} />
-                </div>
             </Section>
 
-            {/* ═══════════════════ TYPOGRAPHY ═══════════════════ */}
-            <Section
+            {/* TYPOGRAPHY — hidden; functionality not wired to renderer yet */}
+            {false && <Section
                 id="typography"
                 icon={<Type className="w-3.5 h-3.5" style={{ color: "#FFD700" }} />}
                 title="Typography" titleColor="#FFD700"
@@ -383,10 +379,10 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                         })}
                     </div>
                 </div>
-            </Section>
+            </Section>}
 
-            {/* ═══════════════════ COMPONENT STYLES ═══════════════════ */}
-            <Section
+            {/* COMPONENT STYLES — hidden; style tokens not fully consumed by renderer yet */}
+            {false && <Section
                 id="components"
                 icon={<Layers className="w-3.5 h-3.5" style={{ color: "#FF69B4" }} />}
                 title="Component Styles" titleColor="#FF69B4"
@@ -533,10 +529,10 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                         })}
                     </div>
                 </div>
-            </Section>
+            </Section>}
 
-            {/* ═══════════════════ SURFACE CONTROLS ═══════════════════ */}
-            <Section
+            {/* SURFACE & EFFECTS — hidden; sliders don't yet map to public profile CSS vars */}
+            {false && <Section
                 id="surface"
                 icon={<Sliders className="w-3.5 h-3.5" style={{ color: "#E040FB" }} />}
                 title="Surface & Effects" titleColor="#E040FB"
@@ -702,7 +698,7 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                         </label>
                     ))}
                 </div>
-            </Section>
+            </Section>}
 
             {/* ═══════════════════ BACKGROUND ═══════════════════ */}
             <Section
@@ -766,7 +762,7 @@ export default function AppearanceEditor({ custom, patchCustom }: AppearanceEdit
                             <input
                                 value={custom.bg_gradient || ""}
                                 onChange={e => patchCustom({ bg_gradient: e.target.value || null })}
-                                placeholder="linear-gradient(135deg, #0B0B12, #1a0533)"
+                                placeholder="linear-gradient(135deg, #0E0B0D, #1a0533)"
                                 className="w-full bg-black/60 border border-gray-800 hover:border-gray-600 focus:border-green-500 rounded-xl px-3.5 py-2.5 text-white text-sm font-mono outline-none transition-colors"
                             />
                         </div>

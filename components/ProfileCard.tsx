@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 
 // ── Inject CSS once ───────────────────────────────────────────────────
@@ -270,7 +270,7 @@ const ProfileCardComponent: React.FC<ProfileCardProps> = ({
   grainUrl = '',
   innerGradient,
   behindGlowEnabled = true,
-  behindGlowColor = 'rgba(138,46,255,0.65)',
+  behindGlowColor = 'rgba(255,45,135,0.65)',
   behindGlowSize = '55%',
   className = '',
   enableTilt = true,

@@ -1,0 +1,27 @@
+{
+  "name": "Zeezu",
+  "short_name": "Zeezu",
+  "description": "The Internet After Dark",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF2D87",
+  "background_color": "#0E0B0D",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["social", "entertainment"]
+}

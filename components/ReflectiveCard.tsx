@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Fingerprint, Users, Shield, Camera } from "lucide-react";
@@ -40,7 +40,7 @@ interface ZeezuReflectiveCardProps {
 
 function getInfluenceTier(score: number) {
   if (score >= 100) return { label: "LEGENDARY", color: "#FFD700" };
-  if (score >= 50) return { label: "ICON", color: "#8A2EFF" };
+  if (score >= 50) return { label: "ICON", color: "#FF2D87" };
   if (score >= 20) return { label: "RISING", color: "#00E5FF" };
   return { label: "USER", color: "#888888" };
 }
@@ -59,7 +59,7 @@ export default function ZeezuReflectiveCard({
   birthMonth,
   birthDay,
   influenceScore = 0,
-  primaryColor = "#8A2EFF",
+  primaryColor = "#FF2D87",
   secondaryColor = "#00E5FF",
 
   // Physics defaults tuned for the Y2K chrome aesthetic
@@ -118,8 +118,8 @@ export default function ZeezuReflectiveCard({
           90%,92%             { opacity: 0.88; }
         }
         @keyframes zrc-pulse {
-          0%,100% { box-shadow: 0 0 0 0   rgba(138,46,255,0.6); }
-          50%     { box-shadow: 0 0 0 6px rgba(138,46,255,0);   }
+          0%,100% { box-shadow: 0 0 0 0   rgba(255,45,135,0.6); }
+          50%     { box-shadow: 0 0 0 6px rgba(255,45,135,0);   }
         }
         @keyframes zrc-shine {
           0%   { background-position: 200% center; }
@@ -306,7 +306,7 @@ export default function ZeezuReflectiveCard({
             top: 0,
             zIndex: 4,
             pointerEvents: "none",
-            background: "linear-gradient(180deg,transparent 0%,rgba(138,46,255,0.04) 50%,transparent 100%)",
+            background: "linear-gradient(180deg,transparent 0%,rgba(255,45,135,0.04) 50%,transparent 100%)",
             animation: "zrc-scanline 5s linear infinite",
           }}
         />

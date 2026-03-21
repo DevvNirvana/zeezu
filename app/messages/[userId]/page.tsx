@@ -68,7 +68,7 @@ const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Nunito:wght@400;600;700;800;900&display=swap');
 
   @keyframes zc-msg-in  { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-  @keyframes zc-buzz-glow { 0%,100%{box-shadow:0 0 8px rgba(138,46,255,.4)} 50%{box-shadow:0 0 20px rgba(138,46,255,.8),0 0 40px rgba(138,46,255,.3)} }
+  @keyframes zc-buzz-glow { 0%,100%{box-shadow:0 0 8px rgba(255,45,135,.4)} 50%{box-shadow:0 0 20px rgba(255,45,135,.8),0 0 40px rgba(255,45,135,.3)} }
   @keyframes zc-typing  { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-3px);opacity:1} }
   @keyframes zc-read    { from{color:#555} to{color:#00F7FF;filter:drop-shadow(0 0 4px #00F7FF)} }
   @keyframes zc-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
@@ -81,7 +81,7 @@ const STYLES = `
   /* Custom scrollbar */
   .zc-scroll::-webkit-scrollbar       { width: 4px; }
   .zc-scroll::-webkit-scrollbar-track { background: transparent; }
-  .zc-scroll::-webkit-scrollbar-thumb { background: rgba(138,46,255,.3); border-radius: 4px; }
+  .zc-scroll::-webkit-scrollbar-thumb { background: rgba(255,45,135,.3); border-radius: 4px; }
 
   /* MSN-style typing indicator dots */
   .zc-td:nth-child(1) { animation: zc-typing 1.2s ease-in-out infinite 0s; }
@@ -155,7 +155,7 @@ function TypingIndicator({ name, primary }: { name: string; primary: string }) {
 function TimeSeparator({ date }: { date: Date }) {
     return (
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0 4px" }}>
-            <div style={{ flex: 1, height: "1px", background: "rgba(138,46,255,.15)" }} />
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,45,135,.15)" }} />
             <span
                 style={{
                     fontFamily: "'VT323',monospace",
@@ -164,14 +164,14 @@ function TimeSeparator({ date }: { date: Date }) {
                     letterSpacing: "1px",
                     whiteSpace: "nowrap",
                     background: "rgba(0,0,0,.3)",
-                    border: "1px solid rgba(138,46,255,.15)",
+                    border: "1px solid rgba(255,45,135,.15)",
                     borderRadius: "12px",
                     padding: "1px 8px",
                 }}
             >
                 {formatMsgTime(date)}
             </span>
-            <div style={{ flex: 1, height: "1px", background: "rgba(138,46,255,.15)" }} />
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,45,135,.15)" }} />
         </div>
     );
 }
@@ -392,7 +392,7 @@ export default function ChatThread() {
     const typingChannelRef = useRef<any>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const primary = custom?.primary_color ?? "#8A2EFF";
+    const primary = custom?.primary_color ?? "#FF2D87";
     const secondary = custom?.secondary_color ?? "#00F7FF";
     const pageBg = custom?.page_bg ?? "#080E24";
 
@@ -529,8 +529,8 @@ export default function ChatThread() {
             zIndex: 40,
             overflowY: "auto", background: "#080E24", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px"
         }}>
-            <Loader2 size={28} style={{ color: "#8A2EFF", animation: "spin 1s linear infinite" }} />
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
+            <Loader2 size={28} style={{ color: "#FF2D87", animation: "spin 1s linear infinite" }} />
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,45,135,.6)", letterSpacing: "3px" }}>
                 LOADING THREAD...
             </span>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>

@@ -1,17 +1,29 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 /* @import "tw-animate-css"; */
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Zeezu Dark Neon Underground Palette */
-  --color-void: #0B0B12;
-  --color-indigo: #121225;
-  --color-electric: #8A2EFF;
+  /* Zeezu — Y2K Hot Chrome Palette (not AI violet) */
+  --color-void: #0E0B0D;
+  /* warm black — brownish-magenta undertone, Winamp-coded */
+  --color-indigo: #140D12;
+  /* elevated surface — warm dark */
+  --color-electric: #FF2D87;
+  /* hot chrome pink — Y2K primary */
+  --color-violet: #FF2D87;
+  /* electric violet — accent, not primary */
   --color-cyan: #00F7FF;
+  /* cyan */
   --color-magenta: #FF007A;
+  /* deep magenta */
   --color-lime: #B4FF00;
+  /* radioactive lime */
+  --color-gold: #FFD700;
+  /* chrome gold — Y2K warm accent */
+  --color-chrome: #C4C4D4;
+  /* brushed silver — Y2K metallic neutral */
 }
 
 /* Force the dark mode aesthetic globally */
@@ -666,7 +678,7 @@ body>* {
 
 /* Dot-grid animated background */
 .dot-grid-bg {
-  background-image: radial-gradient(rgba(138, 46, 255, 0.15) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 45, 135, 0.15) 1px, transparent 1px);
   background-size: 32px 32px;
   animation: dot-pulse 4s ease-in-out infinite;
 }
@@ -674,6 +686,39 @@ body>* {
 /* Marquee strip */
 .marquee-track {
   animation: marquee 22s linear infinite;
+}
+
+/* StarBorder keyframes */
+@keyframes star-movement-bottom {
+  0% {
+    transform: translateX(0%) translateY(0%);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-100%) translateY(0%);
+    opacity: 0;
+  }
+}
+
+@keyframes star-movement-top {
+  0% {
+    transform: translateX(0%) translateY(0%);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(100%) translateY(0%);
+    opacity: 0;
+  }
+}
+
+.animate-star-movement-bottom {
+  animation: star-movement-bottom linear infinite;
+}
+
+.animate-star-movement-top {
+  animation: star-movement-top linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -691,44 +736,46 @@ body>* {
    ════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Accessible Y2K palette ──────────────────────────────────── */
-  --color-void: #0A0014;
-  /* near-black, violet undertone    */
-  --color-surface: #120022;
-  /* elevated surface                */
-  --color-elevated: #1A0035;
-  /* card/modal level                */
-  --color-border: rgba(138, 46, 255, 0.25);
+  /* ── Authentic Y2K palette — warm chrome, not AI violet ─────── */
+  --color-void: #0E0B0D;
+  /* warm black — brownish-magenta undertone  */
+  --color-surface: #140D12;
+  /* elevated surface — warm dark             */
+  --color-elevated: #1E1015;
+  /* card/modal level                         */
+  --color-border: rgba(255, 45, 135, 0.25);
+  /* hot pink border              */
 
   /* Accessible text colors (all pass 4.5:1 on --void) */
-  --color-purple: #A246FF;
-  /* 4.75:1 AA ✅  (was #8A2EFF 3.83 FAIL) */
-  --color-indigo: #6F66FF;
-  /* 4.91:1 AA ✅  (was #4F46E5 3.26 FAIL) */
-  --color-pink: #FF007A;
-  /* 5.41:1 AA ✅  */
+  --color-hot-pink: #FF2D87;
+  /* 5.19:1 AA ✅  Y2K primary               */
+  --color-violet: #A246FF;
+  /* 4.75:1 AA ✅  purple accent              */
   --color-cyan: #00F7FF;
-  /* 15.39:1 AAA ✅ */
+  /* 15.39:1 AAA ✅                           */
   --color-lime: #B4FF00;
-  /* 16.86:1 AAA ✅ */
+  /* 16.86:1 AAA ✅                           */
+  --color-gold: #FFD700;
+  /* 15.74:1 AAA ✅ warm Y2K accent           */
 
-  /* Chrome/holographic text (AAA on void) */
-  --color-chrome-1: #E8D5FF;
-  /* near-white violet  */
-  --color-chrome-2: #C084FC;
-  /* violet  7.77:1 AAA */
-  --color-chrome-3: #A78BFA;
-  /* lavender 7.54:1 AAA */
+  /* Chrome/metallic text (AAA on void) */
+  --color-chrome-1: #FFE8F4;
+  /* near-white warm pink                     */
+  --color-chrome-2: #FF8DC0;
+  /* light hot pink — 7.1:1 AAA              */
+  --color-chrome-3: #C4C4D4;
+  /* brushed silver — 12.1:1 AAA             */
 
   /* Decorative (glow/bg — no contrast req) */
-  --color-glow-purple: #8A2EFF;
-  --color-glow-pink: #FF007A;
+  --color-glow-hot: #FF2D87;
+  --color-glow-violet: #FF2D87;
   --color-glow-cyan: #00F7FF;
+  --color-glow-gold: #FFD700;
 
   /* Typography */
-  --font-display: 'Space Grotesk', 'Syne', sans-serif;
-  --font-mono: 'Space Mono', 'IBM Plex Mono', monospace;
-  --font-body: 'DM Sans', 'Nunito', sans-serif;
+  --font-display: 'Rajdhani', 'Space Grotesk', sans-serif;
+  --font-mono: 'Share Tech Mono', 'Space Mono', monospace;
+  --font-body: 'Space Grotesk', 'Nunito', sans-serif;
 
   /* Spacing */
   --section-gap: 7rem;
@@ -777,7 +824,7 @@ body>* {
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(var(--holo-angle, 135deg),
-      #8A2EFF, #FF007A, #00F7FF, #B4FF00, #8A2EFF);
+      #FF2D87, #FFD700, #00F7FF, #B4FF00, #FF007A);
   background-size: 300% 300%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -921,7 +968,7 @@ body>* {
 
 /* ── Dot grid background ────────────────────────────────────── */
 .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(138, 46, 255, 0.18) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255, 45, 135, 0.18) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -31,7 +31,7 @@ const getAvatar = (zid: string, url?: string | null) =>
 
 const getInfluenceTier = (score: number) => {
     if (score >= 100) return { label: "LEGENDARY", color: "#FFD700" };
-    if (score >= 50)  return { label: "ICON",      color: "#8A2EFF" };
+    if (score >= 50)  return { label: "ICON",      color: "#FF2D87" };
     if (score >= 20)  return { label: "RISING",    color: "#00F7FF" };
     return { label: "USER", color: "#888" };
 };
@@ -39,7 +39,7 @@ const getInfluenceTier = (score: number) => {
 // Hex → rgba helper (mirrors ThemeEngine's internal helper)
 function hexToRgba(hex: string, alpha: number): string {
     const clean = hex.replace("#", "").replace(/[^0-9a-fA-F]/g, "");
-    if (clean.length < 6) return `rgba(138,46,255,${alpha})`;
+    if (clean.length < 6) return `rgba(255,45,135,${alpha})`;
     const r = parseInt(clean.substring(0, 2), 16);
     const g = parseInt(clean.substring(2, 4), 16);
     const b = parseInt(clean.substring(4, 6), 16);
@@ -64,13 +64,13 @@ const STYLES = `
     @keyframes zf-entry   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
     @keyframes zf-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
     @keyframes zf-online  { 0%,100%{opacity:1} 50%{opacity:.28} }
-    @keyframes zf-buzz    { 0%,100%{box-shadow:0 0 4px rgba(138,46,255,.6)} 50%{box-shadow:0 0 16px rgba(138,46,255,.9),0 0 32px rgba(138,46,255,.4)} }
+    @keyframes zf-buzz    { 0%,100%{box-shadow:0 0 4px rgba(255,45,135,.6)} 50%{box-shadow:0 0 16px rgba(255,45,135,.9),0 0 32px rgba(255,45,135,.4)} }
     @keyframes zf-twinkle { 0%,100%{opacity:.08;transform:scale(1) rotate(0)} 50%{opacity:.38;transform:scale(1.1) rotate(15deg)} }
     @keyframes zf-music   { 0%,100%{opacity:.55} 50%{opacity:1} }
     @keyframes spin        { to{transform:rotate(360deg)} }
 
     .zf-entry { animation: zf-entry 0.3s ease-out both; }
-    .zf-star  { position:fixed;font-size:10px;color:var(--color-electric,#8A2EFF);pointer-events:none;user-select:none;animation:zf-twinkle 3.5s ease-in-out infinite;z-index:0; }
+    .zf-star  { position:fixed;font-size:10px;color:var(--color-electric,#FF2D87);pointer-events:none;user-select:none;animation:zf-twinkle 3.5s ease-in-out infinite;z-index:0; }
 `;
 
 const SORT_LABELS = { recent: "RECENTLY ADDED", alpha: "ALPHABETICAL", mutual: "MOST MUTUAL" } as const;
@@ -80,7 +80,7 @@ const SORT_LABELS = { recent: "RECENTLY ADDED", alpha: "ALPHABETICAL", mutual: "
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ModuleHeader({
-    icon, title, accent = "#8A2EFF", right,
+    icon, title, accent = "#FF2D87", right,
 }: { icon: React.ReactNode; title: string; accent?: string; right?: React.ReactNode }) {
     return (
         <div style={{
@@ -101,7 +101,7 @@ function ModuleHeader({
     );
 }
 
-function PortalCard({ children, accent = "rgba(138,46,255,.2)", style }: {
+function PortalCard({ children, accent = "rgba(255,45,135,.2)", style }: {
     children: React.ReactNode; accent?: string; style?: React.CSSProperties;
 }) {
     return (
@@ -115,7 +115,7 @@ function PortalCard({ children, accent = "rgba(138,46,255,.2)", style }: {
     );
 }
 
-function SectionHeader({ label, count, accent = "#8A2EFF" }: { label: string; count?: number; accent?: string }) {
+function SectionHeader({ label, count, accent = "#FF2D87" }: { label: string; count?: number; accent?: string }) {
     return (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0 6px" }}>
             <div style={{ flex: 1, height: "1px", background: `linear-gradient(90deg,${accent}40,transparent)` }} />
@@ -297,7 +297,7 @@ function FriendGridCard({ friend, removingId, buzzingId, mutualCount, primary, o
                     disabled={isBuzzing}
                     style={{
                         flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "3px",
-                        padding: "5px 0", borderRadius: "6px",
+                        padding: "9px 0", borderRadius: "6px",
                         cursor: isBuzzing ? "not-allowed" : "pointer",
                         background: isBuzzing ? pr(0.15) : "transparent",
                         border: `1px solid ${isBuzzing ? pr(0.5) : "rgba(255,255,255,.08)"}`,
@@ -316,7 +316,7 @@ function FriendGridCard({ friend, removingId, buzzingId, mutualCount, primary, o
                     href={`/messages/${friend.id}`}
                     style={{
                         flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "3px",
-                        padding: "5px 0", borderRadius: "6px",
+                        padding: "9px 0", borderRadius: "6px",
                         background: "transparent", border: "1px solid rgba(255,255,255,.08)",
                         color: "rgba(255,255,255,.5)", textDecoration: "none",
                         fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px",
@@ -334,7 +334,7 @@ function FriendGridCard({ friend, removingId, buzzingId, mutualCount, primary, o
                     disabled={isRemoving}
                     style={{
                         width: "28px", display: "flex", alignItems: "center", justifyContent: "center",
-                        padding: "5px 0", borderRadius: "6px", cursor: "pointer",
+                        padding: "9px 0", borderRadius: "6px", cursor: "pointer",
                         background: "transparent", border: "1px solid rgba(255,255,255,.08)",
                         color: "rgba(255,80,80,.4)", transition: "all .18s", flexShrink: 0,
                     }}
@@ -435,7 +435,7 @@ function FriendListRow({ friend, removingId, buzzingId, mutualCount, primary, on
                 <button
                     onClick={() => onBuzz(friend.id)}
                     disabled={isBuzzing}
-                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "5px 9px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,255,255,.45)", cursor: "pointer", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
+                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "9px 9px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,255,255,.45)", cursor: "pointer", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
                     onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = pr(0.5); b.style.color = primary; b.style.boxShadow = `0 0 8px ${pr(0.3)}`; }}
                     onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = "rgba(255,255,255,.09)"; b.style.color = "rgba(255,255,255,.45)"; b.style.boxShadow = "none"; }}
                 >
@@ -443,7 +443,7 @@ function FriendListRow({ friend, removingId, buzzingId, mutualCount, primary, on
                 </button>
                 <Link
                     href={`/messages/${friend.id}`}
-                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "5px 9px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,255,255,.45)", textDecoration: "none", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
+                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "9px 9px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,255,255,.45)", textDecoration: "none", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
                     onMouseEnter={e => { const a = e.currentTarget as HTMLAnchorElement; a.style.borderColor = pr(0.4); a.style.color = primary; }}
                     onMouseLeave={e => { const a = e.currentTarget as HTMLAnchorElement; a.style.borderColor = "rgba(255,255,255,.09)"; a.style.color = "rgba(255,255,255,.45)"; }}
                 >
@@ -452,7 +452,7 @@ function FriendListRow({ friend, removingId, buzzingId, mutualCount, primary, on
                 <button
                     onClick={() => onRemove(friend.requestId)}
                     disabled={isRemoving}
-                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "5px 8px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,80,80,.45)", cursor: "pointer", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
+                    style={{ display: "flex", alignItems: "center", gap: "3px", padding: "9px 8px", borderRadius: "7px", background: "transparent", border: "1px solid rgba(255,255,255,.09)", color: "rgba(255,80,80,.45)", cursor: "pointer", fontFamily: "'VT323',monospace", fontSize: "10px", letterSpacing: "1px", transition: "all .18s" }}
                     onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = "rgba(255,80,80,.4)"; b.style.color = "#FF6B6B"; }}
                     onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = "rgba(255,255,255,.09)"; b.style.color = "rgba(255,80,80,.45)"; }}
                 >
@@ -488,7 +488,7 @@ export default function FriendsPage() {
     const [customization, setCustomization] = useState<ThemeConfig>(DEFAULT_THEME);
 
     // Derived theme helpers
-    const primary = customization.primary_color ?? "#8A2EFF";
+    const primary = customization.primary_color ?? "#FF2D87";
     const pr = (a: number) => hexToRgba(primary, a);
 
     // ── Load ──────────────────────────────────────────────────────────────────
@@ -613,10 +613,10 @@ export default function FriendsPage() {
     if (loading) return (
         <div style={{ minHeight: "100vh", background: "#080E24", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
             <div style={{ position: "relative", width: "44px", height: "44px" }}>
-                <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(138,46,255,.18)" }} />
-                <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid transparent", borderTopColor: "#8A2EFF", animation: "spin 1s linear infinite" }} />
+                <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(255,45,135,.18)" }} />
+                <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid transparent", borderTopColor: "#FF2D87", animation: "spin 1s linear infinite" }} />
             </div>
-            <p style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>LOADING NETWORK...</p>
+            <p style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,45,135,.6)", letterSpacing: "3px" }}>LOADING NETWORK...</p>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
     );
@@ -994,12 +994,6 @@ export default function FriendsPage() {
                 </>
             )}
 
-            {/* ── MARQUEE TICKER ── */}
-            <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: "28px", background: "linear-gradient(90deg,#3B0DA8 0%,#0B4B8F 50%,#3B0DA8 100%)", borderTop: `1px solid ${pr(0.4)}`, display: "flex", alignItems: "center", overflow: "hidden", zIndex: 20 }}>
-                <div style={{ display: "flex", whiteSpace: "nowrap", animation: "zf-marquee 36s linear infinite", fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,255,255,.45)", letterSpacing: "1.5px", willChange: "transform" }}>
-                    {"✦ ZEEZU FRIENDS · NO ALGORITHM · NO FEED MANIPULATION · JUST PEOPLE · REAL CONNECTIONS · ".repeat(4)}
-                </div>
-            </div>
         </div>
     );
 }

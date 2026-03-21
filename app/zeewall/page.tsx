@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -39,7 +39,7 @@ export default function MyZeeWall() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [primary, setPrimary] = useState("#8A2EFF");
+  const [primary, setPrimary] = useState("#FF2D87");
   const [secondary, setSecondary] = useState("#00F7FF");
   const [stats, setStats] = useState({ posts: 0, zaps: 0 });
 
@@ -60,7 +60,7 @@ export default function MyZeeWall() {
 
       if (uData) setUserData(uData);
       if (customData) {
-        setPrimary(customData.primary_color ?? "#8A2EFF");
+        setPrimary(customData.primary_color ?? "#FF2D87");
         setSecondary(customData.secondary_color ?? "#00F7FF");
       }
       if (postsData) {
@@ -75,7 +75,7 @@ export default function MyZeeWall() {
   }, [router]);
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0B0B12] flex items-center justify-center">
+    <div className="min-h-screen bg-[#0E0B0D] flex items-center justify-center">
       <Loader2 className="w-7 h-7 text-electric animate-spin" />
     </div>
   );
@@ -83,7 +83,7 @@ export default function MyZeeWall() {
   if (!userData) return null;
 
   return (
-    <div className="min-h-screen bg-[#0B0B12] text-white pb-24">
+    <div className="min-h-screen bg-[#0E0B0D] text-white pb-24">
       <NavBar />
 
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-10">

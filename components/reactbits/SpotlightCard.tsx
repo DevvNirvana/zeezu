@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+﻿import React, { useRef, useCallback } from 'react';
 import './SpotlightCard.css';
 
 interface SpotlightCardProps {
@@ -10,7 +10,7 @@ interface SpotlightCardProps {
 export default function SpotlightCard({
     children,
     className = '',
-    spotlightColor = 'rgba(138, 46, 255, 0.15)',
+    spotlightColor = 'rgba(255, 45, 135, 0.15)',
 }: SpotlightCardProps) {
     const cardRef = useRef<HTMLDivElement>(null);
 

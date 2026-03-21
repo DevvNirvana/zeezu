@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { BarChart3, Check } from "lucide-react";
@@ -64,7 +64,7 @@ export default function PollDisplay({
 
     // Bar colors cycling
     const barColors = [
-        { bg: "rgba(138,46,255,0.15)", fill: "rgba(138,46,255,0.6)", text: "text-electric" },
+        { bg: "rgba(255,45,135,0.15)", fill: "rgba(255,45,135,0.6)", text: "text-electric" },
         { bg: "rgba(0,247,255,0.12)", fill: "rgba(0,247,255,0.5)", text: "text-cyan" },
         { bg: "rgba(180,255,0,0.12)", fill: "rgba(180,255,0,0.5)", text: "text-lime" },
         { bg: "rgba(255,46,138,0.12)", fill: "rgba(255,46,138,0.5)", text: "text-magenta" },

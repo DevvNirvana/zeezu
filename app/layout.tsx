@@ -1,20 +1,36 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import RadioPlayer from "@/components/RadioPlayer";
 import ToastProvider from "@/components/ToastProvider";
+import PwaRegister from "./pwa-register";
 // If you want NavBar on every single page, you could import it here:
 // import NavBar from "@/components/NavBar";
 
 export const metadata: Metadata = {
   title: "Zeezu — The Internet After Dark",
   description: "Social media before it got sanitized.",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.ico", apple: "/icon-192.png" },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Zeezu",
+  },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FF2D87",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#0B0B12] text-white antialiased">
+      <body className="bg-[#0E0B0D] text-white antialiased">
 
         {/* If NavBar is meant to be global, uncomment it here */}
         {/* <NavBar /> */}
@@ -37,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <RadioPlayer />
         <ToastProvider />
+        <PwaRegister />
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Search, Disc3, 
 import { supabase } from "@/lib/supabase/client";
 import NotificationBell from "./NotificationBell";
 import Dock from "./Dock";
+import MarqueeTicker from "./MarqueeTicker";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PORTAL DOCK CSS — injects theme-aware overrides for the Dock component.
@@ -36,7 +37,7 @@ const NAV_STYLES = `
     padding: 5px 8px !important;
     border-radius: 12px !important;
     background: rgba(8, 14, 36, 0.65) !important;
-    border: 1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 22%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 22%, transparent) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     box-shadow:
@@ -58,14 +59,14 @@ const NAV_STYLES = `
   }
   .zee-nav-dock .dock-item:hover,
   .zee-nav-dock .dock-item:focus {
-    background: color-mix(in srgb, var(--color-electric, #8A2EFF) 10%, transparent) !important;
-    border-color: color-mix(in srgb, var(--color-electric, #8A2EFF) 42%, transparent) !important;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--color-electric, #8A2EFF) 22%, transparent) !important;
+    background: color-mix(in srgb, var(--color-electric, #FF2D87) 10%, transparent) !important;
+    border-color: color-mix(in srgb, var(--color-electric, #FF2D87) 42%, transparent) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-electric, #FF2D87) 22%, transparent) !important;
   }
   .zee-nav-dock .dock-item.zee-active {
-    background: color-mix(in srgb, var(--color-electric, #8A2EFF) 14%, transparent) !important;
-    border-color: color-mix(in srgb, var(--color-electric, #8A2EFF) 55%, transparent) !important;
-    box-shadow: 0 0 12px rgba(138, 46, 255, 0.3) !important;
+    background: color-mix(in srgb, var(--color-electric, #FF2D87) 14%, transparent) !important;
+    border-color: color-mix(in srgb, var(--color-electric, #FF2D87) 55%, transparent) !important;
+    box-shadow: 0 0 12px rgba(255, 45, 135, 0.3) !important;
   }
 
   /* ── LABEL — drops DOWN from the icon ───────────────────────
@@ -88,7 +89,7 @@ const NAV_STYLES = `
     text-transform: uppercase !important;
     color: rgba(255, 255, 255, 0.92) !important;
     background: rgba(8, 14, 36, 0.97) !important;
-    border: 1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 38%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 38%, transparent) !important;
     border-radius: 5px !important;
     padding: 2px 7px !important;
     white-space: nowrap !important;
@@ -122,7 +123,7 @@ const NAV_STYLES = `
     line-height: 14px;
     text-align: center;
     color: #fff;
-    background: var(--color-electric, #8A2EFF);
+    background: var(--color-electric, #FF2D87);
     letter-spacing: 0.3px;
     pointer-events: none;
     z-index: 10;
@@ -130,7 +131,7 @@ const NAV_STYLES = `
   }
 
   @keyframes zee-badge-ring {
-    0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--color-electric, #8A2EFF) 70%, transparent); }
+    0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--color-electric, #FF2D87) 70%, transparent); }
     70%  { box-shadow: 0 0 0 5px transparent;   }
     100% { box-shadow: 0 0 0 0   transparent;   }
   }
@@ -149,9 +150,9 @@ const NAV_STYLES = `
     /* Shrink the online pill to just a dot */
     .zee-online-pill span:last-child { display: none !important; }
     .zee-online-pill { padding: 5px !important; border-radius: 50% !important; }
-    
+
     /* Hide the FM disc to make room for Buzzes and Bell */
-    .zee-fm-disc { display: none !important; } 
+    .zee-fm-disc { display: none !important; }
   }
 
   /* ── RESPONSIVE DOCK TOGGLE ──────────────────────────────────── */
@@ -173,7 +174,7 @@ const NAV_STYLES = `
     background: rgba(8, 14, 36, 0.95) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border-top: 1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 22%, transparent) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 22%, transparent) !important;
     padding-bottom: env(safe-area-inset-bottom, 5px) !important;
     z-index: 1000 !important;
   }
@@ -204,7 +205,7 @@ function NavDockIcon({
   icon,
   active = false,
   badge = 0,
-  accent = "var(--color-electric, #8A2EFF)",
+  accent = "var(--color-electric, #FF2D87)",
 }: {
   icon: React.ReactNode;
   active?: boolean;
@@ -244,13 +245,26 @@ export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
-  const [buzzCount, setBuzzCount] = useState(0); // 👈 ADDED
+  const [buzzCount, setBuzzCount] = useState(0);
   const [onlineCount, setOnlineCount] = useState(2847);
+  const [userZid, setUserZid] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // ── Fetch Nav Data ──────────────────────────────────
   const fetchNavData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // 0. User's zid for profile link
+    if (!userZid) {
+      const { data: u } = await supabase
+        .from("users")
+        .select("zid, avatar_url")
+        .eq("id", user.id)
+        .single();
+      if (u?.zid) setUserZid(u.zid);
+      if (u?.avatar_url) setAvatarUrl(u.avatar_url);
+    }
 
     // 1. Unread Messages
     const { count } = await supabase
@@ -268,7 +282,7 @@ export default function NavBar() {
       .eq("is_buzz", true)
       .eq("is_read", false);
     setBuzzCount(buzzC || 0);
-  }, []);
+  }, [userZid]);
 
   useEffect(() => { fetchNavData(); }, [fetchNavData]);
 
@@ -359,10 +373,10 @@ export default function NavBar() {
       className: pathname?.startsWith("/zlogger") ? "zee-active" : "",
     },
     {
-      icon: <NavDockIcon icon={<UserCircle size={16} />} active={pathname === "/profile"} accent="#00E5FF" />,
+      icon: <NavDockIcon icon={<UserCircle size={16} />} active={pathname?.startsWith("/u/")} accent="#00E5FF" />,
       label: "Profile",
-      onClick: () => router.push("/profile"),
-      className: pathname === "/profile" ? "zee-active" : "",
+      onClick: () => userZid ? router.push(`/u/${userZid}`) : router.push("/profile"),
+      className: pathname?.startsWith("/u/") ? "zee-active" : "",
     },
   ];
 
@@ -385,8 +399,8 @@ export default function NavBar() {
         background: "rgba(8,14,36,0.95)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 22%, transparent)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.42), 0 1px 0 color-mix(in srgb, var(--color-electric, #8A2EFF) 8%, transparent) inset",
+        borderBottom: "1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 22%, transparent)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.42), 0 1px 0 color-mix(in srgb, var(--color-electric, #FF2D87) 8%, transparent) inset",
         backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.011) 3px,rgba(255,255,255,0.011) 4px)",
         // overflow visible so labels can drop below the nav bar
         overflow: "visible",
@@ -395,7 +409,7 @@ export default function NavBar() {
         {/* ── LEFT: Logo ──────────────────────────────────────── */}
         <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "7px", textDecoration: "none", flexShrink: 0 }}>
           <svg width="20" height="16" viewBox="0 0 70 58" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#8A2EFF" />
+            <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#FF2D87" />
             <path d="M 37,5 Q 53,2 68,2 L 68,27 Q 53,26 37,25 Z" fill="#00E5FF" />
             <path d="M 33,33 Q 17,32 2,31 L 2,56 Q 17,56 33,53 Z" fill="#5B21B6" />
             <path d="M 37,33 Q 53,32 68,31 L 68,56 Q 53,56 37,53 Z" fill="#0EA5E9" />
@@ -480,9 +494,9 @@ export default function NavBar() {
           <NotificationBell />
 
           {/* FM disc (Notice I added className="zee-fm-disc" here!) */}
-          <div className="zee-fm-disc" style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(138,46,255,0.18)", borderRadius: "8px", padding: "4px 8px" }}>
-            <Disc3 size={12} style={{ color: "var(--color-electric, #8A2EFF)", animation: "zee-disc 3s linear infinite" }} />
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "var(--color-electric, #8A2EFF)", letterSpacing: "2px" }}>
+          <div className="zee-fm-disc" style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(255,45,135,0.18)", borderRadius: "8px", padding: "4px 8px" }}>
+            <Disc3 size={12} style={{ color: "var(--color-electric, #FF2D87)", animation: "zee-disc 3s linear infinite" }} />
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "var(--color-electric, #FF2D87)", letterSpacing: "2px" }}>
               FM
             </span>
           </div>
@@ -494,13 +508,14 @@ export default function NavBar() {
       <div className="zee-nav-dock zee-mobile-dock">
         <Dock
           items={dockItems}
-          panelHeight={48} /* Slightly taller for thumb-tapping on mobile */
+          panelHeight={48}
           baseItemSize={36}
           magnification={44}
           distance={100}
         />
       </div>
 
+      <MarqueeTicker />
 
     </>
   );

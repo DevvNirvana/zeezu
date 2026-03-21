@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -60,7 +60,7 @@ function ZeezuFlag({ size = 68 }: { size?: number }) {
       aria-hidden="true"
     >
       {/* Top-left — Violet */}
-      <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#8A2EFF" />
+      <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#FF2D87" />
       {/* Top-right — Cyan */}
       <path d="M 37,5 Q 53,2 68,2 L 68,27 Q 53,26 37,25 Z" fill="#00E5FF" />
       {/* Bottom-left — Deep indigo */}
@@ -254,7 +254,7 @@ export default function BootScreen({
                     color: "#ffffff",
                     letterSpacing: "-1.5px",
                     lineHeight: "1",
-                    textShadow: "0 0 60px rgba(138,46,255,0.28), 0 0 20px rgba(0,229,255,0.10)",
+                    textShadow: "0 0 60px rgba(255,45,135,0.28), 0 0 20px rgba(0,229,255,0.10)",
                   }}
                 >
                   zeezu
@@ -314,9 +314,9 @@ export default function BootScreen({
                       style={{
                         width: "18px",
                         height: "8px",
-                        background: "linear-gradient(180deg, #9B52FF 0%, #7C25EE 55%, #6010D4 100%)",
+                        background: "linear-gradient(180deg, #9B52FF 0%, #7C25EE 55%, #CC1870 100%)",
                         borderRadius: "1px",
-                        boxShadow: "0 0 6px rgba(138,46,255,0.55)",
+                        boxShadow: "0 0 6px rgba(255,45,135,0.55)",
                       }}
                     />
                   ))}

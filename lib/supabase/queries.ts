@@ -184,7 +184,7 @@ export async function searchUsers(query: string) {
 
   const { data } = await supabase
     .from("users")
-    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day")
+    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day, last_seen_at, online_status, influence_score")
     .or(`display_name.ilike.%${trimmed}%,zid.ilike.%${trimmed}%`)
     .limit(20);
 
@@ -201,7 +201,7 @@ export async function discoverUsers(page = 0, limit = 20) {
 
   const { data, count } = await supabase
     .from("users")
-    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day", { count: "exact" })
+    .select("id, display_name, zid, avatar_url, status_message, created_at, birth_year, birth_month, birth_day, last_seen_at, online_status, influence_score", { count: "exact" })
     .neq("id", user?.id || "")
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -235,7 +235,7 @@ export async function addToCoreEight(friendId: string, position: number) {
       friend_id: friendId,
       position,
     },
-    { onConflict: "user_id, position" }
+    { onConflict: "user_id,position" }
   );
 
   if (error) console.error("Error updating Core 8:", error);
@@ -735,6 +735,7 @@ export type ZlogListItem = {
   cover_image_url: string | null;
   mood: string | null;
   is_anonymous: boolean;
+  is_featured: boolean;
   created_at: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   author: any;
@@ -751,6 +752,7 @@ export type ZlogFull = ZlogListItem & {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   responseTo?: any;
   myEngagement: string[];
+  is_featured: boolean;
 };
 
 export type ZlogComment = {
@@ -816,7 +818,7 @@ export async function getZlogBySlug(slug: string): Promise<ZlogFull | null> {
     .from("zlogs")
     .select(`
       id, slug, title, content_html, content_markdown,
-      cover_image_url, theme, mood, is_anonymous,
+      cover_image_url, theme, mood, is_anonymous, is_featured,
       visibility, created_at, updated_at,
       user_id, response_to,
       author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day),
@@ -866,6 +868,32 @@ export async function getZlogBySlug(slug: string): Promise<ZlogFull | null> {
   } as unknown as ZlogFull;
 }
 
+/** Batch-fetch engagement + comment counts for a list of zlog IDs. */
+async function fetchEngagementCounts(
+  ids: string[]
+): Promise<Record<string, { zap: number; vibe: number; save: number; comment: number }>> {
+  if (ids.length === 0) return {};
+
+  const map: Record<string, { zap: number; vibe: number; save: number; comment: number }> = {};
+  for (const id of ids) map[id] = { zap: 0, vibe: 0, save: 0, comment: 0 };
+
+  const [{ data: engRows }, { data: commentRows }] = await Promise.all([
+    supabase.from("zlog_engagement").select("zlog_id, type").in("zlog_id", ids),
+    supabase.from("zlog_comments").select("zlog_id").in("zlog_id", ids),
+  ]);
+
+  for (const e of engRows ?? []) {
+    if (map[e.zlog_id] && e.type in map[e.zlog_id]) {
+      map[e.zlog_id][e.type as "zap" | "vibe" | "save"]++;
+    }
+  }
+  for (const c of commentRows ?? []) {
+    if (map[c.zlog_id]) map[c.zlog_id].comment++;
+  }
+
+  return map;
+}
+
 /** Fetch paginated public zlogs with filter support. */
 export async function getPublicZlogs(
   filter: ZlogFilter,
@@ -877,7 +905,7 @@ export async function getPublicZlogs(
   let query = supabase
     .from("zlogs")
     .select(`
-      id, slug, title, cover_image_url, mood, is_anonymous,
+      id, slug, title, cover_image_url, mood, is_anonymous, is_featured,
       created_at, user_id,
       author:users!user_id (id, display_name, zid, avatar_url, birth_year, birth_month, birth_day),
       content_markdown
@@ -896,16 +924,22 @@ export async function getPublicZlogs(
   const { data, error } = await query;
   if (error) { console.error("getPublicZlogs:", error); return []; }
 
-  return ((data ?? []) as any[]).map((row) => ({
+  const rows = (data ?? []) as any[];
+  const ids = rows.map((r) => r.id);
+
+  const engMap = await fetchEngagementCounts(ids);
+
+  return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     title: row.title,
     cover_image_url: row.cover_image_url ?? null,
     mood: row.mood ?? null,
     is_anonymous: row.is_anonymous,
+    is_featured: row.is_featured ?? false,
     created_at: row.created_at,
     author: row.is_anonymous ? null : row.author,
-    engagementCounts: { zap: 0, vibe: 0, save: 0, comment: 0 },
+    engagementCounts: engMap[row.id] ?? { zap: 0, vibe: 0, save: 0, comment: 0 },
     excerpt: (row.content_markdown ?? "").replace(/[#*`>\[\]]/g, "").slice(0, 160),
   }));
 }
@@ -917,7 +951,7 @@ export async function getUserZlogs(userId: string): Promise<ZlogListItem[]> {
 
   let query = supabase
     .from("zlogs")
-    .select("id, slug, title, cover_image_url, mood, is_anonymous, created_at, content_markdown, visibility")
+    .select("id, slug, title, cover_image_url, mood, is_anonymous, is_featured, created_at, content_markdown, visibility")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -928,16 +962,22 @@ export async function getUserZlogs(userId: string): Promise<ZlogListItem[]> {
   const { data, error } = await query;
   if (error) { console.error("getUserZlogs:", error); return []; }
 
-  return ((data ?? []) as any[]).map((row) => ({
+  const rows = (data ?? []) as any[];
+  const ids = rows.map((r) => r.id);
+
+  const engMap = await fetchEngagementCounts(ids);
+
+  return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     title: row.title,
     cover_image_url: row.cover_image_url ?? null,
     mood: row.mood ?? null,
     is_anonymous: row.is_anonymous,
+    is_featured: row.is_featured ?? false,
     created_at: row.created_at,
     author: null,
-    engagementCounts: { zap: 0, vibe: 0, save: 0, comment: 0 },
+    engagementCounts: engMap[row.id] ?? { zap: 0, vibe: 0, save: 0, comment: 0 },
     excerpt: (row.content_markdown ?? "").replace(/[#*`>\[\]]/g, "").slice(0, 160),
   }));
 }
@@ -1015,7 +1055,7 @@ export async function addZlogComment(zlogId: string, content: string): Promise<Z
   return row as ZlogComment;
 }
 
-/** Set a zlog as featured for the current user. */
+/** Set a zlog as featured for the current user (clears any existing featured). */
 export async function setFeaturedZlog(zlogId: string): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
@@ -1024,4 +1064,244 @@ export async function setFeaturedZlog(zlogId: string): Promise<boolean> {
   const { error } = await supabase.from("zlogs").update({ is_featured: true }).eq("id", zlogId).eq("user_id", user.id);
   if (error) { console.error("setFeaturedZlog:", error); return false; }
   return true;
+}
+
+/** Remove featured status from a zlog. */
+export async function unsetFeaturedZlog(zlogId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase.from("zlogs").update({ is_featured: false }).eq("id", zlogId).eq("user_id", user.id);
+  if (error) { console.error("unsetFeaturedZlog:", error); return false; }
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ZONES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type Zone = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon_emoji: string;
+  accent_color: string;
+  topic_tag: string;
+  rules: string;
+  owner_id: string;
+  member_count: number;
+  post_count: number;
+  is_nsfw: boolean;
+  is_locked: boolean;
+  created_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  owner?: any;
+};
+
+export type ZoneMembership = {
+  zone_id: string;
+  user_id: string;
+  role: "owner" | "mod" | "member";
+  joined_at: string;
+};
+
+export type ZoneMember = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user: any;
+  role: "owner" | "mod" | "member";
+  joined_at: string;
+};
+
+const ZONE_SELECT = `
+  id, slug, name, description, icon_emoji, accent_color, topic_tag,
+  rules, owner_id, member_count, post_count, is_nsfw, is_locked, created_at,
+  owner:users!owner_id (id, display_name, zid, avatar_url)
+`;
+
+/** Fetch zones: trending / newest / mine */
+export async function getZones(
+  filter: "trending" | "newest" | "mine" = "trending",
+  searchQuery?: string
+): Promise<Zone[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (filter === "mine") {
+    if (!user) return [];
+    const { data: memberships } = await supabase
+      .from("zone_memberships")
+      .select("zone_id")
+      .eq("user_id", user.id);
+    const ids = (memberships ?? []).map((m: any) => m.zone_id);
+    if (ids.length === 0) return [];
+    let q = supabase.from("zones").select(ZONE_SELECT).in("id", ids);
+    if (searchQuery) q = q.ilike("name", `%${searchQuery}%`);
+    const { data } = await q.order("member_count", { ascending: false }).limit(50);
+    return (data ?? []) as unknown as Zone[];
+  }
+
+  let q = supabase.from("zones").select(ZONE_SELECT);
+  if (searchQuery) q = q.ilike("name", `%${searchQuery}%`);
+  if (filter === "trending") q = q.order("member_count", { ascending: false });
+  else q = q.order("created_at", { ascending: false });
+  const { data } = await q.limit(50);
+  return (data ?? []) as unknown as Zone[];
+}
+
+/** Fetch a single zone by slug. */
+export async function getZoneBySlug(slug: string): Promise<Zone | null> {
+  const { data, error } = await supabase
+    .from("zones")
+    .select(ZONE_SELECT)
+    .eq("slug", slug)
+    .single();
+  if (error || !data) return null;
+  return data as unknown as Zone;
+}
+
+/** Get the current user's membership for a zone, or null if not a member. */
+export async function getMyZoneMembership(zoneId: string): Promise<ZoneMembership | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("zone_memberships")
+    .select("zone_id, user_id, role, joined_at")
+    .eq("zone_id", zoneId)
+    .eq("user_id", user.id)
+    .single();
+  return data ?? null;
+}
+
+/** Join a zone. Returns false if banned. */
+export async function joinZone(zoneId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  // Check ban
+  const { data: ban } = await supabase
+    .from("zone_bans")
+    .select("id")
+    .eq("zone_id", zoneId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (ban) return false;
+  await supabase.from("zone_memberships").insert({ zone_id: zoneId, user_id: user.id, role: "member" });
+  return true;
+}
+
+/** Leave a zone. */
+export async function leaveZone(zoneId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("zone_memberships").delete().eq("zone_id", zoneId).eq("user_id", user.id);
+}
+
+/** Get zones the current user has joined. */
+export async function getMyZones(): Promise<Zone[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data: memberships } = await supabase
+    .from("zone_memberships")
+    .select("zone_id")
+    .eq("user_id", user.id)
+    .order("joined_at", { ascending: false })
+    .limit(10);
+  const ids = (memberships ?? []).map((m: any) => m.zone_id);
+  if (ids.length === 0) return [];
+  const { data } = await supabase
+    .from("zones")
+    .select(ZONE_SELECT)
+    .in("id", ids)
+    .limit(10);
+  return (data ?? []) as unknown as Zone[];
+}
+
+/** Create a new zone. Returns the created zone or null on error. */
+export async function createZone(input: {
+  name: string;
+  slug: string;
+  description: string;
+  icon_emoji: string;
+  accent_color: string;
+  topic_tag: string;
+  rules: string;
+  is_nsfw: boolean;
+}): Promise<Zone | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("zones")
+    .insert({ ...input, owner_id: user.id })
+    .select(ZONE_SELECT)
+    .single();
+  if (error) { console.error("createZone:", error); return null; }
+  // Auto-join as owner
+  await supabase.from("zone_memberships").insert({ zone_id: (data as any).id, user_id: user.id, role: "owner" });
+  return data as unknown as Zone;
+}
+
+/** Update zone metadata (owner only — enforced by RLS). */
+export async function updateZone(zoneId: string, updates: Partial<Pick<Zone, "name" | "description" | "icon_emoji" | "accent_color" | "topic_tag" | "rules" | "is_nsfw" | "is_locked">>): Promise<boolean> {
+  const { error } = await supabase.from("zones").update(updates).eq("id", zoneId);
+  if (error) { console.error("updateZone:", error); return false; }
+  return true;
+}
+
+/** Delete a zone (owner only — enforced by RLS). */
+export async function deleteZone(zoneId: string): Promise<boolean> {
+  const { error } = await supabase.from("zones").delete().eq("id", zoneId);
+  if (error) { console.error("deleteZone:", error); return false; }
+  return true;
+}
+
+/** Get paginated members for a zone. */
+export async function getZoneMembers(zoneId: string, limit = 20, offset = 0): Promise<ZoneMember[]> {
+  const { data } = await supabase
+    .from("zone_memberships")
+    .select("role, joined_at, user:users!user_id (id, display_name, zid, avatar_url)")
+    .eq("zone_id", zoneId)
+    .order("joined_at", { ascending: true })
+    .range(offset, offset + limit - 1);
+  return (data ?? []) as unknown as ZoneMember[];
+}
+
+/** Promote a zone member to mod (owner only — enforced by RLS). */
+export async function promoteToMod(zoneId: string, targetUserId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("zone_memberships")
+    .update({ role: "mod" })
+    .eq("zone_id", zoneId)
+    .eq("user_id", targetUserId);
+  if (error) { console.error("promoteToMod:", error); return false; }
+  return true;
+}
+
+/** Demote a zone mod back to member (owner only — enforced by RLS). */
+export async function demoteToMember(zoneId: string, targetUserId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("zone_memberships")
+    .update({ role: "member" })
+    .eq("zone_id", zoneId)
+    .eq("user_id", targetUserId);
+  if (error) { console.error("demoteToMember:", error); return false; }
+  return true;
+}
+
+/** Ban a user from a zone (mod/owner — enforced by RLS). */
+export async function banUserFromZone(zoneId: string, userId: string, reason = ""): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  await supabase.from("zone_bans").insert({ zone_id: zoneId, user_id: userId, banned_by: user.id, reason });
+  await supabase.from("zone_memberships").delete().eq("zone_id", zoneId).eq("user_id", userId);
+  return true;
+}
+
+/** Generate a URL-safe slug from a zone name, with a short random suffix for uniqueness. */
+export function generateZoneSlug(name: string): string {
+  const base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
+  const suffix = Math.random().toString(36).slice(2, 6);
+  return `${base}-${suffix}`;
 }

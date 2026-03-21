@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -37,9 +37,9 @@ type UserProfile = {
   status_message: string | null;
   avatar_url: string | null;
   social_links?: Record<string, string> | null;
-  birth_year?:  number | null;
+  birth_year?: number | null;
   birth_month?: number | null;
-  birth_day?:   number | null;
+  birth_day?: number | null;
 };
 
 type Vibes = {
@@ -89,12 +89,12 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
     @keyframes tabSlide { from { width: 0; } to { width: 100%; } }
     .tab-indicator { position: absolute; bottom: 0; left: 0; height: 2px; border-radius: 1px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .completeness-ring { transition: stroke-dashoffset 1s ease-out; }
-    @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 20px rgba(138,46,255,0.3); } 50% { box-shadow: 0 0 40px rgba(138,46,255,0.6); } }
+    @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 20px rgba(255,45,135,0.3); } 50% { box-shadow: 0 0 40px rgba(255,45,135,0.6); } }
     .save-pulse { animation: pulseGlow 2s ease-in-out infinite; }
     @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     .section-enter { animation: slideIn 0.3s ease-out forwards; }
     .toggle-track { width: 40px; height: 22px; border-radius: 11px; transition: background-color 0.2s; cursor: pointer; position: relative; }
-    .toggle-track.on { background-color: #8A2EFF; }
+    .toggle-track.on { background-color: #FF2D87; }
     .toggle-track.off { background-color: #333; }
     .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: white; position: absolute; top: 2px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
     .toggle-knob.on { transform: translateX(20px); }
@@ -157,6 +157,8 @@ export default function ProfileSettings() {
     show_wall: true,
     wall_friends_only: false,
     show_online: true,
+    show_zlogger: true,
+    show_photos: true,
   });
 
   // Dirty tracking helper
@@ -205,6 +207,8 @@ export default function ProfileSettings() {
             show_wall: customData.show_wall ?? true,
             wall_friends_only: customData.wall_friends_only ?? false,
             show_online: customData.show_online ?? true,
+            show_zlogger: (customData as any).show_zlogger ?? true,
+            show_photos: (customData as any).show_photos ?? true,
           });
         }
       }
@@ -259,15 +263,15 @@ export default function ProfileSettings() {
     if (avatarPreview) { setAvatarPreview(null); setAvatarFile(null); }
 
     // Extract birth date parts from personal_info for generation tag
-    let birth_year:  number | null = null;
+    let birth_year: number | null = null;
     let birth_month: number | null = null;
-    let birth_day:   number | null = null;
+    let birth_day: number | null = null;
     const bday = (personalInfo as PersonalInfoData | null)?.birthday?.value;
     if (bday) {
       const [y, m, d] = bday.split('-').map(Number);
-      if (y > 1900 && y < 2030) birth_year  = y;
-      if (m >= 1 && m <= 12)    birth_month = m;
-      if (d >= 1 && d <= 31)    birth_day   = d;
+      if (y > 1900 && y < 2030) birth_year = y;
+      if (m >= 1 && m <= 12) birth_month = m;
+      if (d >= 1 && d <= 31) birth_day = d;
     }
 
     // Save users table (profile data)
@@ -330,7 +334,7 @@ export default function ProfileSettings() {
 
   // ── Loading ───────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#0B0B12] flex items-center justify-center">
+    <div className="min-h-screen bg-[#0E0B0D] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="relative w-10 h-10">
           <div className="absolute inset-0 rounded-full border border-electric/20" />
@@ -363,7 +367,7 @@ export default function ProfileSettings() {
 
   // ── RENDER ────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0B0B12] text-white pb-24">
+    <div className="min-h-screen bg-[#0E0B0D] text-white pb-24">
       <NavBar />
       <ThemeEngine config={custom} />
 
@@ -442,9 +446,9 @@ export default function ProfileSettings() {
             {/* 3D ProfileCard */}
             {(() => {
               const gen = getGeneration(user?.birth_year, user?.birth_month, user?.birth_day);
-              const glowColor = gen?.accentGlow ?? 'rgba(138,46,255,0.2)';
+              const glowColor = gen?.accentGlow ?? 'rgba(255,45,135,0.2)';
               return (
-                <div style={{ borderRadius: '1.25rem', boxShadow: `0 0 40px ${glowColor}, 0 0 80px ${glowColor}`, transition: 'box-shadow 0.5s ease' }}>
+                <div style={{ borderRadius: '1.25rem', boxShadow: `0 0 40px ${glowColor}, 0 0 80px ${glowColor}`, transition: 'box-shadow 0.5s ease', maxWidth: '320px', width: '100%', margin: '0 auto' }}>
                   <ProfileCard
                     name={displayName || user?.display_name || "Unknown"}
                     title={user?.zid || "ZID-????"}
@@ -461,22 +465,27 @@ export default function ProfileSettings() {
                     behindGlowSize="60%"
                     innerGradient={`linear-gradient(145deg, #0f0c29 0%, ${custom.primary_color}22 50%, #1a0533 100%)`}
                     hexItems={liveHexItems.length > 0 ? liveHexItems : undefined}
-                    trustScore={vibes?.trustworthy_score}
-                    coolScore={vibes?.cool_score}
-                    sexyScore={vibes?.sexy_score}
+                    // trustScore={vibes?.trustworthy_score}
+                    // coolScore={vibes?.cool_score}
+                    // sexyScore={vibes?.sexy_score}
                     onlineStatus={onlineStatus}
                   />
                 </div>
               );
             })()}
 
+            {(() => {
+              const gen = getGeneration(user?.birth_year, user?.birth_month, user?.birth_day);
+              return gen ? <div className="flex justify-center -mt-2 mb-2"><GenBadge gen={gen} size="md" /></div> : null;
+            })()}
+
             {/* ── ONLINE STATUS PICKER ── */}
             {(() => {
               const STATUSES: { key: OnlineStatus; label: string; color: string; desc: string }[] = [
-                { key: "online",  label: "Online",  color: "#6BCB77", desc: "Active and available" },
-                { key: "busy",    label: "Busy",    color: "#F97316", desc: "Do not disturb" },
-                { key: "away",    label: "Away",    color: "#F59E0B", desc: "Be right back" },
-                { key: "offline", label: "Offline", color: "#6B7280", desc: "Appear offline" },
+                { key: "online", label: "Online", color: "#6BCB77", desc: "Active and available" },
+                { key: "busy", label: "Busy", color: "#F97316", desc: "Do not disturb" },
+                { key: "away", label: "Away", color: "#F59E0B", desc: "Be right back" },
+                // { key: "offline", label: "Offline", color: "#6B7280", desc: "Appear offline" },
               ];
               const cur = STATUSES.find(s => s.key === onlineStatus) ?? STATUSES[0];
               return (
@@ -499,7 +508,7 @@ export default function ProfileSettings() {
                   {statusPickerOpen && (
                     <div style={{
                       position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-                      background: "rgba(8,14,36,.97)", border: "1px solid rgba(138,46,255,.25)",
+                      background: "rgba(8,14,36,.97)", border: "1px solid rgba(255,45,135,.25)",
                       borderRadius: "10px", overflow: "hidden",
                       boxShadow: "0 8px 24px rgba(0,0,0,.7)", zIndex: 50,
                     }}>
@@ -516,8 +525,8 @@ export default function ProfileSettings() {
                           borderBottom: i < 3 ? "1px solid rgba(255,255,255,.05)" : "none",
                           cursor: "pointer", transition: "background .15s",
                         }}
-                        onMouseEnter={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,.04)"; }}
-                        onMouseLeave={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                          onMouseEnter={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,.04)"; }}
+                          onMouseLeave={e => { if (onlineStatus !== s.key) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
                         >
                           <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: s.color, boxShadow: `0 0 5px ${s.color}80`, flexShrink: 0, display: "block" }} />
                           <div style={{ flex: 1 }}>
@@ -533,10 +542,7 @@ export default function ProfileSettings() {
               );
             })()}
 
-            {(() => {
-              const gen = getGeneration(user?.birth_year, user?.birth_month, user?.birth_day);
-              return gen ? <div className="flex justify-center -mt-2 mb-2"><GenBadge gen={gen} size="md" /></div> : null;
-            })()}
+
 
             {/* Stats strip */}
             <div className="grid grid-cols-3 gap-2">
@@ -806,28 +812,40 @@ export default function ProfileSettings() {
 
                     <div className="divide-y divide-gray-800/40">
                       <Toggle
+                        value={privacySettings.show_online}
+                        onChange={v => setPrivacySettings(prev => ({ ...prev, show_online: v }))}
+                        label="Show Online Status"
+                        description="Let others see when you're active on the platform"
+                      />
+                      <Toggle
                         value={privacySettings.show_vibes}
                         onChange={v => setPrivacySettings(prev => ({ ...prev, show_vibes: v }))}
                         label="Show Vibes Scores"
-                        description="Display your trust, cool, and sexy scores publicly"
+                        description="Display your trust, cool &amp; sexy ratings on your profile"
                       />
                       <Toggle
                         value={privacySettings.show_wall}
                         onChange={v => setPrivacySettings(prev => ({ ...prev, show_wall: v }))}
-                        label="Show Wall Posts"
-                        description="Display your wall posts on your public profile"
+                        label="Show Wall"
+                        description="Display your wall &amp; post activity on your public profile"
                       />
                       <Toggle
                         value={privacySettings.wall_friends_only}
                         onChange={v => setPrivacySettings(prev => ({ ...prev, wall_friends_only: v }))}
-                        label="Friends-Only Wall"
-                        description="Only friends can post on your wall"
+                        label="Friends-Only Wall Posts"
+                        description="Only friends can post on your wall — others can still view"
                       />
                       <Toggle
-                        value={privacySettings.show_online}
-                        onChange={v => setPrivacySettings(prev => ({ ...prev, show_online: v }))}
-                        label="Show Online Status"
-                        description="Let others see when you're online"
+                        value={privacySettings.show_zlogger}
+                        onChange={v => setPrivacySettings(prev => ({ ...prev, show_zlogger: v }))}
+                        label="Show Zlogger Tab"
+                        description="Display your published zlogs on your public profile"
+                      />
+                      <Toggle
+                        value={privacySettings.show_photos}
+                        onChange={v => setPrivacySettings(prev => ({ ...prev, show_photos: v }))}
+                        label="Show Photos Tab"
+                        description="Display your uploaded photos on your public profile"
                       />
                     </div>
                   </SpotlightCard>

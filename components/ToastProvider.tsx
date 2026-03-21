@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -30,11 +30,11 @@ const TOAST_ICONS: Record<string, React.ReactNode> = {
 
 const TOAST_COLORS: Record<string, string> = {
     message: "#00F7FF",
-    buzz: "#8A2EFF",
+    buzz: "#FF2D87",
     friend_request: "#FF007A",
     friend_accept: "#B4FF00",
     zap: "#B4FF00",
-    system: "#8A2EFF",
+    system: "#FF2D87",
     comment: "#00F7FF",
     reply: "#818cf8",
     upvote: "#22c55e",
@@ -174,7 +174,7 @@ export default function ToastProvider() {
     return createPortal(
         <div style={containerStyle}>
             {toasts.map((toast) => {
-                const color = TOAST_COLORS[toast.type] ?? "#8A2EFF";
+                const color = TOAST_COLORS[toast.type] ?? "#FF2D87";
                 const toastStyle: React.CSSProperties = isMobile
                     ? {
                         // Full-width banner — no side rounding at top

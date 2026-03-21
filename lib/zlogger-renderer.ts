@@ -1,4 +1,4 @@
-import { marked } from "marked";
+﻿import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 export function generateSlug(title: string): string {
@@ -60,7 +60,7 @@ export const ZLOG_CSS = `
   .zlog-body h3 { font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin:16px 0 8px; }
   .zlog-body p  { font-family:'Nunito',sans-serif;font-size:14px;line-height:1.7;color:rgba(255,255,255,.75);margin:0 0 14px; }
   .zlog-body a  { color:#00F7FF;text-decoration:underline; }
-  .zlog-body blockquote { border-left:3px solid var(--color-electric,#8A2EFF);padding:8px 16px;background:rgba(138,46,255,.08);margin:14px 0;font-style:italic; }
+  .zlog-body blockquote { border-left:3px solid var(--color-electric,#FF2D87);padding:8px 16px;background:rgba(255,45,135,.08);margin:14px 0;font-style:italic; }
   .zlog-body code { font-family:'VT323',monospace;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:4px;font-size:13px;color:#B4FF00; }
   .zlog-body pre { background:rgba(0,0,0,.6);padding:14px;border-radius:8px;overflow-x:auto;margin:14px 0; }
   .zlog-body pre code { background:none;padding:0; }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
@@ -12,6 +12,7 @@ type Station = {
   color: string;
   url?: string;
   playlist?: string[];
+  trackNames?: string[];
 };
 
 const STATIONS: Station[] = [
@@ -20,7 +21,16 @@ const STATIONS: Station[] = [
     name: "OST // ZEEZU",
     color: "#fcee0a",
     playlist: [
+      "https://axsmyeghciyf6aru.public.blob.vercel-storage.com/Drive%20Home%20Safe.mp3",
+      "https://axsmyeghciyf6aru.public.blob.vercel-storage.com/eurodrive.mp3",
+      "https://axsmyeghciyf6aru.public.blob.vercel-storage.com/Dreams%20We%20Didn%E2%80%99t%20Get%20To%20Live.mp3",
       "https://dl.dropboxusercontent.com/scl/fi/uz72n6eqlmke36p2xxi1i/KxH-TTR.mp3?rlkey=fsx2dlmlvgidh5s7upenk93vm&e=1&st=hr4rm7of&",
+    ],
+    trackNames: [
+      "Drive Home Safe",
+      "Eurodrive",
+      "Dreams We Didn't Get To Live",
+      "KxH-TTR",
     ],
   },
   { id: "chillsynth", name: "CHILLSYNTH", url: "https://stream.rekt.network/chillsynth.mp3", color: "#00f3ff" },
@@ -57,6 +67,17 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
   s.id = STYLE_ID;
   s.textContent = `
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=VT323&family=Share+Tech+Mono&display=swap');
+
+    /* ── Vinyl spin ── */
+    @keyframes vinyl-spin  { to { transform: rotate(360deg);  } }
+    @keyframes vinyl-spin-r{ to { transform: rotate(-360deg); } }
+    @keyframes vinyl-glow  {
+      0%,100% { box-shadow: 0 0 22px 4px rgba(255,45,135,.85),  0 0 50px 10px rgba(255,45,135,.25), 0 6px 24px rgba(0,0,0,.8); }
+      25%     { box-shadow: 0 0 22px 4px rgba(0,247,255,.85),   0 0 50px 10px rgba(0,247,255,.25),  0 6px 24px rgba(0,0,0,.8); }
+      50%     { box-shadow: 0 0 22px 4px rgba(180,255,0,.85),   0 0 50px 10px rgba(180,255,0,.25),  0 6px 24px rgba(0,0,0,.8); }
+      75%     { box-shadow: 0 0 22px 4px rgba(255,215,0,.85),   0 0 50px 10px rgba(255,215,0,.25),  0 6px 24px rgba(0,0,0,.8); }
+    }
+    @keyframes vinyl-hue { to { filter: hue-rotate(360deg); } }
 
     /* ── EQ bars ── */
     @keyframes za-eq1 { 0%,100%{height:3px}  50%{height:13px} }
@@ -370,6 +391,8 @@ function TransportBtn({
 
 export default function RadioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasAutoplayed = useRef(false);
+  const dragIdx = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -381,15 +404,23 @@ export default function RadioPlayer() {
   const [duration, setDuration] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showEq, setShowEq] = useState(false);
+  const [ostExpanded, setOstExpanded] = useState(false);
+  const [ostTracks, setOstTracks] = useState<{ url: string; name: string }[]>(
+    (STATIONS[0].playlist || []).map((url, i) => ({
+      url,
+      name: STATIONS[0].trackNames?.[i] ?? `Track ${i + 1}`,
+    }))
+  );
 
   const current = STATIONS[stationIdx];
 
   // ── Get current URL — unchanged ──────────────────────────────────
   const getCurrentSrc = useCallback((sIdx: number, pIdx: number): string => {
+    if (sIdx === 0) return ostTracks[Math.min(pIdx, ostTracks.length - 1)].url;
     const s = STATIONS[sIdx];
     if (s.playlist) return s.playlist[Math.min(pIdx, s.playlist.length - 1)];
     return s.url!;
-  }, []);
+  }, [ostTracks]);
 
   // ── Init audio — unchanged ────────────────────────────────────────
   useEffect(() => {
@@ -416,7 +447,7 @@ export default function RadioPlayer() {
     };
   }, []);
 
-  // ── Load source on station change — unchanged ─────────────────────
+  // ── Load source on station change ────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -424,7 +455,33 @@ export default function RadioPlayer() {
     setError(false);
     setElapsed(0);
     setDuration(0);
-    if (isPlaying) audio.play().catch(() => setError(true));
+    if (isPlaying) {
+      audio.play().catch(() => setError(true));
+      return;
+    }
+    // Landing-page autoplay — fires once, right after src is assigned
+    if (window.location.pathname === "/" && !hasAutoplayed.current) {
+      hasAutoplayed.current = true;
+      audio.muted = true;
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+          audio.muted = false;
+          audio.volume = 0;
+          let tick = 0;
+          const fade = setInterval(() => {
+            tick++;
+            audio.volume = Math.min((0.4 / 24) * tick, 0.4);
+            if (tick >= 24) clearInterval(fade);
+          }, 50);
+        })
+        .catch(() => {
+          audio.muted = false;
+          window.addEventListener("pointerdown", () => {
+            audio.play().then(() => setIsPlaying(true)).catch(() => {});
+          }, { once: true });
+        });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationIdx, subIdx]);
 
@@ -433,6 +490,11 @@ export default function RadioPlayer() {
     const audio = audioRef.current;
     if (!audio) return;
     const onEnd = () => {
+      if (stationIdx === 0) {
+        if (subIdx < ostTracks.length - 1) setSubIdx(prev => prev + 1);
+        else { setStationIdx(1); setSubIdx(0); }
+        return;
+      }
       const s = STATIONS[stationIdx];
       if (s.playlist && subIdx < s.playlist.length - 1) {
         setSubIdx(prev => prev + 1);
@@ -449,7 +511,8 @@ export default function RadioPlayer() {
       audio.removeEventListener("ended", onEnd);
       audio.removeEventListener("error", onErr);
     };
-  }, [stationIdx, subIdx]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stationIdx, subIdx, ostTracks.length]);
 
   // ── Volume sync — unchanged ───────────────────────────────────────
   useEffect(() => {
@@ -458,6 +521,7 @@ export default function RadioPlayer() {
       audioRef.current.muted = isMuted;
     }
   }, [volume, isMuted]);
+
 
   // ── Controls — unchanged ──────────────────────────────────────────
   const togglePlay = () => {
@@ -519,63 +583,99 @@ export default function RadioPlayer() {
           title={`ZeeAmp: ${current.name}`}
           style={{
             position: "relative",
-            width: "44px",
-            height: "44px",
+            width: "52px",
+            height: "52px",
             borderRadius: "50%",
-            background: "linear-gradient(135deg,#1a2540,#0d1628)",
-            border: `1.5px solid ${current.color}`,
-            boxShadow: `0 0 16px ${glowColor}, 0 4px 16px rgba(0,0,0,0.6)`,
             cursor: "pointer",
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            animation: isPlaying ? "vinyl-glow 2.4s linear infinite" : undefined,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.12)")}
+          onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+        >
+          {/* ── Vinyl disc — spins when playing ── */}
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "50%",
+            animation: isPlaying ? "vinyl-spin 2s linear infinite" : undefined,
+            background: [
+              // Groove rings
+              "repeating-radial-gradient(circle at center, transparent 0px, transparent 5px, rgba(255,255,255,.025) 5px, rgba(255,255,255,.025) 5.8px, transparent 5.8px, transparent 11px)",
+              // Holographic rainbow iridescence — rotates as vinyl spins giving sheen
+              "conic-gradient(from 0deg, rgba(255,45,135,.28) 0%, rgba(0,247,255,.28) 25%, rgba(180,255,0,.28) 50%, rgba(255,215,0,.28) 75%, rgba(255,45,135,.28) 100%)",
+              // Base vinyl dark
+              "radial-gradient(circle, #1d0a18 0%, #0d0508 65%, #1a0810 100%)",
+            ].join(","),
+            boxShadow: isPlaying
+              ? "none" // glow is on parent button
+              : `0 0 12px 2px rgba(0,0,0,.7), 0 4px 18px rgba(0,0,0,.6)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "transform .2s, box-shadow .2s",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.1)")}
-          onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          {/* Winamp W logo in VT323 */}
-          <span
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: "13px",
-              fontWeight: 900,
-              color: current.color,
-              textShadow: `0 0 8px ${glowColor}`,
-              letterSpacing: "-2px",
-              lineHeight: 1,
-            }}
-          >
-            Z
-          </span>
-          {/* Spinning ring when playing */}
+            position: "relative",
+          }}>
+            {/* Highlight reflection — upper-left sheen */}
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              background: "radial-gradient(ellipse at 32% 28%, rgba(255,255,255,.13) 0%, transparent 52%)",
+              pointerEvents: "none",
+            }} />
+
+            {/* ── Center label ── */}
+            <div style={{
+              width: "19px",
+              height: "19px",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${current.color} 0%, ${hexGlow(current.color, 0.7)} 100%)`,
+              boxShadow: `0 0 10px ${hexGlow(current.color, 0.9)}, inset 0 1px 2px rgba(255,255,255,.25)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              zIndex: 2,
+              // Counter-spin the label so Z stays upright
+              animation: isPlaying ? "vinyl-spin-r 2s linear infinite" : undefined,
+            }}>
+              <span style={{
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: "9px",
+                fontWeight: 900,
+                color: "#000",
+                lineHeight: 1,
+                letterSpacing: "-0.5px",
+              }}>Z</span>
+            </div>
+
+            {/* Spindle hole */}
+            <div style={{
+              position: "absolute",
+              width: "4px",
+              height: "4px",
+              borderRadius: "50%",
+              background: "#000",
+              zIndex: 3,
+            }} />
+          </div>
+
+          {/* Live pulse dot when playing */}
           {isPlaying && (
-            <div
-              style={{
-                position: "absolute",
-                inset: "-2px",
-                borderRadius: "50%",
-                border: `1px dashed ${current.color}`,
-                opacity: 0.4,
-                animation: "spin 4s linear infinite",
-              }}
-            />
-          )}
-          {/* Live dot */}
-          {isPlaying && (
-            <span
-              style={{
-                position: "absolute",
-                top: "-1px",
-                right: "-1px",
-                width: "9px",
-                height: "9px",
-                borderRadius: "50%",
-                background: current.color,
-                boxShadow: `0 0 6px ${current.color}`,
-                animation: "pulse 1.5s ease-in-out infinite",
-              }}
-            />
+            <span style={{
+              position: "absolute",
+              top: "1px",
+              right: "1px",
+              width: "9px",
+              height: "9px",
+              borderRadius: "50%",
+              background: current.color,
+              boxShadow: `0 0 8px ${current.color}`,
+              animation: "pulse 1.4s ease-in-out infinite",
+              zIndex: 10,
+            }} />
           )}
         </button>
       )}
@@ -617,7 +717,7 @@ export default function RadioPlayer() {
               alignItems: "center",
               justifyContent: "space-between",
               padding: "0 6px 0 8px",
-              background: `linear-gradient(90deg, ${hexGlow(current.color, 0.35)}, rgba(138,46,255,0.2), rgba(11,75,143,0.3))`,
+              background: `linear-gradient(90deg, ${hexGlow(current.color, 0.35)}, rgba(255,45,135,0.2), rgba(11,75,143,0.3))`,
               borderBottom: "1px solid rgba(0,0,0,0.4)",
               cursor: "default",
             }}
@@ -810,8 +910,13 @@ export default function RadioPlayer() {
                     paddingLeft: "6px",
                   }}
                 >
-                  {`${current.name}  •  ZEEZU FM  •  ${isPlaying ? "NOW STREAMING" : "PAUSED"}  •  `}
-                  {`${current.name}  •  ZEEZU FM  •  ${isPlaying ? "NOW STREAMING" : "PAUSED"}  •  `}
+                  {(() => {
+                    const trackName = stationIdx === 0
+                      ? (ostTracks[subIdx]?.name ?? current.name)
+                      : (current.trackNames?.[subIdx] ?? current.name);
+                    const chunk = `${trackName}  •  ${current.name}  •  ${isPlaying ? "NOW PLAYING" : "PAUSED"}  •  `;
+                    return chunk + chunk;
+                  })()}
                 </span>
               )}
             </div>
@@ -1032,79 +1137,77 @@ export default function RadioPlayer() {
 
           {/* ── PLAYLIST PANEL (PL toggle) ───────────────────── */}
           {showPlaylist && (
-            <div
-              style={{
-                borderTop: "1px solid rgba(0,0,0,0.5)",
-                background: "#050e1a",
-                maxHeight: "120px",
-                overflowY: "auto",
-              }}
-            >
-              <div
-                style={{
-                  padding: "3px 7px 2px",
-                  background: `linear-gradient(90deg, ${hexGlow(current.color, 0.2)}, transparent)`,
-                  borderBottom: "1px solid rgba(0,0,0,0.3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "2px" }}>
-                  PLAYLIST
-                </span>
-                <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.25)", letterSpacing: "1px" }}>
-                  {STATIONS.length} STATIONS
-                </span>
+            <div style={{ borderTop: "1px solid rgba(0,0,0,0.5)", background: "#050e1a", maxHeight: "180px", overflowY: "auto" }}>
+              {/* Header */}
+              <div style={{ padding: "3px 7px 2px", background: `linear-gradient(90deg, ${hexGlow(current.color, 0.2)}, transparent)`, borderBottom: "1px solid rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "2px" }}>PLAYLIST</span>
+                <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.25)", letterSpacing: "1px" }}>{STATIONS.length} STATIONS</span>
               </div>
+
               {STATIONS.map((s, i) => (
-                <button
-                  key={s.id}
-                  onClick={() => { setStationIdx(i); setSubIdx(0); }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "4px 8px",
-                    background: i === stationIdx
-                      ? hexGlow(s.color, 0.12)
-                      : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    borderBottom: "1px solid rgba(255,255,255,0.03)",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "'VT323',monospace",
-                      fontSize: "9px",
-                      color: "rgba(255,255,255,0.25)",
-                      width: "14px",
-                      textAlign: "right",
-                      letterSpacing: "0.5px",
+                <div key={s.id}>
+                  {/* Station row */}
+                  <button
+                    onClick={() => {
+                      if (i === 0) { setOstExpanded(v => !v); setStationIdx(0); setSubIdx(0); }
+                      else { setStationIdx(i); setSubIdx(0); setOstExpanded(false); }
                     }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", background: i === stationIdx ? hexGlow(s.color, 0.12) : "transparent", border: "none", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.03)" }}
                   >
-                    {i + 1}.
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      fontFamily: "'VT323',monospace",
-                      fontSize: "11px",
-                      color: i === stationIdx ? s.color : "rgba(255,255,255,0.5)",
-                      textShadow: i === stationIdx ? `0 0 6px ${hexGlow(s.color, 0.5)}` : "none",
-                      letterSpacing: "1.5px",
-                      textAlign: "left",
-                      transition: "color .15s",
-                    }}
-                  >
-                    {s.name}
-                  </span>
-                  {i === stationIdx && isPlaying && (
-                    <SpectrumBars active color={s.color} />
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.25)", width: "14px", textAlign: "right", letterSpacing: "0.5px" }}>{i + 1}.</span>
+                    <span style={{ flex: 1, fontFamily: "'VT323',monospace", fontSize: "11px", color: i === stationIdx ? s.color : "rgba(255,255,255,0.5)", textShadow: i === stationIdx ? `0 0 6px ${hexGlow(s.color, 0.5)}` : "none", letterSpacing: "1.5px", textAlign: "left", transition: "color .15s" }}>
+                      {s.name}
+                    </span>
+                    {i === 0 && (
+                      <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,0.3)", transform: ostExpanded ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block", transition: "transform .15s" }}>▶</span>
+                    )}
+                    {i === stationIdx && i !== 0 && isPlaying && <SpectrumBars active color={s.color} />}
+                  </button>
+
+                  {/* OST track sublist — only for station 0 */}
+                  {i === 0 && ostExpanded && (
+                    <div style={{ background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(0,0,0,0.4)" }}>
+                      {ostTracks.map((track, ti) => {
+                        const isActive = stationIdx === 0 && subIdx === ti;
+                        return (
+                          <div
+                            key={ti}
+                            draggable
+                            onDragStart={() => { dragIdx.current = ti; }}
+                            onDragOver={e => e.preventDefault()}
+                            onDrop={() => {
+                              if (dragIdx.current === null || dragIdx.current === ti) return;
+                              const from = dragIdx.current;
+                              const reordered = [...ostTracks];
+                              const [moved] = reordered.splice(from, 1);
+                              reordered.splice(ti, 0, moved);
+                              // keep playhead on the same track
+                              if (stationIdx === 0) {
+                                const playingUrl = ostTracks[subIdx].url;
+                                setSubIdx(reordered.findIndex(t => t.url === playingUrl));
+                              }
+                              setOstTracks(reordered);
+                              dragIdx.current = null;
+                            }}
+                            style={{ display: "flex", alignItems: "center", gap: "5px", padding: "3px 8px 3px 22px", borderBottom: "1px solid rgba(255,255,255,0.02)", cursor: "grab", background: isActive ? hexGlow(s.color, 0.1) : "transparent" }}
+                          >
+                            {/* Drag handle */}
+                            <span style={{ color: "rgba(255,255,255,0.18)", fontSize: "9px", letterSpacing: "-1px", userSelect: "none", flexShrink: 0 }}>⠿</span>
+                            {/* Track number */}
+                            <span style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,0.2)", width: "12px", textAlign: "right", flexShrink: 0 }}>{ti + 1}.</span>
+                            {/* Track name — click to play */}
+                            <button
+                              onClick={() => { setStationIdx(0); setSubIdx(ti); if (!isPlaying) audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {}); }}
+                              style={{ flex: 1, fontFamily: "'VT323',monospace", fontSize: "11px", color: isActive ? s.color : "rgba(255,255,255,0.45)", textShadow: isActive ? `0 0 6px ${hexGlow(s.color, 0.6)}` : "none", letterSpacing: "1px", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color .15s" }}>
+                              {track.name}
+                            </button>
+                            {isActive && isPlaying && <SpectrumBars active color={s.color} />}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -1151,10 +1254,9 @@ export default function RadioPlayer() {
         </div>
       )}
 
-      {/* Global spin keyframe */}
       <style>{`
-        @keyframes spin   { to { transform: rotate(360deg); } }
-        @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+        @keyframes spin  { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.28} }
       `}</style>
     </div>
   );

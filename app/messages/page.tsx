@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,7 @@ const STYLES = `
   @keyframes zi-entry   { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
   @keyframes zi-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-25%)} }
   @keyframes zi-online  { 0%,100%{opacity:1} 50%{opacity:.28} }
-  @keyframes zi-buzz    { 0%,100%{box-shadow:0 0 4px rgba(138,46,255,.6)} 50%{box-shadow:0 0 16px rgba(138,46,255,.9),0 0 32px rgba(138,46,255,.4)} }
+  @keyframes zi-buzz    { 0%,100%{box-shadow:0 0 4px rgba(255,45,135,.6)} 50%{box-shadow:0 0 16px rgba(255,45,135,.9),0 0 32px rgba(255,45,135,.4)} }
   @keyframes zi-twinkle { 0%,100%{opacity:.09;transform:scale(1) rotate(0)} 50%{opacity:.38;transform:scale(1.1) rotate(15deg)} }
 
   .zi-entry { animation: zi-entry 0.3s ease-out forwards; opacity: 0; }
@@ -499,9 +499,9 @@ export default function MessagesInbox() {
     const [partnerStatuses, setPartnerStatuses] = useState<Map<string, string>>(new Map());
     const [allFriends, setAllFriends] = useState<any[]>([]);
 
-    const primary = custom?.primary_color ?? "#8A2EFF";
+    const primary = custom?.primary_color ?? "#FF2D87";
     const secondary = custom?.secondary_color ?? "#00F7FF";
-    const pageBg = custom?.page_bg ?? "#0B0B12";
+    const pageBg = custom?.page_bg ?? "#0E0B0D";
 
     useEffect(() => {
         async function load() {
@@ -574,7 +574,7 @@ export default function MessagesInbox() {
         <div
             style={{
                 minHeight: "100vh",
-                background: "#0B0B12",
+                background: "#0E0B0D",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -583,8 +583,8 @@ export default function MessagesInbox() {
                 fontFamily: "'VT323',monospace",
             }}
         >
-            <Loader2 size={28} style={{ color: "#8A2EFF", animation: "spin 1s linear infinite" }} />
-            <span style={{ fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
+            <Loader2 size={28} style={{ color: "#FF2D87", animation: "spin 1s linear infinite" }} />
+            <span style={{ fontSize: "13px", color: "rgba(255,45,135,.6)", letterSpacing: "3px" }}>
                 DECRYPTING INBOX...
             </span>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -620,7 +620,7 @@ export default function MessagesInbox() {
                 style={{
                     maxWidth: "520px",
                     margin: "0 auto",
-                    paddingTop: "72px",
+                    paddingTop: "16px",
                 }}
             >
                 <div style={{ padding: "0 12px 80px" }}>

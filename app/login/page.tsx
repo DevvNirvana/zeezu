@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ const COMMUNITY = [
   { i: "DM", name: "Dan M.", c: "#6BCB77", x: "73%", y: "78%", d: "0.5s", s: 50 },
   { i: "YK", name: "Yuki K.", c: "#FF6B6B", x: "87%", y: "28%", d: "2.3s", s: 44 },
   { i: "BO", name: "Ben O.", c: "#4D96FF", x: "76%", y: "88%", d: "0.9s", s: 48 },
-  { i: "RM", name: "Rosa M.", c: "#8A2EFF", x: "2%", y: "78%", d: "1.5s", s: 42 },
+  { i: "RM", name: "Rosa M.", c: "#FF2D87", x: "2%", y: "78%", d: "1.5s", s: 42 },
   { i: "TK", name: "Tom K.", c: "#00C9A7", x: "22%", y: "46%", d: "2.8s", s: 46 },
   { i: "EV", name: "Eva V.", c: "#FF9A3C", x: "88%", y: "68%", d: "1.1s", s: 44 },
   { i: "HL", name: "Hana L.", c: "#00E5FF", x: "9%", y: "92%", d: "3.2s", s: 40 },
@@ -68,9 +68,9 @@ const KEYFRAMES = `
     100% { transform: translateX(-33.333%); }
   }
   @keyframes zee-pulse {
-    0%   { box-shadow: 0 0 0 0   rgba(138, 46, 255, 0.5); }
-    70%  { box-shadow: 0 0 0 8px rgba(138, 46, 255, 0);   }
-    100% { box-shadow: 0 0 0 0   rgba(138, 46, 255, 0);   }
+    0%   { box-shadow: 0 0 0 0   rgba(255, 45, 135, 0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(255, 45, 135, 0);   }
+    100% { box-shadow: 0 0 0 0   rgba(255, 45, 135, 0);   }
   }
   @keyframes zee-blink {
     0%, 100% { opacity: 1; }
@@ -83,6 +83,14 @@ const KEYFRAMES = `
   @keyframes zee-online-dot {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.35; }
+  }
+
+  @media (max-width: 768px) {
+    .login-outer {
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      padding-top: 8vh !important;
+    }
   }
 `;
 
@@ -197,11 +205,12 @@ export default function LoginPage() {
       <style>{KEYFRAMES}</style>
 
       <main
+        className="login-outer"
         style={{
           minHeight: "100vh",
           backgroundColor: "#080E24",
           backgroundImage: `
-            radial-gradient(ellipse 70% 55% at 50% 0%,   rgba(138,46,255,0.14) 0%, transparent 65%),
+            radial-gradient(ellipse 70% 55% at 50% 0%,   rgba(255,45,135,0.14) 0%, transparent 65%),
             radial-gradient(ellipse 40% 35% at 0%   100%, rgba(0,229,255,0.08) 0%, transparent 60%),
             radial-gradient(ellipse 40% 30% at 100% 60%,  rgba(78,205,196,0.06) 0%, transparent 60%),
             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='0.8' fill='rgba(255,255,255,0.045)'/%3E%3C/svg%3E")
@@ -231,7 +240,7 @@ export default function LoginPage() {
               left: st.x,
               top: st.y,
               fontSize: `${st.size}px`,
-              color: "#8A2EFF",
+              color: "#FF2D87",
               pointerEvents: "none",
               userSelect: "none",
               animation: `zee-twinkle ${3 + idx * 0.4}s ease-in-out infinite`,
@@ -340,7 +349,7 @@ export default function LoginPage() {
               position: "absolute",
               inset: "-2px",
               borderRadius: "20px",
-              background: "linear-gradient(135deg, #8A2EFF 0%, #00E5FF 50%, #8A2EFF 100%)",
+              background: "linear-gradient(135deg, #FF2D87 0%, #00E5FF 50%, #FF2D87 100%)",
               backgroundSize: "200% 200%",
               zIndex: -1,
               opacity: 0.55,
@@ -353,7 +362,7 @@ export default function LoginPage() {
               background: "#0E1630",
               borderRadius: "18px",
               overflow: "hidden",
-              border: "1px solid rgba(138,46,255,0.3)",
+              border: "1px solid rgba(255,45,135,0.3)",
               boxShadow: "0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
             }}
           >
@@ -469,12 +478,12 @@ export default function LoginPage() {
                   marginBottom: "18px",
                 }}
               >
-                <div style={{ flex: 1, height: "1px", background: "rgba(138,46,255,0.2)" }} />
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,45,135,0.2)" }} />
                 <span
                   style={{
                     fontFamily: "'VT323', monospace",
                     fontSize: "11px",
-                    color: "#8A2EFF",
+                    color: "#FF2D87",
                     letterSpacing: "3px",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
@@ -482,14 +491,14 @@ export default function LoginPage() {
                 >
                   INITIALIZE CONNECTION
                 </span>
-                <div style={{ flex: 1, height: "1px", background: "rgba(138,46,255,0.2)" }} />
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,45,135,0.2)" }} />
               </div>
 
               {/* ── Magic Link section ────────────────────────────────── */}
               <div
                 style={{
-                  background: "rgba(138,46,255,0.06)",
-                  border: "1px solid rgba(138,46,255,0.2)",
+                  background: "rgba(255,45,135,0.06)",
+                  border: "1px solid rgba(255,45,135,0.2)",
                   borderRadius: "14px",
                   padding: "16px",
                   marginBottom: "14px",
@@ -503,13 +512,13 @@ export default function LoginPage() {
                       width: "42px",
                       height: "42px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, #8A2EFF, #00E5FF)",
+                      background: "linear-gradient(135deg, #FF2D87, #00E5FF)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                       animation: "zee-pulse 2.5s ease-out infinite",
-                      boxShadow: "0 0 0 3px rgba(138,46,255,0.15)",
+                      boxShadow: "0 0 0 3px rgba(255,45,135,0.15)",
                     }}
                   >
                     <span style={{ fontSize: "16px", color: "#fff", fontFamily: "sans-serif" }}>👤</span>
@@ -518,7 +527,7 @@ export default function LoginPage() {
                     <p style={{ margin: 0, fontWeight: 800, fontSize: "14px", color: "#fff", fontFamily: "'Nunito', sans-serif" }}>
                       Zeezu User
                     </p>
-                    <p style={{ margin: 0, fontSize: "10px", color: "rgba(138,46,255,0.7)", fontFamily: "'VT323', monospace", letterSpacing: "1px" }}>
+                    <p style={{ margin: 0, fontSize: "10px", color: "rgba(255,45,135,0.7)", fontFamily: "'VT323', monospace", letterSpacing: "1px" }}>
                       MAGIC LINK · NO PASSWORD
                     </p>
                   </div>
@@ -593,7 +602,7 @@ export default function LoginPage() {
                         style={{
                           flex: 1,
                           background: "rgba(0,0,0,0.4)",
-                          border: "1px solid rgba(138,46,255,0.3)",
+                          border: "1px solid rgba(255,45,135,0.3)",
                           borderRadius: "10px",
                           padding: "10px 14px",
                           color: "#fff",
@@ -603,11 +612,11 @@ export default function LoginPage() {
                           transition: "border-color 0.2s, box-shadow 0.2s",
                         }}
                         onFocus={e => {
-                          e.target.style.borderColor = "rgba(138,46,255,0.7)";
-                          e.target.style.boxShadow = "0 0 0 3px rgba(138,46,255,0.12)";
+                          e.target.style.borderColor = "rgba(255,45,135,0.7)";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(255,45,135,0.12)";
                         }}
                         onBlur={e => {
-                          e.target.style.borderColor = "rgba(138,46,255,0.3)";
+                          e.target.style.borderColor = "rgba(255,45,135,0.3)";
                           e.target.style.boxShadow = "none";
                         }}
                       />
@@ -620,16 +629,16 @@ export default function LoginPage() {
                           flexShrink: 0,
                           borderRadius: "10px",
                           background: loading || !email
-                            ? "rgba(138,46,255,0.2)"
-                            : "linear-gradient(135deg, #8A2EFF, #6010D4)",
-                          border: "1px solid rgba(138,46,255,0.5)",
+                            ? "rgba(255,45,135,0.2)"
+                            : "linear-gradient(135deg, #FF2D87, #CC1870)",
+                          border: "1px solid rgba(255,45,135,0.5)",
                           color: "#fff",
                           cursor: loading || !email ? "not-allowed" : "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           transition: "transform 0.15s, box-shadow 0.15s",
-                          boxShadow: "0 0 14px rgba(138,46,255,0.35)",
+                          boxShadow: "0 0 14px rgba(255,45,135,0.35)",
                         }}
                         onMouseEnter={e => {
                           if (!loading && email) {
@@ -762,7 +771,7 @@ export default function LoginPage() {
             <div
               style={{
                 background: "rgba(0,0,0,0.25)",
-                borderTop: "1px solid rgba(138,46,255,0.12)",
+                borderTop: "1px solid rgba(255,45,135,0.12)",
                 padding: "12px 24px",
                 display: "flex",
                 alignItems: "center",
@@ -782,7 +791,7 @@ export default function LoginPage() {
                   transition: "color 0.2s",
                   letterSpacing: "0.2px",
                 }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#8A2EFF")}
+                onMouseEnter={e => (e.currentTarget.style.color = "#FF2D87")}
                 onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
               >
                 <ArrowRight size={10} style={{ transform: "rotate(180deg)" }} />
@@ -792,7 +801,7 @@ export default function LoginPage() {
                 style={{
                   fontFamily: "'VT323', monospace",
                   fontSize: "10px",
-                  color: "rgba(138,46,255,0.35)",
+                  color: "rgba(255,45,135,0.35)",
                   letterSpacing: "0.5px",
                   margin: 0,
                 }}
@@ -816,7 +825,7 @@ export default function LoginPage() {
             right: 0,
             height: "28px",
             background: "linear-gradient(90deg, #3B0DA8 0%, #0B4B8F 50%, #3B0DA8 100%)",
-            borderTop: "1px solid rgba(138,46,255,0.4)",
+            borderTop: "1px solid rgba(255,45,135,0.4)",
             display: "flex",
             alignItems: "center",
             overflow: "hidden",

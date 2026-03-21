@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,7 +6,7 @@ import { Loader2, Zap, Activity, MessageCircle, Flame, Music, Search, Plus, Tras
 import { supabase } from "@/lib/supabase/client";
 import {
   syncUserSession, getCoreEight, getDashboardStats, searchFriends,
-  addToCoreEight, removeFromCoreEight, getFriendCount, type SyncedUser,
+  addToCoreEight, removeFromCoreEight, getFriendCount, getMyZones, type SyncedUser, type Zone,
 } from "@/lib/supabase/queries";
 import GlobalFeed from "@/components/GlobalFeed";
 import NavBar from "@/components/NavBar";
@@ -41,7 +41,7 @@ const KEYFRAMES = `
 function ModuleHeader({
   icon,
   title,
-  accent = "var(--color-electric, #8A2EFF)",
+  accent = "var(--color-electric, #FF2D87)",
   right,
 }: {
   icon: React.ReactNode;
@@ -80,7 +80,7 @@ function PortalCard({
   children,
   style,
   className = "",
-  accent = "color-mix(in srgb, var(--color-electric, #8A2EFF) 20%, transparent)",
+  accent = "color-mix(in srgb, var(--color-electric, #FF2D87) 20%, transparent)",
 }: {
   children: React.ReactNode;
   style?: React.CSSProperties;
@@ -131,6 +131,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ zaps: 0, buzzes: 0, comments: 0 });
   const [customization, setCustom] = useState<ThemeConfig | null>(null);
   const [friendCount, setFriendCount] = useState(0);
+  const [myZones, setMyZones] = useState<Zone[]>([]);
 
   // Core 8 edit modal
   const [isEditing, setIsEditing] = useState(false);
@@ -151,17 +152,19 @@ export default function Dashboard() {
       const shouldBoot = freshLogin || !bootSeen;
 
       try {
-        const [top8, dashStats, { data: customData }, fCount] = await Promise.all([
+        const [top8, dashStats, { data: customData }, fCount, zones] = await Promise.all([
           getCoreEight(identity.id),
           getDashboardStats(),
           supabase.from("profile_customization").select("*").eq("user_id", identity.id).single(),
           getFriendCount(identity.id),
+          getMyZones(),
         ]);
 
         setCoreEight(top8 || []);
         setStats(dashStats);
         if (customData) setCustom(customData as ThemeConfig);
         setFriendCount(fCount);
+        setMyZones(zones);
 
         if (shouldBoot) {
           localStorage.removeItem("zeezu_fresh_login");
@@ -232,8 +235,8 @@ export default function Dashboard() {
         fontFamily: "'VT323', monospace",
       }}
     >
-      <Loader2 size={28} className="animate-spin" style={{ color: "var(--color-electric, #8A2EFF)" }} />
-      <span style={{ fontSize: "13px", color: "rgba(138,46,255,.6)", letterSpacing: "3px" }}>
+      <Loader2 size={28} className="animate-spin" style={{ color: "var(--color-electric, #FF2D87)" }} />
+      <span style={{ fontSize: "13px", color: "rgba(255,45,135,.6)", letterSpacing: "3px" }}>
         LOADING SYSTEM...
       </span>
     </div>
@@ -251,7 +254,7 @@ export default function Dashboard() {
           minHeight: "100vh",
           backgroundColor: "var(--color-page-bg, #080E24)",
           backgroundImage: `
-            radial-gradient(ellipse 70% 45% at 50% 0%,   color-mix(in srgb, var(--color-electric, #8A2EFF) 13%, transparent) 0%, transparent 60%),
+            radial-gradient(ellipse 70% 45% at 50% 0%,   color-mix(in srgb, var(--color-electric, #FF2D87) 13%, transparent) 0%, transparent 60%),
             radial-gradient(ellipse 35% 25% at 0%  60%,  color-mix(in srgb, var(--color-cyan, #00E5FF) 6%, transparent)  0%, transparent 55%),
             radial-gradient(ellipse 30% 20% at 100% 80%, rgba(78,205,196,.05) 0%, transparent 55%),
             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='.8' fill='rgba(255,255,255,.035)'/%3E%3C/svg%3E")
@@ -273,7 +276,7 @@ export default function Dashboard() {
               left: st.x,
               top: st.y,
               fontSize: `${st.s}px`,
-              color: "#8A2EFF",
+              color: "#FF2D87",
               pointerEvents: "none",
               userSelect: "none",
               animation: `zee-twinkle ${3.4 + i * 0.5}s ease-in-out infinite`,
@@ -297,41 +300,6 @@ export default function Dashboard() {
         <NavBar />
 
 
-
-        {/* ══════════════════════════════════════════════════════════
-            MARQUEE TICKER
-        ══════════════════════════════════════════════════════════ */}
-        <div className="zee-ticker"
-          aria-hidden="true"
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "28px",
-            background: "linear-gradient(90deg,#3B0DA8 0%,#0B4B8F 50%,#3B0DA8 100%)",
-            borderTop: "1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 40%, transparent)",
-            display: "flex",
-            alignItems: "center",
-            overflow: "hidden",
-            zIndex: 20,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              whiteSpace: "nowrap",
-              animation: "zee-marquee 36s linear infinite",
-              fontFamily: "'VT323',monospace",
-              fontSize: "13px",
-              color: "rgba(255,255,255,.45)",
-              letterSpacing: "1.5px",
-              willChange: "transform",
-            }}
-          >
-            {("✦ WELCOME BACK · THE FEED IS LIVE · CHECK YOUR CORE 8 · NO ALGORITHM · NO FEED MANIPULATION · JUST PEOPLE · ZEEZU NETWORK · ").repeat(4)}
-          </div>
-        </div>
 
         {/* ══════════════════════════════════════════════════════════
             MAIN LAYOUT GRID
@@ -358,7 +326,7 @@ export default function Dashboard() {
                 icon={<Users size={13} />}
                 title="MY PROFILE"
                 right={
-                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(138,46,255,.45)", letterSpacing: "1px" }}>
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,45,135,.45)", letterSpacing: "1px" }}>
                     {userData?.zid}
                   </span>
                 }
@@ -384,7 +352,7 @@ export default function Dashboard() {
                     transform: "translateX(-50%)",
                     width: "120px",
                     height: "120px",
-                    background: "radial-gradient(circle, rgba(138,46,255,.25) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(255,45,135,.25) 0%, transparent 70%)",
                     pointerEvents: "none",
                   }}
                 />
@@ -396,10 +364,10 @@ export default function Dashboard() {
                     height: "88px",
                     borderRadius: "50%",
                     padding: "3px",
-                    background: "linear-gradient(135deg,#8A2EFF,#00E5FF)",
+                    background: "linear-gradient(135deg,#FF2D87,#00E5FF)",
                     marginBottom: "12px",
                     flexShrink: 0,
-                    boxShadow: "0 0 24px rgba(138,46,255,.4)",
+                    boxShadow: "0 0 24px rgba(255,45,135,.4)",
                   }}
                 >
                   <div style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", background: "#000" }}>
@@ -443,7 +411,7 @@ export default function Dashboard() {
                 {/* Status message */}
                 {userData?.status_message && (
                   <>
-                    <div style={{ width: "100%", height: "1px", background: "rgba(138,46,255,.15)", margin: "12px 0" }} />
+                    <div style={{ width: "100%", height: "1px", background: "rgba(255,45,135,.15)", margin: "12px 0" }} />
                     <p
                       style={{
                         fontFamily: "'Nunito',sans-serif",
@@ -637,7 +605,7 @@ export default function Dashboard() {
 
             {/* ── THEME TRACK ──────────────────────────────────────── */}
             {userData?.theme_track_url && (
-              <PortalCard className="card-theme">
+              <PortalCard className="hidden card-theme">
                 <ModuleHeader icon={<Music size={13} />} title="THEME TRACK" />
                 <div style={{ padding: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
                   <div
@@ -645,18 +613,18 @@ export default function Dashboard() {
                       width: "40px",
                       height: "40px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg,rgba(138,46,255,.3),rgba(0,229,255,.2))",
-                      border: "1px solid rgba(138,46,255,.4)",
+                      background: "linear-gradient(135deg,rgba(255,45,135,.3),rgba(0,229,255,.2))",
+                      border: "1px solid rgba(255,45,135,.4)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                     }}
                   >
-                    <Music size={16} style={{ color: "#8A2EFF" }} />
+                    <Music size={16} style={{ color: "#FF2D87" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(138,46,255,.55)", letterSpacing: "1.5px", margin: "0 0 2px 0" }}>
+                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,45,135,.55)", letterSpacing: "1.5px", margin: "0 0 2px 0" }}>
                       NOW PLAYING
                     </p>
                     <p style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "12px", color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -671,7 +639,7 @@ export default function Dashboard() {
                         style={{
                           width: "3px",
                           height: `${h * 18}px`,
-                          background: "linear-gradient(180deg,#8A2EFF,#00E5FF)",
+                          background: "linear-gradient(180deg,#FF2D87,#00E5FF)",
                           borderRadius: "2px",
                           animation: "zee-eq-bar 0.8s ease-in-out infinite",
                           animationDelay: `${i * 0.12}s`,
@@ -683,6 +651,67 @@ export default function Dashboard() {
                 </div>
               </PortalCard>
             )}
+
+            {/* ── MY ZONES ───────────────────────────────────────── */}
+            <PortalCard className="card-zones" accent="rgba(0,229,255,.18)">
+              <ModuleHeader
+                icon={<Activity size={13} />}
+                title="MY ZONES"
+                accent="#00E5FF"
+                right={
+                  <button
+                    onClick={() => router.push("/zones")}
+                    style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(0,229,255,.5)", letterSpacing: "1px", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                  >
+                    EXPLORE →
+                  </button>
+                }
+              />
+              <div style={{ padding: "10px 14px" }}>
+                {myZones.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "14px 0" }}>
+                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,255,255,.2)", letterSpacing: "1.5px", margin: "0 0 10px 0" }}>
+                      YOU HAVEN'T TUNED INTO ANY ZONES
+                    </p>
+                    <button
+                      onClick={() => router.push("/zones")}
+                      style={{ padding: "5px 14px", borderRadius: "8px", background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.25)", color: "#00E5FF", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer" }}
+                    >
+                      FIND ZONES
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="my-zones-list" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {myZones.slice(0, 6).map(zone => (
+                        <button
+                          key={zone.id}
+                          className="my-zones-chip"
+                          onClick={() => router.push(`/zones/${zone.slug}`)}
+                          style={{ display: "flex", alignItems: "center", gap: "9px", padding: "6px 8px", borderRadius: "8px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.12s", width: "100%" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.04)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <span style={{ fontSize: "16px", lineHeight: "1", flexShrink: 0, filter: `drop-shadow(0 0 4px ${zone.accent_color}60)` }}>{zone.icon_emoji}</span>
+                          <div className="my-zones-chip-text" style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{zone.name}</div>
+                            <div style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.25)", letterSpacing: "0.5px" }}>z/{zone.slug} · {zone.member_count} members</div>
+                          </div>
+                          <div className="my-zones-chip-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: zone.accent_color, boxShadow: `0 0 4px ${zone.accent_color}`, flexShrink: 0 }} />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => router.push("/zones")}
+                      style={{ marginTop: "4px", padding: "5px", borderRadius: "8px", background: "transparent", border: "1px dashed rgba(0,229,255,.18)", color: "rgba(0,229,255,.4)", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", width: "100%" }}
+                    >
+                      + EXPLORE MORE ZONES
+                    </button>
+                  </>
+                )}
+              </div>
+            </PortalCard>
+
           </div>
 
           {/* ══════════════════════════════════════════════════════
@@ -770,7 +799,7 @@ export default function Dashboard() {
                   position: "absolute",
                   inset: "-2px",
                   borderRadius: "20px",
-                  background: "linear-gradient(135deg,#8A2EFF,#00E5FF,#8A2EFF)",
+                  background: "linear-gradient(135deg,#FF2D87,#00E5FF,#FF2D87)",
                   opacity: .5,
                   filter: "blur(1px)",
                   zIndex: -1,
@@ -779,7 +808,7 @@ export default function Dashboard() {
               <div
                 style={{
                   background: "#0E1630",
-                  border: "1px solid rgba(138,46,255,.35)",
+                  border: "1px solid rgba(255,45,135,.35)",
                   borderRadius: "18px",
                   width: "100%",
                   maxWidth: "420px",
@@ -814,7 +843,7 @@ export default function Dashboard() {
 
                 {/* Modal body */}
                 <div style={{ padding: "20px" }}>
-                  <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(138,46,255,.6)", letterSpacing: "1px", margin: "0 0 14px 0" }}>
+                  <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,45,135,.6)", letterSpacing: "1px", margin: "0 0 14px 0" }}>
                     Search your friends to fill this slot
                   </p>
 
@@ -827,7 +856,7 @@ export default function Dashboard() {
                       style={{
                         flex: 1,
                         background: "rgba(0,0,0,.5)",
-                        border: "1px solid rgba(138,46,255,.25)",
+                        border: "1px solid rgba(255,45,135,.25)",
                         borderRadius: "10px",
                         padding: "10px 14px",
                         color: "#fff",
@@ -835,13 +864,13 @@ export default function Dashboard() {
                         fontFamily: "'Nunito',sans-serif",
                         outline: "none",
                       }}
-                      onFocus={e => { e.target.style.borderColor = "rgba(138,46,255,.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(138,46,255,.1)"; }}
-                      onBlur={e => { e.target.style.borderColor = "rgba(138,46,255,.25)"; e.target.style.boxShadow = "none"; }}
+                      onFocus={e => { e.target.style.borderColor = "rgba(255,45,135,.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(255,45,135,.1)"; }}
+                      onBlur={e => { e.target.style.borderColor = "rgba(255,45,135,.25)"; e.target.style.boxShadow = "none"; }}
                     />
                     <button
                       type="submit"
                       style={{
-                        background: "linear-gradient(135deg,#8A2EFF,#6010D4)",
+                        background: "linear-gradient(135deg,#FF2D87,#CC1870)",
                         border: "none",
                         borderRadius: "10px",
                         width: "42px",
@@ -851,7 +880,7 @@ export default function Dashboard() {
                         justifyContent: "center",
                         cursor: "pointer",
                         flexShrink: 0,
-                        boxShadow: "0 0 14px rgba(138,46,255,.35)",
+                        boxShadow: "0 0 14px rgba(255,45,135,.35)",
                       }}
                     >
                       <Search size={15} color="#fff" />
@@ -869,12 +898,12 @@ export default function Dashboard() {
                           justifyContent: "space-between",
                           padding: "10px 12px",
                           background: "rgba(0,0,0,.35)",
-                          border: "1px solid rgba(138,46,255,.12)",
+                          border: "1px solid rgba(255,45,135,.12)",
                           borderRadius: "12px",
                           transition: "border-color .2s",
                         }}
                         onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(0,229,255,.35)")}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(138,46,255,.12)")}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,45,135,.12)")}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           <img
@@ -1001,11 +1030,50 @@ export default function Dashboard() {
           .col-wrapper { display: contents; }
 
           /* Reorder cards for perfect UX */
-          .card-profile { display: none !important; } 
+          .card-profile { display: none !important; }
           .card-core8   { order: 1; margin-bottom: 8px; } /* Stories pinned top! */
           .card-buzz    { order: 2; margin-bottom: 8px; } /* Alert right below stories */
           .card-feed    { order: 3; } /* Main feed right below */
           .card-theme   { order: 4; } /* Theme pushed to bottom */
+          .card-zones   { order: 5; } /* Zones below feed on mobile */
+
+          /* My Zones — horizontal chip scroll on mobile */
+          .my-zones-list {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 8px !important;
+            padding-bottom: 6px !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .my-zones-list::-webkit-scrollbar { display: none; }
+          .my-zones-chip {
+            flex: 0 0 auto !important;
+            width: 80px !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 8px 6px !important;
+            border: 1px solid rgba(0,229,255,.15) !important;
+            border-radius: 10px !important;
+            background: rgba(0,229,255,.04) !important;
+            gap: 4px !important;
+            text-align: center !important;
+          }
+          .my-zones-chip .my-zones-chip-text {
+            flex: unset !important;
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+          .my-zones-chip .my-zones-chip-text > div:first-child {
+            font-size: 10px !important;
+            text-align: center !important;
+          }
+          .my-zones-chip .my-zones-chip-text > div:last-child { display: none !important; }
+          .my-zones-chip .my-zones-chip-dot { display: none !important; }
 
           .desktop-hierarchy { display: none !important; }
           
@@ -1048,13 +1116,6 @@ export default function Dashboard() {
             scroll-snap-align: start; 
           }
 
-          /* Mobile Ticker positioning */
-          .zee-ticker {
-            position: relative !important;
-            bottom: auto !important;
-            border-top: none !important;
-            border-bottom: 1px solid color-mix(in srgb, var(--color-electric, #8A2EFF) 40%, transparent) !important;
-          }
         }
       `}</style>
     </>

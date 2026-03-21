@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useRef, useCallback, useEffect } from 'react';
 
@@ -14,7 +14,7 @@ interface ClickSparkProps {
 
 export default function ClickSpark({
     children,
-    sparkColor = '#8A2EFF',
+    sparkColor = '#FF2D87',
     sparkCount = 8,
     sparkSize = 10,
     duration = 500,

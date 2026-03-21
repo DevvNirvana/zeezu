@@ -1,15 +1,15 @@
 import type { Generation, GenerationMeta } from "@/lib/generation";
 
 interface GenBadgeProps {
-  gen:        GenerationMeta;
-  size?:      'sm' | 'md' | 'icon';
+  gen: GenerationMeta;
+  size?: 'sm' | 'md' | 'icon';
   className?: string;
 }
 
 const LABEL_CLASS: Partial<Record<Generation, string>> = {
-  'Boomer':    'gen-badge-boomer',
-  'Gen X':     'gen-badge-genx',
-  'Gen Z':     'gen-badge-genz',
+  'Boomer': 'gen-badge-boomer',
+  'Gen X': 'gen-badge-genx',
+  'Gen Z': 'gen-badge-genz',
   'Gen Alpha': 'gen-badge-genalpha',
 };
 
@@ -89,7 +89,7 @@ export default function GenBadge({ gen, size = 'sm', className }: GenBadgeProps)
   // ── Zillennial (dark aurora) ─────────────────────────────────
   if (gen.tier === 'zillennial') {
     return (
-      <span className={['gen-badge-zillennial', className].filter(Boolean).join(' ')}>
+      <span className={['gen-badge-holo-inner', className].filter(Boolean).join(' ')}>
         <span className="gen-badge-zillennial-text" style={{ fontSize }}>{gen.display}</span>
       </span>
     );

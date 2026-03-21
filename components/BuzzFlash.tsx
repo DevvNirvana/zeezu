@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
@@ -50,8 +50,8 @@ export default function BuzzFlash({ senderName, onDismiss }: BuzzFlashProps) {
                 className="absolute inset-0"
                 style={{
                     background: phase === "flash"
-                        ? "radial-gradient(circle at center, rgba(138,46,255,0.95) 0%, rgba(0,247,255,0.3) 50%, rgba(0,0,0,0.8) 100%)"
-                        : "radial-gradient(circle at center, rgba(138,46,255,0.4) 0%, rgba(0,0,0,0.9) 70%)",
+                        ? "radial-gradient(circle at center, rgba(255,45,135,0.95) 0%, rgba(0,247,255,0.3) 50%, rgba(0,0,0,0.8) 100%)"
+                        : "radial-gradient(circle at center, rgba(255,45,135,0.4) 0%, rgba(0,0,0,0.9) 70%)",
                     transition: "all 0.3s ease-out",
                 }}
             />
@@ -85,8 +85,8 @@ export default function BuzzFlash({ senderName, onDismiss }: BuzzFlashProps) {
                         <div
                             className="w-20 h-20 rounded-full flex items-center justify-center"
                             style={{
-                                background: "radial-gradient(circle, rgba(138,46,255,0.8) 0%, transparent 70%)",
-                                boxShadow: "0 0 60px rgba(138,46,255,0.8), 0 0 120px rgba(138,46,255,0.4)",
+                                background: "radial-gradient(circle, rgba(255,45,135,0.8) 0%, transparent 70%)",
+                                boxShadow: "0 0 60px rgba(255,45,135,0.8), 0 0 120px rgba(255,45,135,0.4)",
                                 animation: "buzzIconPulse 0.5s ease-in-out infinite alternate",
                             }}
                         >
@@ -98,8 +98,8 @@ export default function BuzzFlash({ senderName, onDismiss }: BuzzFlashProps) {
                     <h1
                         className="text-5xl font-black tracking-[0.3em] uppercase mb-2"
                         style={{
-                            color: "#8A2EFF",
-                            textShadow: "0 0 30px #8A2EFF, 0 0 60px #8A2EFF, 3px 0 #FF007A, -3px 0 #00F7FF",
+                            color: "#FF2D87",
+                            textShadow: "0 0 30px #FF2D87, 0 0 60px #FF2D87, 3px 0 #FF007A, -3px 0 #00F7FF",
                             animation: "buzzGlitch 0.15s ease-in-out infinite",
                         }}
                     >

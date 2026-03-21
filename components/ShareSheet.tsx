@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -108,7 +108,7 @@ export default function ShareSheet({ isOpen, onClose, title, text, url }: ShareS
                     border: "1px solid #1f2937",
                     borderRadius: "16px",
                     overflow: "hidden",
-                    boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(138,46,255,0.12)",
+                    boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,45,135,0.12)",
                 }}>
 
                 {/* Header */}

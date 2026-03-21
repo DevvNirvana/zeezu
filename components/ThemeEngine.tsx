@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef } from "react";
 
@@ -57,40 +57,40 @@ export type ThemeConfig = {
 
 // ── Default config ────────────────────────────────────────────────────
 export const DEFAULT_THEME: ThemeConfig = {
-  theme_id: "void_chrome",
-  primary_color: "#8A2EFF",
-  primary_muted: "#8A2EFF4D",
-  secondary_color: "#00F7FF",
-  accent_color: "#00F7FF",
-  accent_muted: "#00F7FF4D",
+  theme_id: "cyber_pink",
+  primary_color: "#FF2D87",
+  primary_muted: "#FF2D874D",
+  secondary_color: "#FFD700",
+  accent_color: "#FFD700",
+  accent_muted: "#FFD7004D",
   text_color: "#FFFFFF",
   text_secondary: "#9CA3AF",
   text_muted: "#6B7280",
   text_on_primary: "#FFFFFF",
-  card_bg: "rgba(15,12,41,0.8)",
+  card_bg: "rgba(20,8,14,0.85)",
   surface_border: "rgba(255,255,255,0.08)",
-  page_bg: "#0B0B12",
-  font_family: "Syne",
+  page_bg: "#0E0B0D",
+  font_family: "Rajdhani",
   font_body: "Space Grotesk",
-  font_mono: "JetBrains Mono",
+  font_mono: "Share Tech Mono",
   font_size_scale: 1.0,
-  heading_style: "gradient",
+  heading_style: "chrome",
   name_effect: "none",
-  card_style: "glass",
+  card_style: "chrome",
   button_style: "solid-glow",
   bg_effect: "none",
   card_holo_effect: "none",
-  glow_intensity: 60,
+  glow_intensity: 70,
   glow_enabled: true,
-  glass_blur: 12,
-  glass_opacity: 80,
+  glass_blur: 8,
+  glass_opacity: 90,
   shadow_strength: 1.0,
   border_radius: "rounded",
   animation_level: "subtle",
   enable_tilt: true,
   enable_behind_glow: true,
   bg_type: "none",
-  bg_gradient: null,
+  bg_gradient: "linear-gradient(160deg, #0a0010 0%, #1a0025 50%, #0E0B0D 100%)",
   background_url: null,
   background_tiling: false,
   background_opacity: 100,
@@ -107,7 +107,7 @@ export {
 // ── Hex → rgba helper ─────────────────────────────────────────────────
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace('#', '').replace(/[^0-9a-fA-F]/g, '');
-  if (clean.length < 6) return `rgba(138,46,255,${alpha})`;
+  if (clean.length < 6) return `rgba(255,45,135,${alpha})`;
   const r = parseInt(clean.substring(0, 2), 16);
   const g = parseInt(clean.substring(2, 4), 16);
   const b = parseInt(clean.substring(4, 6), 16);
@@ -151,7 +151,7 @@ export default function ThemeEngine({ config }: { config: ThemeConfig | null }) 
     root.style.setProperty('--color-text-on-primary', cfg.text_on_primary || '#FFFFFF');
     root.style.setProperty('--color-card-bg', cfg.card_bg);
     root.style.setProperty('--color-surface-border', cfg.surface_border || 'rgba(255,255,255,0.08)');
-    root.style.setProperty('--color-page-bg', cfg.page_bg || '#0B0B12');
+    root.style.setProperty('--color-page-bg', cfg.page_bg || '#0E0B0D');
     root.style.setProperty('--color-electric-glow', hexToRgba(cfg.primary_color, 0.35));
     root.style.setProperty('--color-cyan-glow', hexToRgba(cfg.secondary_color, 0.3));
 
@@ -186,7 +186,7 @@ export default function ThemeEngine({ config }: { config: ThemeConfig | null }) 
     });
     if (bgKey !== prevBgRef.current) {
       prevBgRef.current = bgKey;
-      body.style.backgroundColor = cfg.page_bg || '#0B0B12';
+      body.style.backgroundColor = cfg.page_bg || '#0E0B0D';
       if (cfg.bg_type === 'gradient' && cfg.bg_gradient) {
         body.style.backgroundImage = cfg.bg_gradient;
         body.style.backgroundRepeat = 'no-repeat';

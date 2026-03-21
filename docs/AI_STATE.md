@@ -1,6 +1,6 @@
 # Zeezu — AI State Snapshot
 
-> Current state of the project as of 2026-03-18. Use this as a quick orientation before diving into code.
+> Current state of the project as of 2026-03-20. Use this as a quick orientation before diving into code.
 
 ---
 
@@ -62,6 +62,23 @@
 - `lib/zlogger-renderer.ts` — renderer, slug gen, reading time, CSS constants
 - All DB query functions in `lib/supabase/queries.ts`
 
+### Landing Page (`/`)
+- Ken Burns cycling hero: 3 Spider-Verse art images from Vercel Blob, crossfade + pan+zoom keyframes
+- Spider-Verse filter: `contrast(1.18) brightness(0.72) saturate(1.06)`
+- IntersectionObserver pauses hero image cycle + ticker strip when off-screen
+- TiltedCards with idle sinusoidal animation (rotates even when not hovered)
+- Rich JSX overlays: Buzz chat overlay (Card 1), Zlogger editor split-pane (Card 2)
+- PixelCard with `alwaysOn` — pixel effect always active (no hover needed)
+- CardSwap pauses GSAP + setInterval when off-screen
+- ElectricBorder optimized: octaves 6, sampleCount capped 250, off-screen pause
+- Navbar logo matches in-app: SVG quadrant + Orbitron "zeezu" + VT323 "NET"
+
+### RadioPlayer
+- OST playlist: Drive Home Safe · KxH-TTR · Eurodrive · Dreams We Didn't Get To Live
+- Minimized button: spinning vinyl disc with holographic rainbow + counter-spin Z label
+- Autoplay on `/`: muted-start technique → unmute + volume fade-in
+- Track names shown in marquee
+
 ### Components
 - `ProfileCard.tsx` — 3D Three.js tilt card
 - `ThemeEngine.tsx` — CSS variable injection
@@ -69,7 +86,11 @@
 - `Dock.tsx` + `Dock.css` — macOS-style icon dock
 - `BootScreen.tsx` — animated boot sequence
 - `ReflectiveCard.tsx` — glossy reflective card surface
-- `RadioPlayer.tsx` — ambient radio player
+- `RadioPlayer.tsx` — ambient radio player with vinyl UI + autoplay
+- `TiltedCard.tsx` — 3D tilt card with idle RAF animation + overlay support
+- `PixelCard.tsx` — canvas pixel animation with `alwaysOn` mode
+- `CardSwap.tsx` — GSAP card cycling with viewport-aware pause
+- `ElectricBorder.tsx` — neon border animation (performance-optimized)
 - `reactbits/DecryptedText.tsx` — text decryption animation
 
 ### Libraries

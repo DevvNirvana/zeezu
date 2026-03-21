@@ -71,7 +71,7 @@ export default function ZloggerEditPage() {
   const [shareToZeewall, setShareToZeewall] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [primary] = useState("#8A2EFF");
+  const [primary] = useState("#FF2D87");
 
   // Load existing zlog
   useEffect(() => {
@@ -127,19 +127,19 @@ export default function ZloggerEditPage() {
 
   const inputStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
     width: "100%", padding: "10px 14px",
-    background: "rgba(138,46,255,.07)", border: `1px solid ${primary}30`,
+    background: "rgba(255,45,135,.07)", border: `1px solid ${primary}30`,
     borderRadius: "8px", color: "#fff", fontFamily: "'Nunito',sans-serif",
     fontSize: "13px", outline: "none", boxSizing: "border-box", ...extra,
   });
 
   if (loadError) return (
-    <div style={{ minHeight: "100vh", background: "#0B0B12", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'VT323',monospace", fontSize: "16px", letterSpacing: "2px" }}>
+    <div style={{ minHeight: "100vh", background: "#0E0B0D", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'VT323',monospace", fontSize: "16px", letterSpacing: "2px" }}>
       ZLOG NOT FOUND OR ACCESS DENIED
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0B0B12", color: "#fff", fontFamily: "'Nunito',sans-serif", paddingBottom: "80px" }}>
+    <div style={{ minHeight: "100vh", background: "#0E0B0D", color: "#fff", fontFamily: "'Nunito',sans-serif", paddingBottom: "80px" }}>
       <style dangerouslySetInnerHTML={{ __html: STYLES + ZLOG_CSS }} />
       <NavBar />
 
@@ -242,7 +242,7 @@ export default function ZloggerEditPage() {
         <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
           <button onClick={() => router.back()} style={{ padding: "12px 24px", borderRadius: "8px", background: "transparent", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: "pointer" }}>CANCEL</button>
           <button onClick={handleSave} disabled={saving || !title.trim() || !markdown.trim()}
-            style={{ padding: "12px 28px", borderRadius: "8px", background: saving ? "rgba(138,46,255,.3)" : `linear-gradient(135deg, ${primary}, #00F7FF)`, border: "none", color: "#000", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+            style={{ padding: "12px 28px", borderRadius: "8px", background: saving ? "rgba(255,45,135,.3)" : `linear-gradient(135deg, ${primary}, #00F7FF)`, border: "none", color: "#000", fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
             {saving ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : null}
             {saving ? "SAVING..." : "SAVE CHANGES"}
           </button>

@@ -4,6 +4,75 @@
 
 ---
 
+## Session: 2026-03-20
+
+**Focus:** Landing page overhaul — TiltedCard overlays, Ken Burns hero, vinyl RadioPlayer, performance audit
+
+### What was done
+
+#### TiltedCard overlay fix
+- Root cause: overlay `motion.div` had no `width`/`height`, so `absolute inset-0` children collapsed to zero
+- Fix: added `style={{ width: imageWidth, height: imageHeight }}` + `rounded-[15px] overflow-hidden` to overlay wrapper
+- Added idle sinusoidal animation via RAF (`rotateX = sin(t*0.6)*4`, `rotateY = cos(t*0.45)*6`) with IntersectionObserver gate and `hoveredRef` pause on mouseenter
+- Implemented rich JSX overlays for all 3 TiltedCards in `app/page.tsx`:
+  - **Card 1 (Messaging/Buzz)**: Contact header, online dot, ⚡ BUZZ button, chat thread with ✓✓ read receipts, BuzzFlash overlay (hot pink), message input
+  - **Card 2 (Zlogger)**: Split-pane editor — traffic lights + reading theme pills, color-coded markdown source, Z-tag palette, preview pane with glow text + wavy underline, word count + PUBLISH footer
+  - **Card 3 (ZeeWall)**: *(replaced video hero)*
+
+#### Hero background: Ken Burns cycling images
+- Replaced video hero with 3 Spider-Verse art-style images (Vercel Blob CDN)
+- CSS `@keyframes` Ken Burns effect: 3 unique pan+zoom trajectories, 8.5s display + 1.2s crossfade
+- Spider-Verse filter: `contrast(1.18) brightness(0.72) saturate(1.06)`
+- React `key` prop resets animation per image cycle
+- IntersectionObserver pauses image cycle when hero off-screen
+
+#### Landing navbar logo
+- Replaced plain "zeezu" text with full in-app logo: SVG quadrant icon + Orbitron "zeezu" + VT323 "NET"
+- Google Fonts (Orbitron + VT323) injected via style element with guard
+
+#### PixelCard `alwaysOn` mode
+- Added `alwaysOn?: boolean` prop — re-triggers `appear` on `mouseleave` instead of `disappear`
+- IntersectionObserver auto-triggers `appear` on viewport entry (100ms delay)
+- RAF paused when off-screen via same observer
+
+#### CardSwap IntersectionObserver
+- Pauses `setInterval` + GSAP timeline when component leaves viewport
+- Resumes on re-entry — zero CPU cost when off-screen
+
+#### ElectricBorder performance
+- `octaves` reduced 10 → 6 (40% fewer Math.sin calls per frame)
+- `sampleCount` capped at 250 (`Math.min(perimeter/2, 250)`)
+- IntersectionObserver fully stops RAF when off-screen, resumes on entry
+
+#### General performance CSS
+- Removed `backdrop-filter` from all `.lp-glass*` classes (GPU compositor layer cost)
+- Removed `will-change` from animation classes (browser auto-promotes as needed)
+- Added `[data-hero-idle]` + `[data-ticker-idle]` CSS rules for `animation-play-state: paused`
+- HeroSection + TickerStrip each got IntersectionObserver toggling idle data attrs
+
+#### RadioPlayer overhaul
+- Added 3 new OST tracks: Drive Home Safe (first), Eurodrive, Dreams We Didn't Get To Live
+- Added `trackNames` array to Station type; marquee shows track name when available
+- Minimized button redesigned as spinning vinyl disc:
+  - `repeating-radial-gradient` groove rings + `conic-gradient` holographic rainbow
+  - `vinyl-spin` / `vinyl-spin-r` keyframes (counter-spin inner label so Z stays upright)
+  - `vinyl-glow` rainbow box-shadow cycling animation when playing
+  - Live pulse dot top-right
+- Muted autoplay on landing page (`pathname === "/"`):
+  - `audio.muted = true` → `play()` → unmute + fade volume from 0 → target over 1.2s
+  - Safari fallback: `pointerdown` listener
+
+### Files modified
+- `app/page.tsx` — TiltedCard overlays, Ken Burns hero, navbar logo, performance CSS
+- `components/TiltedCard.tsx` — overlay fix, idle RAF animation
+- `components/PixelCard.tsx` — `alwaysOn` prop + IntersectionObserver
+- `components/CardSwap.tsx` — IntersectionObserver pause/resume
+- `components/ElectricBorder.tsx` — octave reduction, sampleCount cap, IntersectionObserver
+- `components/RadioPlayer.tsx` — vinyl button, OST tracks, muted autoplay
+- `docs/AI_STATE.md`, `docs/AI_TASKS.md`, `docs/SESSION_LOG.md` — updated
+
+---
+
 ## Session: 2026-03-18
 
 **Focus:** Zlogger long-form blogging system + full platform component overhaul

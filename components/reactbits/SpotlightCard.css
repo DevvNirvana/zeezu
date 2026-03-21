@@ -1,4 +1,4 @@
-.spotlight-card-rb {
+﻿.spotlight-card-rb {
     position: relative;
     border-radius: 1rem;
     overflow: hidden;
@@ -14,7 +14,7 @@
     bottom: 0;
     border-radius: inherit;
     background: radial-gradient(circle at var(--x, 50%) var(--y, 50%),
-            var(--spotlight-color, rgba(138, 46, 255, 0.15)),
+            var(--spotlight-color, rgba(255, 45, 135, 0.15)),
             transparent 60%);
     opacity: 0;
     transition: opacity 0.3s ease;

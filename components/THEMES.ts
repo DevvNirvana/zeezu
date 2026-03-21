@@ -93,22 +93,22 @@ export const BORDER_RADIUS_OPTIONS = [
 
 // ── Curated swatch palettes ───────────────────────────────────────────
 export const COLOR_SWATCHES = [
-    "#8A2EFF", "#FF2D87", "#00F7FF", "#B4FF00",
-    "#FFD700", "#FF6B35", "#00FF41", "#E040FB",
-    "#FF6FD8", "#00CED1", "#C0C0D0", "#536DFE",
-    "#C084FC", "#0047FF", "#6A0DAD", "#FFFFFF",
+    "#FF2D87", "#FFD700", "#00F7FF", "#B4FF00",
+    "#FF007A", "#FF6B35", "#C4C4D4", "#00FF41",
+    "#FF6FD8", "#00CED1", "#0047FF", "#A246FF",
+    "#FF1493", "#C0C0D0", "#6A0DAD", "#FFFFFF",
 ];
 
 // ── Built-in background gallery ──────────────────────────────────────
 export const BG_GALLERY = [
-    { id: "mesh_purple", label: "Purple Mesh", gradient: "radial-gradient(ellipse at 20% 50%, #3b006850 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, #00F7FF18 0%, transparent 50%), linear-gradient(180deg, #0B0B12 0%, #1a0533 100%)" },
-    { id: "sunset_vapor", label: "Sunset Vapor", gradient: "linear-gradient(135deg, #0d0520 0%, #2d1b4e 30%, #1a0d30 60%, #0B0B12 100%)" },
-    { id: "neon_grid", label: "Neon Grid", gradient: "linear-gradient(180deg, #0B0B12 0%, #0d0520 100%)" },
-    { id: "ocean_deep", label: "Ocean Deep", gradient: "radial-gradient(ellipse at 50% 100%, #002030 0%, transparent 70%), linear-gradient(180deg, #0B0B12 0%, #0a1520 100%)" },
-    { id: "aurora", label: "Aurora", gradient: "radial-gradient(ellipse at 30% 0%, #00FF4118 0%, transparent 40%), radial-gradient(ellipse at 70% 100%, #8A2EFF18 0%, transparent 40%), linear-gradient(180deg, #0B0B12 0%, #0d0d20 100%)" },
-    { id: "rose_gold", label: "Rose Gold", gradient: "radial-gradient(ellipse at 50% 50%, #FF69B412 0%, transparent 50%), linear-gradient(160deg, #1a0d15 0%, #0B0B12 100%)" },
-    { id: "cyber_sunset", label: "Cyber Sunset", gradient: "linear-gradient(135deg, #0a0010 0%, #1a0a2e 30%, #2a0a1e 60%, #0B0B12 100%)" },
-    { id: "chrome_sky", label: "Chrome Sky", gradient: "linear-gradient(135deg, #0d0d15 0%, #1a1a25 30%, #15151f 60%, #0B0B12 100%)" },
+    { id: "hot_chrome", label: "Hot Chrome", gradient: "radial-gradient(ellipse at 20% 30%, #FF2D8720 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, #FFD70015 0%, transparent 50%), linear-gradient(160deg, #0a0006 0%, #1a080e 50%, #0E0B0D 100%)" },
+    { id: "rose_gold", label: "Rose Gold", gradient: "radial-gradient(ellipse at 50% 50%, #FF69B418 0%, transparent 50%), linear-gradient(160deg, #1a0d15 0%, #0E0B0D 100%)" },
+    { id: "cyber_sunset", label: "Cyber Sunset", gradient: "linear-gradient(135deg, #150008 0%, #2a0a1e 40%, #1a0a10 70%, #0E0B0D 100%)" },
+    { id: "ocean_deep", label: "Ocean Deep", gradient: "radial-gradient(ellipse at 50% 100%, #002030 0%, transparent 70%), linear-gradient(180deg, #0E0B0D 0%, #0a1520 100%)" },
+    { id: "aurora", label: "Aurora", gradient: "radial-gradient(ellipse at 30% 0%, #00FF4118 0%, transparent 40%), radial-gradient(ellipse at 70% 100%, #FF2D8718 0%, transparent 40%), linear-gradient(180deg, #0E0B0D 0%, #0d0d20 100%)" },
+    { id: "mesh_violet", label: "Violet Mesh", gradient: "radial-gradient(ellipse at 20% 50%, #3b006850 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, #00F7FF18 0%, transparent 50%), linear-gradient(180deg, #0E0B0D 0%, #1a0533 100%)" },
+    { id: "neon_grid", label: "Neon Grid", gradient: "linear-gradient(180deg, #0E0B0D 0%, #0d0520 100%)" },
+    { id: "chrome_sky", label: "Chrome Sky", gradient: "linear-gradient(135deg, #0d0d15 0%, #1a1a25 30%, #15151f 60%, #0E0B0D 100%)" },
 ];
 
 // ── Helper: auto-generate muted colors ────────────────────────────────
@@ -138,7 +138,7 @@ function makePreset(p: {
         text_on_primary: "#FFFFFF",
         card_bg: "rgba(15,12,41,0.8)",
         surface_border: "rgba(255,255,255,0.08)",
-        page_bg: "#0B0B12",
+        page_bg: "#0E0B0D",
         font_family: p.fontDisplay,
         font_body: p.fontBody,
         font_mono: p.fontMono,
@@ -173,14 +173,14 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         primary: "#8A2EFF", accent: "#00F7FF",
         fontDisplay: "Syne", fontBody: "Space Grotesk", fontMono: "JetBrains Mono",
         cardStyle: "glass", textEffect: "gradient", glowIntensity: 60,
-        bgGradient: "linear-gradient(135deg, #0B0B12 0%, #1a0533 40%, #0d1117 100%)",
+        bgGradient: "linear-gradient(135deg, #0E0B0D 0%, #1a0533 40%, #0d1117 100%)",
     }),
     cyber_pink: makePreset({
         id: "cyber_pink",
         primary: "#FF2D87", accent: "#FFD700",
         fontDisplay: "Rajdhani", fontBody: "Space Grotesk", fontMono: "Share Tech Mono",
         cardStyle: "chrome", textEffect: "chrome", glowIntensity: 70,
-        bgGradient: "linear-gradient(160deg, #0a0010 0%, #1a0025 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(160deg, #0a0010 0%, #1a0025 50%, #0E0B0D 100%)",
     }),
     millennium_blue: makePreset({
         id: "millennium_blue",
@@ -188,14 +188,14 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         fontDisplay: "Orbitron", fontBody: "Outfit", fontMono: "Inconsolata",
         cardStyle: "bubble", textEffect: "glow", glowIntensity: 50,
         glassBlur: 20, glassOpacity: 70,
-        bgGradient: "linear-gradient(135deg, #000520 0%, #0a1535 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(135deg, #000520 0%, #0a1535 50%, #0E0B0D 100%)",
     }),
     acid_lime: makePreset({
         id: "acid_lime",
         primary: "#B4FF00", accent: "#FF6B35",
         fontDisplay: "Space Grotesk", fontBody: "Nunito", fontMono: "JetBrains Mono",
         cardStyle: "neon", bgEffect: "scanlines", textEffect: "glow", glowIntensity: 65,
-        bgGradient: "linear-gradient(180deg, #050a00 0%, #0a1500 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(180deg, #050a00 0%, #0a1500 50%, #0E0B0D 100%)",
     }),
     holographic: makePreset({
         id: "holographic",
@@ -206,11 +206,11 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
     }),
     chrome_silver: makePreset({
         id: "chrome_silver",
-        primary: "#C0C0D0", accent: "#8A2EFF",
+        primary: "#C0C0D0", accent: "#FF2D87",
         fontDisplay: "Barlow Condensed", fontBody: "Space Grotesk", fontMono: "JetBrains Mono",
         cardStyle: "chrome", textEffect: "chrome", glowIntensity: 30,
         glassBlur: 8, glassOpacity: 90,
-        bgGradient: "linear-gradient(135deg, #0B0B12 0%, #151520 50%, #0d0d15 100%)",
+        bgGradient: "linear-gradient(135deg, #0E0B0D 0%, #151520 50%, #0d0d15 100%)",
     }),
     candy_gloss: makePreset({
         id: "candy_gloss",
@@ -225,7 +225,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         primary: "#FF6B35", accent: "#FFD700",
         fontDisplay: "Chakra Petch", fontBody: "Space Grotesk", fontMono: "Fira Mono",
         cardStyle: "neon", textEffect: "glow", glowIntensity: 65,
-        bgGradient: "linear-gradient(135deg, #1a0d00 0%, #251500 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(135deg, #1a0d00 0%, #251500 50%, #0E0B0D 100%)",
     }),
     matrix_ghost: makePreset({
         id: "matrix_ghost",
@@ -240,7 +240,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         fontDisplay: "Outfit", fontBody: "Nunito", fontMono: "Source Code Pro",
         cardStyle: "glass", textEffect: "gradient", glowIntensity: 45,
         glassBlur: 18, glassOpacity: 65,
-        bgGradient: "linear-gradient(145deg, #021a1a 0%, #0a2525 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(145deg, #021a1a 0%, #0a2525 50%, #0E0B0D 100%)",
     }),
     velvet_void: makePreset({
         id: "velvet_void",
@@ -248,7 +248,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         fontDisplay: "Cinzel", fontBody: "Space Grotesk", fontMono: "JetBrains Mono",
         cardStyle: "glass", textEffect: "glow", glowIntensity: 50,
         glassBlur: 14, glassOpacity: 85,
-        bgGradient: "linear-gradient(160deg, #0a0015 0%, #150025 50%, #0B0B12 100%)",
+        bgGradient: "linear-gradient(160deg, #0a0015 0%, #150025 50%, #0E0B0D 100%)",
     }),
     pure_static: makePreset({
         id: "pure_static",
@@ -256,22 +256,22 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
         fontDisplay: "Anton", fontBody: "Outfit", fontMono: "JetBrains Mono",
         cardStyle: "minimal", bgEffect: "noise", textEffect: "none", glowIntensity: 10,
         glassBlur: 4, glassOpacity: 95,
-        bgGradient: "linear-gradient(180deg, #0B0B12 0%, #111118 100%)",
+        bgGradient: "linear-gradient(180deg, #0E0B0D 0%, #111118 100%)",
     }),
 };
 
 // ── Gallery display metadata ─────────────────────────────────────────
 export const PRESET_GALLERY: { id: string; label: string; tagline: string }[] = [
-    { id: "void_chrome", label: "Void Chrome", tagline: "Electric darkness" },
     { id: "cyber_pink", label: "Cyber Pink", tagline: "Hot chrome Y2K" },
-    { id: "millennium_blue", label: "Millennium Blue", tagline: "iMac era blue" },
     { id: "acid_lime", label: "Acid Lime", tagline: "Radioactive glow" },
-    { id: "holographic", label: "Holographic", tagline: "Iridescent shift" },
-    { id: "chrome_silver", label: "Chrome Silver", tagline: "Nokia metallic" },
-    { id: "candy_gloss", label: "Candy Gloss", tagline: "Bubblegum pop" },
     { id: "solar_flare", label: "Solar Flare", tagline: "Warm fire tones" },
-    { id: "matrix_ghost", label: "Matrix Ghost", tagline: "Terminal green" },
+    { id: "millennium_blue", label: "Millennium Blue", tagline: "iMac era blue" },
+    { id: "candy_gloss", label: "Candy Gloss", tagline: "Bubblegum pop" },
     { id: "aqua_dream", label: "Aqua Dream", tagline: "Winamp teal" },
+    { id: "chrome_silver", label: "Chrome Silver", tagline: "Nokia metallic" },
+    { id: "matrix_ghost", label: "Matrix Ghost", tagline: "Terminal green" },
+    { id: "holographic", label: "Holographic", tagline: "Iridescent shift" },
+    { id: "void_chrome", label: "Void Chrome", tagline: "Electric darkness" },
     { id: "velvet_void", label: "Velvet Void", tagline: "Dark luxury" },
     { id: "pure_static", label: "Pure Static", tagline: "Glitch brutalism" },
 ];

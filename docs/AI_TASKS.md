@@ -1,7 +1,7 @@
 # Zeezu — Task Tracker
 
 > Authoritative list of completed, in-progress, and planned work.
-> Last updated: 2026-03-18
+> Last updated: 2026-03-20
 
 ---
 
@@ -59,6 +59,22 @@
 - [x] Social links displayed on public profile About tab
 - [x] Public profile uses `users.avatar_url` (falls back to dicebear)
 - [x] **Vibes Rating System** — 1–5 widget (trust/cool/sexy), aggregates via `rate_vibes` RPC, loads existing rating
+
+### Landing Page Overhaul (completed 2026-03-20)
+- [x] Ken Burns hero: 3 Spider-Verse art images with crossfade + 3 unique pan/zoom keyframes
+- [x] TiltedCard overlay fix: `width`/`height` on wrapper div → overlays now render
+- [x] TiltedCard idle RAF: sinusoidal rotation when not hovered, IntersectionObserver gate
+- [x] Rich Buzz chat overlay (Card 1) — BuzzFlash, chat thread, read receipts
+- [x] Rich Zlogger editor overlay (Card 2) — split-pane, theme pills, Z-tag palette, preview
+- [x] PixelCard `alwaysOn` mode — always-active pixel effect, viewport-aware RAF pause
+- [x] CardSwap IntersectionObserver — pauses GSAP + setInterval when off-screen
+- [x] ElectricBorder optimized — octaves 6, sampleCount ≤250, off-screen RAF stop
+- [x] Landing navbar logo matches in-app: SVG quadrant + Orbitron + VT323 "NET"
+- [x] Performance CSS: no `backdrop-filter` on glass, no `will-change` on animations
+- [x] Hero + TickerStrip `animation-play-state: paused` via IntersectionObserver
+- [x] RadioPlayer vinyl button: spinning grooves + holographic rainbow + counter-spin Z label
+- [x] RadioPlayer OST: 4 tracks (Drive Home Safe first), `trackNames` in marquee
+- [x] RadioPlayer muted autoplay on `/` — fade-in volume, Safari fallback
 
 ### Platform Components (completed 2026-03-18)
 - [x] **BootScreen** — animated boot sequence component
@@ -129,7 +145,7 @@
 - [ ] **Zones** — Topic-based communities (major feature, not started)
 - [ ] **Zlogger response chains** — UI for browsing full response threads (/zlogger/[slug] shows chain)
 - [ ] **Zlogger featured post** — `setFeaturedZlog` is implemented, needs UI on profile to pin one
-- [ ] **Theme Track ambient audio** — Auto-play on profile visit (browser policy blocks this currently)
+- [ ] **Theme Track ambient audio** — Auto-play on profile visit (muted-start technique now proven in RadioPlayer — apply same pattern)
 - [ ] **Invite-only launch mechanism** — Referral/invite codes
 - [ ] **Mobile PWA features** — Manifest, service worker, push notifications
 - [ ] **AI Enclave agents** — Framework exists in `lib/agents.ts`, needs UI layer

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ import { getPublicZlogs, type ZlogListItem, type ZlogFilter } from "@/lib/supaba
 import { getGeneration } from "@/lib/generation";
 import {
   BookOpen, Plus, Loader2, Clock, Zap, Waves,
-  Bookmark, MessageCircle, Search, TrendingUp,
+  Bookmark, MessageCircle, Search, TrendingUp, Star,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ const STYLES = `
   @keyframes zee-scanbar  { 0%{transform:translateY(-100%);opacity:.55} 100%{transform:translateY(300%);opacity:0} }
   @keyframes spin         { to{transform:rotate(360deg)} }
   @keyframes zee-blink    { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-  @keyframes zee-pulse    { 0%,100%{box-shadow:0 0 4px rgba(138,46,255,.5)} 50%{box-shadow:0 0 16px rgba(138,46,255,.9),0 0 32px rgba(138,46,255,.3)} }
+  @keyframes zee-pulse    { 0%,100%{box-shadow:0 0 4px rgba(255,45,135,.5)} 50%{box-shadow:0 0 16px rgba(255,45,135,.9),0 0 32px rgba(255,45,135,.3)} }
 
   .zlog-entry  { animation: zee-entry .3s ease both; }
   .zee-led     { animation: zee-led 2.4s ease-in-out infinite; }
@@ -78,7 +78,7 @@ const STYLES = `
 const MOOD_COLORS: Record<string, string> = {
   "💀 Dark": "#9333EA",
   "🔥 Lit": "#EF4444",
-  "💜 Vibe": "#8A2EFF",
+  "💜 Vibe": "#FF2D87",
   "🌊 Chill": "#0EA5E9",
   "⚡ Charged": "#EAB308",
   "🌹 Romantic": "#EC4899",
@@ -124,7 +124,7 @@ const getAvatar = (seed: string) => `https://api.dicebear.com/7.x/avataaars/svg?
 //  PORTAL CARD WRAPPER
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PortalCard({ children, accent = "rgba(138,46,255,.2)", style }: {
+function PortalCard({ children, accent = "rgba(255,45,135,.2)", style }: {
   children: React.ReactNode; accent?: string; style?: React.CSSProperties;
 }) {
   return (
@@ -144,7 +144,7 @@ function PortalCard({ children, accent = "rgba(138,46,255,.2)", style }: {
 //  MODULE HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ModuleHeader({ icon, title, accent = "#8A2EFF", right }: {
+function ModuleHeader({ icon, title, accent = "#FF2D87", right }: {
   icon: React.ReactNode; title: string; accent?: string; right?: React.ReactNode;
 }) {
   return (
@@ -250,14 +250,21 @@ function ZlogCard({ zlog, primary }: { zlog: ZlogListItem; primary: string }) {
           )}
 
           {/* Title — Orbitron Y2K */}
-          <h3 style={{
-            fontFamily: "'Orbitron',sans-serif", fontSize: "13px", fontWeight: 900,
-            color: "#fff", margin: "0 0 10px", lineHeight: 1.35,
-            letterSpacing: "-0.3px",
-            textShadow: `0 0 20px ${primary}40`,
-          }}>
-            {zlog.title}
-          </h3>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "10px" }}>
+            <h3 style={{
+              fontFamily: "'Orbitron',sans-serif", fontSize: "13px", fontWeight: 900,
+              color: "#fff", margin: 0, lineHeight: 1.35,
+              letterSpacing: "-0.3px", flex: 1,
+              textShadow: `0 0 20px ${primary}40`,
+            }}>
+              {zlog.title}
+            </h3>
+            {zlog.is_featured && (
+              <span style={{ display: "flex", alignItems: "center", gap: "3px", padding: "2px 7px", borderRadius: "4px", background: "rgba(255,215,0,.12)", border: "1px solid rgba(255,215,0,.3)", color: "#FFD700", fontFamily: "'VT323',monospace", fontSize: "9px", letterSpacing: "1px", flexShrink: 0, marginTop: "1px" }}>
+                <Star size={8} style={{ fill: "#FFD700" }} /> FEATURED
+              </span>
+            )}
+          </div>
 
           {/* Author row — terminal style */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
@@ -341,7 +348,7 @@ function ZlogCard({ zlog, primary }: { zlog: ZlogListItem; primary: string }) {
 
 export default function ZloggerFeedPage() {
   const router = useRouter();
-  const primary = "#8A2EFF";
+  const primary = "#FF2D87";
   const secondary = "#00E5FF";
 
   // ── State — ALL UNCHANGED ──────────────────────────────────────
@@ -393,7 +400,7 @@ export default function ZloggerFeedPage() {
       minHeight: "100vh",
       background: "#070C1E",
       backgroundImage: `
-        radial-gradient(ellipse 70% 45% at 50% 0%, rgba(138,46,255,.14) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,45,135,.14) 0%, transparent 60%),
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='.65' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E")
       `,
       color: "#fff",
@@ -408,7 +415,7 @@ export default function ZloggerFeedPage() {
 
       <NavBar />
 
-      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "80px 16px 0" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "20px 16px 0" }}>
 
         {/* ════════════════════════════════════════════════════════
             PORTAL TITLE BAR — LiveJournal/Xanga era header
@@ -433,14 +440,14 @@ export default function ZloggerFeedPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 1 }}>
               {/* Zeezu flag */}
               <svg width="20" height="17" viewBox="0 0 70 58" style={{ flexShrink: 0 }}>
-                <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#8A2EFF" />
+                <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#FF2D87" />
                 <path d="M 37,5 Q 53,2 68,2 L 68,27 Q 53,26 37,25 Z" fill="#00E5FF" />
                 <path d="M 33,33 Q 17,32 2,31 L 2,56 Q 17,56 33,53 Z" fill="#5B21B6" />
                 <path d="M 37,33 Q 53,32 68,31 L 68,56 Q 53,56 37,53 Z" fill="#0EA5E9" />
               </svg>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", margin: 0, letterSpacing: "-0.5px", textShadow: "0 0 20px rgba(138,46,255,.4)" }}>
+                  <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", margin: 0, letterSpacing: "-0.5px", textShadow: "0 0 20px rgba(255,45,135,.4)" }}>
                     ZLOGGER
                   </h1>
                   <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.35)", letterSpacing: "2px", background: "rgba(0,0,0,.3)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "3px", padding: "1px 6px" }}>
@@ -481,7 +488,7 @@ export default function ZloggerFeedPage() {
           <div style={{ padding: "12px 14px", background: "rgba(0,0,0,.25)", borderBottom: `1px solid ${primary}12` }}>
             {/* Search input — Y2K terminal style */}
             <div style={{ position: "relative", marginBottom: "10px" }}>
-              <Search size={12} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "rgba(138,46,255,.45)" }} />
+              <Search size={12} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,45,135,.45)" }} />
               <input
                 type="text"
                 placeholder="SEARCH THE NETWORK..."
@@ -489,7 +496,7 @@ export default function ZloggerFeedPage() {
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
                   width: "100%", padding: "8px 12px 8px 32px",
-                  background: "rgba(138,46,255,.07)",
+                  background: "rgba(255,45,135,.07)",
                   border: `1px solid ${primary}25`,
                   borderRadius: "7px", color: "#fff",
                   fontFamily: "'VT323',monospace", fontSize: "12px",
@@ -543,7 +550,7 @@ export default function ZloggerFeedPage() {
             accent={primary}
             right={
               !loading && filtered.length > 0
-                ? <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(138,46,255,.5)", letterSpacing: "1px" }}>
+                ? <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,45,135,.5)", letterSpacing: "1px" }}>
                   {filtered.length} ENTRIES
                 </span>
                 : undefined
@@ -555,7 +562,7 @@ export default function ZloggerFeedPage() {
             {loading && zlogs.length === 0 && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "14px" }}>
                 <div style={{ position: "relative", width: "44px", height: "44px" }}>
-                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(138,46,255,.18)" }} />
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(255,45,135,.18)" }} />
                   <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid transparent", borderTopColor: primary, animation: "spin 1s linear infinite" }} />
                 </div>
                 <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: `${primary}55`, letterSpacing: "3px" }}>LOADING NETWORK...</p>
@@ -618,13 +625,6 @@ export default function ZloggerFeedPage() {
         </PortalCard>
       </div>
 
-      {/* ── MARQUEE TICKER ── */}
-      <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: "26px", background: `linear-gradient(90deg,${primary}60 0%,#0B4B8F 50%,${primary}60 100%)`, borderTop: `1px solid ${primary}50`, display: "flex", alignItems: "center", overflow: "hidden", zIndex: 20, boxShadow: `0 -2px 16px ${primary}22` }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 3px)", pointerEvents: "none" }} />
-        <div style={{ display: "flex", whiteSpace: "nowrap", animation: "zee-marquee 40s linear infinite", fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,255,255,.5)", letterSpacing: "2px", position: "relative", zIndex: 1 }}>
-          {"✦ ZLOGGER · ZEEZU NETWORK · LONG-FORM WRITING · NO ALGORITHM · JUST PEOPLE · PERSONAL WEBLOGS SINCE 2024 · ".repeat(4)}
-        </div>
-      </div>
     </div>
   );
 }
