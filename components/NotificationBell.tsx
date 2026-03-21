@@ -126,34 +126,28 @@ export default function NotificationBell() {
   // ── INIT + REALTIME ──────────────────────────────────────────
   useEffect(() => {
     let channelCleanup: (() => void) | undefined;
-    let pollInterval: ReturnType<typeof setInterval> | undefined;
+    let uid: string | null = null;
 
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      uid = user.id;
       setUserId(user.id);
       supabase.from("users").select("zid").eq("id", user.id).single()
         .then(({ data }) => { if (data?.zid) setMyZid(data.zid); });
       await fetchUnreadCount(user.id);
 
-      // Subscribe to realtime inserts — no filter on non-PK columns
+      // Subscribe to realtime inserts
       const channel = supabase
         .channel(`bell_notifs_${user.id}`)
         .on(
           "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notifications",
-          },
+          { event: "INSERT", schema: "public", table: "notifications" },
           (payload: any) => {
-            // Client-side filter: only this user's notifications
             if (payload.new?.user_id !== user.id) return;
             setUnreadCount((prev) => prev + 1);
-            // Pulse the bell icon to get attention
             setPulse(true);
             setTimeout(() => setPulse(false), 2000);
-            // If dropdown is open, refresh the list live
             setIsOpen((open) => {
               if (open) fetchNotifications(user.id);
               return open;
@@ -163,12 +157,15 @@ export default function NotificationBell() {
         .subscribe();
 
       channelCleanup = () => supabase.removeChannel(channel);
-
-      // Polling fallback: re-fetch count every 10s in case realtime misses
-      pollInterval = setInterval(() => fetchUnreadCount(user.id), 10000);
     };
 
     init();
+
+    // Re-fetch on tab focus — catches any realtime misses while tab was hidden
+    const onVisible = () => {
+      if (!document.hidden && uid) fetchUnreadCount(uid);
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     // Click outside to close
     const handleClickOutside = (e: MouseEvent) => {
@@ -180,7 +177,7 @@ export default function NotificationBell() {
 
     return () => {
       channelCleanup?.();
-      if (pollInterval) clearInterval(pollInterval);
+      document.removeEventListener("visibilitychange", onVisible);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [fetchUnreadCount, fetchNotifications]);

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Search, Disc3, Activity, BookOpen } from "lucide-react";
@@ -201,7 +201,7 @@ const NAV_STYLES = `
 //  DOCK ICON — icon + active dot + badge
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NavDockIcon({
+const NavDockIcon = memo(function NavDockIcon({
   icon,
   active = false,
   badge = 0,
@@ -235,6 +235,41 @@ function NavDockIcon({
       )}
     </div>
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ONLINE PILL — isolated component, owns its own counter state.
+//  Ticks every 3.8s without causing NavBar to re-render.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OnlinePill = memo(function OnlinePill() {
+  const [count, setCount] = useState(2847);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCount(n => n + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 3));
+    }, 3800);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="zee-online-pill" style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(107,203,119,0.28)", borderRadius: "20px", padding: "3px 9px", transition: "all 0.2s" }}>
+      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6BCB77", display: "inline-block", flexShrink: 0, animation: "zee-online 2.2s ease-in-out infinite", boxShadow: "0 0 5px rgba(107,203,119,0.8)" }} />
+      <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "#6BCB77", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
+        {count.toLocaleString()} online
+      </span>
+    </div>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STYLE INJECTION — once at module load, never on re-render
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NAV_STYLE_ID = "zee-nav-styles";
+if (typeof document !== "undefined" && !document.getElementById(NAV_STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = NAV_STYLE_ID;
+  s.textContent = NAV_STYLES;
+  document.head.appendChild(s);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,7 +281,6 @@ export default function NavBar() {
   const router = useRouter();
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [buzzCount, setBuzzCount] = useState(0);
-  const [onlineCount, setOnlineCount] = useState(2847);
   const [userZid, setUserZid] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -285,6 +319,23 @@ export default function NavBar() {
   }, [userZid]);
 
   useEffect(() => { fetchNavData(); }, [fetchNavData]);
+
+  // ── Route prefetching ─────────────────────────────────────────
+  // Prefetch all app routes the moment NavBar mounts so every
+  // navigation feels instant — JS bundles are already downloaded.
+  useEffect(() => {
+    const routes = [
+      "/dashboard", "/search", "/friends",
+      "/messages", "/zlogger", "/zones",
+      "/profile", "/zeewall",
+    ];
+    routes.forEach(r => router.prefetch(r));
+  }, [router]);
+
+  // Prefetch dynamic profile route once zid is known
+  useEffect(() => {
+    if (userZid) router.prefetch(`/u/${userZid}`);
+  }, [router, userZid]);
 
   // ── Last-seen heartbeat ───────────────────────────────────────
   // Updates last_seen_at on mount, tab focus, and every 5 min.
@@ -332,16 +383,8 @@ export default function NavBar() {
     return () => cleanup?.();
   }, [fetchNavData]);
 
-  // Online counter drift
-  useEffect(() => {
-    const t = setInterval(() => {
-      setOnlineCount(n => n + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 3));
-    }, 3800);
-    return () => clearInterval(t);
-  }, []);
-
   // ── Dock items ────────────────────────────────────────────────
-  const dockItems = [
+  const dockItems = useMemo(() => [
     {
       icon: <NavDockIcon icon={<LayoutDashboard size={16} />} active={pathname === "/dashboard"} />,
       label: "Home",
@@ -378,12 +421,10 @@ export default function NavBar() {
       onClick: () => userZid ? router.push(`/u/${userZid}`) : router.push("/profile"),
       className: pathname?.startsWith("/u/") ? "zee-active" : "",
     },
-  ];
+  ], [pathname, unreadMsgCount, userZid, router]);
 
   return (
     <>
-      <style>{NAV_STYLES}</style>
-
       <nav style={{
         position: "fixed",
         top: 0,
@@ -462,13 +503,8 @@ export default function NavBar() {
         {/* ── RIGHT: Online + Buzzes + Bell + FM ───────────────── */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
 
-          {/* Online pill */}
-          <div className="zee-online-pill" style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(107,203,119,0.28)", borderRadius: "20px", padding: "3px 9px", transition: "all 0.2s" }}>
-            <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6BCB77", display: "inline-block", flexShrink: 0, animation: "zee-online 2.2s ease-in-out infinite", boxShadow: "0 0 5px rgba(107,203,119,0.8)" }} />
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "#6BCB77", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
-              {onlineCount.toLocaleString()} online
-            </span>
-          </div>
+          {/* Online pill — isolated component, won't cause NavBar re-render */}
+          <OnlinePill />
 
           {/* ── ADDED: BUZZ PILL ── */}
           {buzzCount > 0 && (

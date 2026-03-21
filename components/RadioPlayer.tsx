@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  STATIONS — unchanged from original
@@ -389,7 +389,7 @@ function TransportBtn({
 //  MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function RadioPlayer() {
+const RadioPlayer = memo(function RadioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasAutoplayed = useRef(false);
   const dragIdx = useRef<number | null>(null);
@@ -1260,4 +1260,6 @@ export default function RadioPlayer() {
       `}</style>
     </div>
   );
-}
+});
+
+export default RadioPlayer;

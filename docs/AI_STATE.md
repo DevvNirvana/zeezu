@@ -1,6 +1,6 @@
 # Zeezu — AI State Snapshot
 
-> Current state of the project as of 2026-03-20. Use this as a quick orientation before diving into code.
+> Current state of the project as of 2026-03-21. Use this as a quick orientation before diving into code.
 
 ---
 
@@ -10,14 +10,14 @@
 - Magic Link auth via Supabase
 - ZID (20-char unique identifier) auto-generated on signup
 - `syncUserSession` keeps `users` table in sync with auth
-- Login page at `/login`
-- Onboarding flow at `/onboarding`
+- Login page at `/login`, Onboarding flow at `/onboarding`
 - BootScreen animation component
 
 ### Navigation
 - `NavBar.tsx` — fixed top bar with macOS-style Dock
-- Dock items: Home (`/dashboard`) · Search · Friends · Messages (unread badge) · **Zlogger** (`/zlogger`) · Profile
-- ZeeWall was removed from dock and replaced by Zlogger this session
+- Dock items: Home · Search · Friends · Messages (unread badge) · Zlogger · Profile
+- Mobile: bottom Dock component with 5 icons
+- MarqueeTicker — live activity ticker at bottom of screen (realtime + visibilitychange, no polling)
 
 ### Public Profile (`/u/[zid]`)
 - Full theme engine applied (CSS vars from ThemeConfig)
@@ -26,8 +26,7 @@
 - Real visitor counter via `increment_visit` RPC
 - ZeeWall (personal wall feed) embedded via `GlobalFeed` with `wallOwnerId` prop
 - Social links displayed in About tab
-- Avatar from `users.avatar_url` or dicebear fallback
-- **3 tabs: WALL · PHOTOS · ZLOGGER** (zlogger tab lazy-loads user's zlogs)
+- 3 tabs: WALL · PHOTOS · ZLOGGER (zlogger tab lazy-loads user's zlogs)
 - GenBadge shown on profile, comments, author rows throughout
 
 ### Profile Settings (`/profile`)
@@ -49,35 +48,51 @@
 - DM / Buzz messaging with BuzzFlash overlays
 - Search & discovery page
 
-### Zlogger (`/zlogger`) — NEW this session
+### Zlogger (`/zlogger`)
 - Feed at `/zlogger` — 6 filter modes: Latest / Trending / Anonymous / Network / Gen Z / Millennial
 - Editor at `/zlogger/new` — split-pane markdown + live preview, Z-tag toolbar, full settings
 - Reading page at `/zlogger/[slug]` — themed render, engagement, realtime comments, highlight-to-share
 - Edit page at `/zlogger/edit/[id]`
 - 6 custom Z-tags: `[z-neon]` `[z-glitch]` `[z-blink]` `[z-marquee]` `[z-divider]` `[z-track]`
 - 5 reading themes: void_chrome · neon_vapor · midnight_run · candy_chrome · arctic_ghost
-- Visibility modes: public / friends / private
-- Anonymous publishing (author hidden on feed + reading page)
+- Visibility modes: public / friends / private, anonymous publishing
 - Response-to chain linking between zlogs
-- `lib/zlogger-renderer.ts` — renderer, slug gen, reading time, CSS constants
-- All DB query functions in `lib/supabase/queries.ts`
+
+### Zones (`/zones`)
+- Zone discovery page with search + create zone button
+- Zone creation at `/zones/new`
+- Zone feed at `/zones/[slug]` — GlobalFeed with `zoneId` prop (zone posts isolated)
+- Member list at `/zones/[slug]/members`
+- Zone settings at `/zones/[slug]/settings` (owner only)
+- Loading skeletons for all zone routes
 
 ### Landing Page (`/`)
-- Ken Burns cycling hero: 3 Spider-Verse art images from Vercel Blob, crossfade + pan+zoom keyframes
-- Spider-Verse filter: `contrast(1.18) brightness(0.72) saturate(1.06)`
-- IntersectionObserver pauses hero image cycle + ticker strip when off-screen
-- TiltedCards with idle sinusoidal animation (rotates even when not hovered)
-- Rich JSX overlays: Buzz chat overlay (Card 1), Zlogger editor split-pane (Card 2)
-- PixelCard with `alwaysOn` — pixel effect always active (no hover needed)
-- CardSwap pauses GSAP + setInterval when off-screen
-- ElectricBorder optimized: octaves 6, sampleCount capped 250, off-screen pause
-- Navbar logo matches in-app: SVG quadrant + Orbitron "zeezu" + VT323 "NET"
+- Ken Burns cycling hero: 3 Spider-Verse art images, crossfade + pan+zoom keyframes
+- TiltedCards with idle sinusoidal animation + rich JSX overlays
+- PixelCard `alwaysOn`, CardSwap IntersectionObserver pause
+- ElectricBorder optimized (octaves 6, sampleCount ≤250, off-screen pause)
+- Navbar logo matches in-app
 
 ### RadioPlayer
-- OST playlist: Drive Home Safe · KxH-TTR · Eurodrive · Dreams We Didn't Get To Live
-- Minimized button: spinning vinyl disc with holographic rainbow + counter-spin Z label
-- Autoplay on `/`: muted-start technique → unmute + volume fade-in
-- Track names shown in marquee
+- OST playlist: Drive Home Safe · Eurodrive · Dreams We Didn't Get To Live · KxH-TTR
+- Minimized: spinning vinyl disc with holographic rainbow + counter-spin Z label
+- Autoplay on `/`: muted-start → unmute + volume fade-in
+- Wrapped in `memo()` — never re-renders from parent state changes
+
+### Performance (completed 2026-03-21)
+- **Module-level style injection** — NavBar, GlobalFeed, MarqueeTicker, RadioPlayer (no per-render DOM writes)
+- **No polling** — NotificationBell + MarqueeTicker use `visibilitychange` + Supabase realtime only
+- **CSS GPU compositing** — `filter: hue-rotate()` removed from all badge animations; `will-change` added
+- **Gen Z badge** — `chroma-ab` chromatic aberration (text-shadow, GPU) replaces `glitch-shift` (clip-path, CPU)
+- **Loading skeletons** — `LoadingShell` + 13 route-level `loading.tsx` files (instant visual on every tap)
+- **Route prefetching** — all static routes pre-downloaded on NavBar mount
+- **`touch-action: manipulation`** — 300ms tap delay removed globally
+- **NavBar isolation** — `OnlinePill` owns its own state, `NavDockIcon` memoized, `dockItems` memoized
+- **GlobalFeed** — `PostCard` extracted as `memo()` with sliced per-post props; 12 handlers wrapped in `useCallback`; pure helpers outside component; state refs for stable closures
+- **RadioPlayer** — `memo()` wrapping
+
+### PWA
+- `icon-192.png` + `icon-512.png` in `/public`, wired in manifest
 
 ### Components
 - `ProfileCard.tsx` — 3D Three.js tilt card
@@ -85,6 +100,7 @@
 - `GenBadge.tsx` — generation label (Gen Z / Millennial / Gen X / Boomer / Gen Alpha / Synthetic)
 - `Dock.tsx` + `Dock.css` — macOS-style icon dock
 - `BootScreen.tsx` — animated boot sequence
+- `LoadingShell.tsx` — skeleton NavBar + dock wrapper for all loading states
 - `ReflectiveCard.tsx` — glossy reflective card surface
 - `RadioPlayer.tsx` — ambient radio player with vinyl UI + autoplay
 - `TiltedCard.tsx` — 3D tilt card with idle RAF animation + overlay support
@@ -96,20 +112,20 @@
 ### Libraries
 - `lib/generation.ts` — birth year + month + day → generation + metadata
 - `lib/agents.ts` — AI agent definitions
-- `lib/zlogger-renderer.ts` — Zlogger markdown renderer
+- `lib/zlogger-renderer.ts` — Zlogger markdown renderer, slug gen, reading time, ZLOG_CSS
 
 ---
 
 ## Pending user action
 
-- **Zlogger SQL** — Run in Supabase SQL editor to create `zlogs`, `zlog_engagement`, `zlog_comments` tables + RLS policies + trigger. SQL was provided in session 2026-03-18. Until this is done, all Zlogger DB calls will fail silently (graceful degradation — pages load but data won't save/fetch).
+- **Zlogger SQL** — Run in Supabase SQL editor to create `zlogs`, `zlog_engagement`, `zlog_comments` tables + RLS policies + trigger. SQL was provided in session 2026-03-18. Until this is done, all Zlogger DB calls will fail silently.
 
 ---
 
 ## Known gaps / immediate next steps
 
-1. **Feed engagement counts** — `getPublicZlogs` returns `engagementCounts: {0,0,0,0}` on all feed cards. Real counts need a parallel fetch or DB join. Low priority until content exists.
-2. **End-to-end Zlogger test** — create → publish → read → engage → comment → realtime (two tabs)
+1. **End-to-end Zlogger test** — create → publish → read → engage → comment → realtime (two tabs)
+2. **Feed engagement counts** — `getPublicZlogs` returns `engagementCounts: {0,0,0,0}` on all feed cards
 3. **Anonymous post verification** — confirm author data is fully hidden in feed cards and reading page
 
 ---
@@ -118,6 +134,6 @@
 
 See `docs/AI_TASKS.md` Future Roadmap. Top candidates:
 1. **Zlogger featured post** — `setFeaturedZlog` query exists, needs profile UI to pin one post
-2. **Zones** — Topic-based communities (major feature, not started)
-3. **Notification preferences** — Granular control
-4. **Mobile PWA** — Manifest, service worker, push notifications
+2. **AI Enclave agents** — Framework in `lib/agents.ts`, needs UI layer
+3. **Mobile PWA** — Service worker, push notifications
+4. **Notification preferences** — Granular per-event control

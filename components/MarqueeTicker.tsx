@@ -7,8 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 //  CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TTL_MS   = 10 * 60 * 1000;  // 10 minutes
-const POLL_MS  = 60 * 1000;       // poll every 60s
+const TTL_MS = 10 * 60 * 1000;  // 10 minutes
 
 const NOTIF_META: Record<string, { icon: string; label: string }> = {
   comment:         { icon: "💬", label: "commented on your post" },
@@ -141,7 +140,7 @@ export default function MarqueeTicker({
   fallbackText = "✦ ZEEZU NETWORK · NO ALGORITHM · JUST PEOPLE · THE INTERNET AFTER DARK · STAY CONNECTED · YOUR NETWORK IS LIVE · ",
 }: MarqueeTickerProps) {
   const [liveSegments, setLiveSegments] = useState<string[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const uidRef = useRef<string | null>(null);
 
   const fetchLive = useCallback(async (uid: string) => {
     const cutoff = new Date(Date.now() - TTL_MS).toISOString();
@@ -220,14 +219,43 @@ export default function MarqueeTicker({
   }, []);
 
   useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      uidRef.current = user.id;
       await fetchLive(user.id);
-      intervalRef.current = setInterval(() => fetchLive(user.id), POLL_MS);
+
+      // Re-fetch when a new notification arrives in realtime
+      channel = supabase
+        .channel("marquee-notifs")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+          () => fetchLive(user.id)
+        )
+        .subscribe();
+
+      // Re-fetch when user returns to the tab (catches zeewall/zlog changes missed while hidden)
+      const onVisible = () => {
+        if (!document.hidden && uidRef.current) fetchLive(uidRef.current);
+      };
+      document.addEventListener("visibilitychange", onVisible);
+
+      // Store cleanup ref on channel object (hack-free way to clean up listener)
+      (channel as any)._onVisible = onVisible;
     }
+
     init();
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
+    return () => {
+      if (channel) {
+        const onVisible = (channel as any)._onVisible;
+        if (onVisible) document.removeEventListener("visibilitychange", onVisible);
+        supabase.removeChannel(channel);
+      }
+    };
   }, [fetchLive]);
 
   const hasLive = liveSegments.length > 0;
