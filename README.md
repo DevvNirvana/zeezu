@@ -1,5 +1,5 @@
 # ⚡ zeezu
-**The Internet After Dark**
+**The Internet After Dark..**
 
 *No algorithm. No feed manipulation. Just people.*
 
