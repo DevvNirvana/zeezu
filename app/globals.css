@@ -2,6 +2,26 @@
 /* @import "tw-animate-css"; */
 @import "shadcn/tailwind.css";
 
+/* ── Signature easing language (Paper Tiger / Slush approach) ── */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-steep: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* Lenis smooth scroll — disable native scroll-behavior to prevent conflict */
+html {
+  scroll-behavior: auto !important;
+}
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

@@ -4,6 +4,7 @@ import RadioPlayer from "@/components/RadioPlayer";
 import ToastProvider from "@/components/ToastProvider";
 import ConfirmModal from "@/components/ConfirmModal";
 import PwaRegister from "./pwa-register";
+import SmoothScroll from "@/components/SmoothScroll";
 // If you want NavBar on every single page, you could import it here:
 // import NavBar from "@/components/NavBar";
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ToastProvider />
         <ConfirmModal />
         <PwaRegister />
+        <SmoothScroll />
       </body>
     </html>
   );

@@ -4,17 +4,16 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import {
   Zap, Menu, X, ArrowRight, MessageSquare, Users, Star,
-  Palette, BookOpen, Shield, Wifi, Radio, ChevronDown,
+  Palette, BookOpen, Shield, Wifi, Radio,
   Pencil, Globe, Lock, Music, Send,
-  Flame, Heart, Sparkles, Volume2, Layout, Hash,
+  Flame, Sparkles, Volume2, Hash,
   ChevronRight, Plus, Minus, Power
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import ShinyText from "@/components/reactbits/ShinyText";
-import StarBorder from "@/components/StarBorder";
 import CountUp from "@/components/reactbits/CountUp";
 import RotatingText from "@/components/RotatingText";
 import PixelCard from "@/components/PixelCard";
@@ -226,30 +225,57 @@ function cardBg(c1: string, c2: string) {
   )}`;
 }
 
-function useInView(threshold = 0.12) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true); },
-      { threshold }
-    );
-    obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, inView };
-}
 
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const { ref, inView } = useInView();
   return (
     <motion.div
-      ref={ref as React.Ref<HTMLDivElement>}
       className={className}
-      initial={{ opacity: 0, y: 32, scale: 0.97 }}
-      animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={{ type: "spring", damping: 22, stiffness: 160, delay: delay / 1000, mass: 0.85 }}
+      initial={{ opacity: 0, y: 56 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: false, margin: "-20px" }}
+      transition={{ type: "spring", damping: 26, stiffness: 130, delay: delay / 1000 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// ── Word-by-word clip reveal ──────────────────────────────────────
+function WordReveal({ children, className = "", delay = 0 }: { children: string; className?: string; delay?: number }) {
+  const words = children.split(" ");
+  return (
+    <span className={className}>
+      {words.map((word, i) => (
+        <span key={i} className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+          <motion.span
+            className="inline-block"
+            initial={{ y: "110%" }}
+            whileInView={{ y: "0%" }}
+            // once: true — content must always be readable after first trigger
+            // margin: "0px" — trigger the instant the element enters viewport (no strict threshold)
+            viewport={{ once: true, margin: "0px" }}
+            transition={{ type: "spring", damping: 28, stiffness: 200, delay: delay / 1000 + i * 0.055 }}
+          >
+            {word}
+          </motion.span>
+          {i < words.length - 1 && "\u00a0"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ── Clip-path aperture reveal ─────────────────────────────────────
+function ClipReveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ clipPath: "inset(50% 50% 50% 50% round 8px)" }}
+      whileInView={{ clipPath: "inset(0% 0% 0% 0% round 8px)" }}
+      // once: true — card must always be visible after first trigger
+      // margin: "0px" — trigger the instant ANY part of the card enters viewport
+      viewport={{ once: true, margin: "0px" }}
+      transition={{ duration: 0.85, ease: [0.76, 0, 0.24, 1] }}
     >
       {children}
     </motion.div>
@@ -730,17 +756,31 @@ function ImageHeroBg() {
 }
 
 // ── Hero floating card ────────────────────────────────────────────
-function FloatCard({ cls, children, style }: { cls: string; children: React.ReactNode; style?: React.CSSProperties }) {
+function FloatCard({ cls, children, style, delay = 0 }: { cls: string; children: React.ReactNode; style?: React.CSSProperties; delay?: number }) {
   return (
-    <div className={`absolute hidden xl:flex flex-col rounded-2xl p-3.5 shadow-[0_8px_48px_-8px_rgba(0,0,0,.8)] ${cls}`} style={style}>
+    <motion.div
+      className={`absolute hidden xl:flex flex-col rounded-2xl p-3.5 shadow-[0_8px_48px_-8px_rgba(0,0,0,.8)] ${cls}`}
+      style={style}
+      initial={{ opacity: 0, x: 36, scale: 0.94 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ type: "spring", damping: 22, stiffness: 130, delay }}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
 // ── Hero ──────────────────────────────────────────────────────────
 function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
+
+  // Scroll-linked parallax + fade + blur (signals chapter end)
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "28%"]);
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
+  const contentY = useTransform(scrollYProgress, [0, 0.55], ["0px", "-48px"]);
+  const contentBlur = useTransform(scrollYProgress, [0.25, 0.55], ["blur(0px)", "blur(6px)"]);
+
   useEffect(() => {
     const obs = new IntersectionObserver(
       ([e]) => { sectionRef.current?.toggleAttribute("data-hero-idle", !e.isIntersecting); },
@@ -751,8 +791,12 @@ function HeroSection() {
   }, []);
   return (
     <section ref={sectionRef} className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "100svh" }}>
-      {/* Image background — Ken Burns + Y2K overlays */}
-      <ImageHeroBg />
+      {/* Parallax background — moves at 0.28x scroll speed creating depth */}
+      <motion.div className="absolute inset-x-0 pointer-events-none" style={{ top: "-15%", bottom: "-15%", y: bgY }}>
+        <div className="absolute inset-0">
+          <ImageHeroBg />
+        </div>
+      </motion.div>
       {/* Mobile-only centre scrim — boosts text contrast without touching desktop */}
       <div className="xl:hidden absolute inset-0 pointer-events-none" style={{
         background: "radial-gradient(ellipse 110% 70% at 50% 48%, rgba(7,12,30,.62) 0%, transparent 75%)",
@@ -761,7 +805,7 @@ function HeroSection() {
 
       {/* Floating preview cards */}
       {/* ZeeWall post */}
-      <FloatCard cls={`lp-glass lp-f1 w-52 top-[18%] right-[6%] z-10`}>
+      <FloatCard cls={`lp-glass lp-f1 w-52 top-[18%] right-[6%] z-10`} delay={0.6}>
         <div className="flex items-center gap-2 mb-2.5">
           <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=nxrm1" alt="" loading="lazy"
             className="w-8 h-8 rounded-full border border-[#FF2D87]/40 bg-black flex-shrink-0" />
@@ -785,7 +829,7 @@ function HeroSection() {
       </FloatCard>
 
       {/* Core 8 */}
-      <FloatCard cls={`lp-glass-cyan lp-f2 w-48 bottom-[26%] right-[9%] z-10`}>
+      <FloatCard cls={`lp-glass-cyan lp-f2 w-48 bottom-[26%] right-[9%] z-10`} delay={0.75}>
         <p className="text-[#00F7FF] text-[8px] font-mono tracking-widest mb-2.5">CORE 8</p>
         <div className="grid grid-cols-4 gap-1.5">
           {["a1", "b2", "c3", "d4", "e5", "f6", "g7", "h8"].map(s => (
@@ -796,7 +840,7 @@ function HeroSection() {
       </FloatCard>
 
       {/* Vibes */}
-      <FloatCard cls={`lp-glass-gold lp-f3 w-44 top-[38%] right-[19%] z-10`}>
+      <FloatCard cls={`lp-glass-gold lp-f3 w-44 top-[38%] right-[19%] z-10`} delay={0.9}>
         <p className="text-[#FFD700] text-[8px] font-mono tracking-widest mb-2.5">VIBES</p>
         {[{ l: "Trust", v: 91, c: "#00F7FF" }, { l: "Cool", v: 94, c: "#FF2D87" }, { l: "Sexy", v: 76, c: "#FFD700" }].map(v => (
           <div key={v.l} className="mb-1.5">
@@ -812,7 +856,7 @@ function HeroSection() {
       </FloatCard>
 
       {/* Buzz DM */}
-      <FloatCard cls={`lp-glass lp-f4 w-48 top-[60%] right-[21%] z-10`} style={{ borderColor: "rgba(255,0,122,.25)" }}>
+      <FloatCard cls={`lp-glass lp-f4 w-48 top-[60%] right-[21%] z-10`} style={{ borderColor: "rgba(255,0,122,.25)" }} delay={1.05}>
         <div className="flex items-center gap-1.5 mb-2">
           <Send className="w-3 h-3 text-[#FF007A]" />
           <p className="text-[#FF007A] text-[8px] font-mono tracking-widest">BUZZ</p>
@@ -824,8 +868,9 @@ function HeroSection() {
         </div>
       </FloatCard>
 
-      {/* Main content */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center xl:text-left xl:max-w-[50rem] xl:ml-16 2xl:ml-28 py-4 xl:py-16 -mt-14 xl:mt-0">
+      {/* Main content — fades out + drifts up as user scrolls past */}
+      <motion.div style={{ opacity: contentOpacity, y: contentY, filter: contentBlur }}
+        className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center xl:text-left xl:max-w-[50rem] xl:ml-16 2xl:ml-28 py-4 xl:py-16 -mt-14 xl:mt-0">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="flex flex-wrap items-center gap-2 justify-center xl:justify-start mb-3 xl:mb-7">
           <span className="inline-flex items-center gap-2 bg-[#FF2D87]/10 border border-[#FF2D87]/28 text-[10px] font-mono px-3 py-1 rounded-full">
@@ -854,22 +899,46 @@ function HeroSection() {
           </span>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.22 }}>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.02] text-white">
-            Social media got
-          </h1>
-          <div className="flex justify-center xl:justify-start mt-1 mb-1">
-            <RotatingText
-              texts={["boring.", "sanitized.", "corporate.", "toxic.", "fake."]}
-              rotationInterval={2400}
-              mainClassName="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-[#FF2D87] inline-block"
-              transition={{ type: "spring", damping: 22, stiffness: 280 }}
-              staggerDuration={0.03}
-              splitBy="character"
-            />
+        {/* Hero headline — film-title emerge from below (overflow:hidden clip per line) */}
+        <div>
+          <div className="overflow-hidden leading-[1.12]">
+            <motion.h1
+              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white"
+              initial={{ y: "108%" }}
+              animate={{ y: "0%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 160, delay: 0.22 }}
+            >
+              Social media got
+            </motion.h1>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.02] text-white">We fixed it.</h1>
-        </motion.div>
+          <div className="overflow-hidden leading-[1.12] mt-1 mb-1">
+            <motion.div
+              className="flex justify-center xl:justify-start"
+              initial={{ y: "108%" }}
+              animate={{ y: "0%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 160, delay: 0.38 }}
+            >
+              <RotatingText
+                texts={["boring.", "sanitized.", "corporate.", "toxic.", "fake."]}
+                rotationInterval={2400}
+                mainClassName="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-[#FF2D87] inline-block"
+                transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                staggerDuration={0.03}
+                splitBy="character"
+              />
+            </motion.div>
+          </div>
+          <div className="overflow-hidden leading-[1.12]">
+            <motion.h1
+              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white"
+              initial={{ y: "108%" }}
+              animate={{ y: "0%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 160, delay: 0.52 }}
+            >
+              We fixed it.
+            </motion.h1>
+          </div>
+        </div>
 
         {/* ── Mobile cards — right after H1 for show-don't-tell ──── */}
         <motion.div
@@ -954,12 +1023,18 @@ function HeroSection() {
           <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Free forever</span>
         </motion.div>
 
-      </div>
+      </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}
-        className="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-        <div className="w-px h-10 bg-gradient-to-b from-transparent via-[#FF2D87]/30 to-transparent" />
-        <ChevronDown className="w-3.5 h-3.5 text-[#FF2D87]/40 animate-bounce" style={{ animationDuration: "1.8s" }} />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}
+        className="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+        {/* Breathing scroll pill */}
+        <div className="w-5 h-8 rounded-full border border-[#FF2D87]/25 flex items-start justify-center pt-1.5">
+          <motion.div
+            className="w-1 h-1.5 rounded-full bg-[#FF2D87]/60"
+            animate={{ y: [0, 12, 0], opacity: [1, 0.2, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
       </motion.div>
     </section>
   );
@@ -995,6 +1070,9 @@ function TickerStrip() {
           );
         })}
       </div>
+      {/* Chapter bleed — dissolves into ManifestoSection's #050505 darkness */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, transparent, #050505)", zIndex: 3 }} />
     </div>
   );
 }
@@ -1021,15 +1099,37 @@ function AntiMarketing() {
     <section className="py-24 px-4 sm:px-6 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-[#080508]" />
+      {/* Top chapter bleed — bridges from ShowcaseSection */}
+      <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, #0E0B0D 0%, transparent 100%)", zIndex: 1 }} />
+      {/* Bottom chapter bleed — bleeds warm into StatsSection */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, transparent, rgba(20,9,14,1))", zIndex: 1 }} />
       <div className="absolute inset-0 opacity-30"
         style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,45,135,.04) 39px,rgba(255,45,135,.04) 40px)" }} />
-      {/* Ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#FF2D87]/5 blur-[100px] rounded-full pointer-events-none" />
+      {/* Ambient glow — builds as section enters (stronger, concentrated) */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[280px] blur-[70px] rounded-full pointer-events-none"
+        initial={{ opacity: 0, scale: 0.3 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, margin: "-100px" }}
+        transition={{ duration: 1.4, ease: "easeOut" }}
+        style={{ background: "rgba(255,45,135,0.14)" }}
+      />
+      {/* Warm background build — brand warmth bleeds in visibly as "US" column enters */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: false, margin: "-150px" }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
+        style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(28,6,14,0.9) 55%, rgba(12,4,10,1) 100%)" }}
+      />
 
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", damping: 18, stiffness: 130 }} viewport={{ once: true, margin: "-60px" }}
+          transition={{ type: "spring", damping: 18, stiffness: 130 }} viewport={{ once: false, margin: "-60px" }}
           className="text-center mb-16">
           <span className="inline-block font-mono text-[10px] tracking-[0.25em] text-gray-600 uppercase mb-5">Read the fine print</span>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight">
@@ -1050,7 +1150,7 @@ function AntiMarketing() {
             <div className="space-y-4">
               {thems.map((t, i) => (
                 <motion.div key={t} initial={{ opacity: 0, x: -18 }} whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.07, type: "spring", damping: 24, stiffness: 200 }} viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: i * 0.07, type: "spring", damping: 24, stiffness: 200 }} viewport={{ once: false, margin: "-40px" }}
                   className="flex items-start gap-3">
                   <div className="w-4 h-4 rounded flex-shrink-0 mt-0.5 bg-red-500/10 flex items-center justify-center">
                     <X className="w-2.5 h-2.5 text-red-500/50" />
@@ -1063,9 +1163,26 @@ function AntiMarketing() {
 
           {/* VS divider */}
           <div className="hidden md:flex flex-col items-center justify-center bg-[#080508] border-x border-white/5 px-4 py-8 gap-3">
-            <div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#FF2D87]/15 to-transparent" />
-            <span className="text-[9px] font-black text-[#FF2D87]/30 font-mono tracking-[0.3em]" style={{ writingMode: "vertical-lr" }}>VS</span>
-            <div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#FF2D87]/15 to-transparent" />
+            <motion.div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#FF2D87]/15 to-transparent"
+              initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }}
+              viewport={{ once: false, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1] }}
+              style={{ transformOrigin: "top" }}
+            />
+            <motion.span
+              className="text-[9px] font-black text-[#FF2D87]/30 font-mono tracking-[0.3em]"
+              style={{ writingMode: "vertical-lr" }}
+              initial={{ opacity: 0, scale: 0.4 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: false }}
+              transition={{ type: "spring", damping: 16, stiffness: 280, delay: 0.35 }}
+            >VS</motion.span>
+            <motion.div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#FF2D87]/15 to-transparent"
+              initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }}
+              viewport={{ once: false, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1], delay: 0.18 }}
+              style={{ transformOrigin: "bottom" }}
+            />
           </div>
           <div className="md:hidden h-px bg-gradient-to-r from-transparent via-[#FF2D87]/20 to-transparent" />
 
@@ -1079,7 +1196,7 @@ function AntiMarketing() {
             <div className="space-y-4 relative z-10">
               {us.map((t, i) => (
                 <motion.div key={t} initial={{ opacity: 0, x: 18 }} whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.07 + 0.1, type: "spring", damping: 24, stiffness: 200 }} viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: i * 0.07 + 0.1, type: "spring", damping: 24, stiffness: 200 }} viewport={{ once: false, margin: "-40px" }}
                   className="flex items-start gap-3">
                   <div className="w-4 h-4 rounded flex-shrink-0 mt-0.5 bg-[#B4FF00]/10 flex items-center justify-center">
                     <ChevronRight className="w-2.5 h-2.5 text-[#B4FF00]" />
@@ -1092,7 +1209,7 @@ function AntiMarketing() {
         </div>
 
         <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.8 }}
-          viewport={{ once: true }} className="text-center text-gray-700 font-mono text-[10px] tracking-[0.25em] uppercase mt-10">
+          viewport={{ once: false }} className="text-center text-gray-700 font-mono text-[10px] tracking-[0.25em] uppercase mt-10">
           We built what they were never allowed to be.
         </motion.p>
       </div>
@@ -1731,8 +1848,22 @@ function ZeezuProfileCard({ p }: { p: typeof PROFILES[0] }) {
 // ── Community section ─────────────────────────────────────────────
 function CommunitySection() {
   return (
-    <section className="py-20 px-4 sm:px-6 lp-cs-wrap">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-20 px-4 sm:px-6 lp-cs-wrap relative overflow-hidden">
+      {/* Brand energy moment — visible pink glow enters with the section */}
+      <motion.div
+        className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[480px] h-[380px] blur-[80px] rounded-full pointer-events-none"
+        initial={{ opacity: 0, x: -60 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: false, margin: "-100px" }}
+        transition={{ duration: 1.2, ease: "easeOut" }}
+        style={{ background: "rgba(255,45,135,0.13)" }}
+      />
+      <motion.div className="max-w-6xl mx-auto"
+        initial={{ opacity: 0, y: 60 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "0px" }}
+        transition={{ type: "spring", damping: 22, stiffness: 100 }}
+      >
         <div className="grid lg:grid-cols-2 gap-12 xl:gap-20 items-center">
           {/* Text */}
           <FadeIn>
@@ -1786,7 +1917,7 @@ function CommunitySection() {
             </div>
           </FadeIn>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -2098,7 +2229,7 @@ function ShowcaseSection() {
             const even = i % 2 === 0;
             return (
               <motion.div key={item.title} variants={rowVariants} initial="hidden" whileInView="show"
-                viewport={{ once: true, margin: "-80px" }}
+                viewport={{ once: true, margin: "0px" }}
                 className={`flex flex-col ${even ? "lg:flex-row" : "lg:flex-row-reverse"} items-center gap-12 lg:gap-20`}>
 
                 {/* TiltedCard visual */}
@@ -2107,19 +2238,21 @@ function ShowcaseSection() {
                     {/* Glow halo behind card */}
                     <div className="absolute inset-0 blur-[60px] opacity-30 rounded-3xl scale-90"
                       style={{ background: `radial-gradient(circle, ${item.color} 0%, transparent 70%)` }} />
-                    <TiltedCard
-                      imageSrc={cardBg(item.color, item.c2)}
-                      containerHeight="420px" containerWidth="300px"
-                      imageHeight="420px" imageWidth="300px"
-                      rotateAmplitude={12} scaleOnHover={1.05}
-                      showMobileWarning={false} showTooltip={false}
-                      displayOverlayContent
-                      overlayContent={
-                        <div className="absolute inset-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${item.color}30` }}>
-                          {item.overlay}
-                        </div>
-                      }
-                    />
+                    <ClipReveal>
+                      <TiltedCard
+                        imageSrc={cardBg(item.color, item.c2)}
+                        containerHeight="420px" containerWidth="300px"
+                        imageHeight="420px" imageWidth="300px"
+                        rotateAmplitude={12} scaleOnHover={1.05}
+                        showMobileWarning={false} showTooltip={false}
+                        displayOverlayContent
+                        overlayContent={
+                          <div className="absolute inset-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${item.color}30` }}>
+                            {item.overlay}
+                          </div>
+                        }
+                      />
+                    </ClipReveal>
                     {/* Feature stat badge */}
                     <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full lp-glass text-[10px] font-mono whitespace-nowrap"
                       style={{ borderColor: `${item.color}30`, color: item.color }}>
@@ -2177,11 +2310,25 @@ function StatsSection() {
     { l: "Active Themes", v: 12, s: "", i: Palette, c: "#B4FF00" },
   ];
   return (
-    <section className="py-16 border-y border-[#FF2D87]/8 bg-[#140D12]/50">
-      <FadeIn className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+    <section className="py-16 border-y border-[#FF2D87]/8 bg-[#140D12]/50 relative overflow-hidden">
+      {/* Pink bloom — radiates visibly as numbers complete */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: false, margin: "-80px" }}
+        transition={{ duration: 1.6, ease: "easeOut", delay: 0.4 }}
+        style={{ background: "radial-gradient(ellipse 100% 100% at 50% 50%, rgba(255,45,135,0.16) 0%, rgba(255,45,135,0.04) 50%, transparent 70%)" }}
+      />
+      <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center relative z-10">
         {stats.map((s, i) => {
           const I = s.i; return (
-            <div key={s.l}>
+            <motion.div key={s.l}
+              initial={{ opacity: 0, y: 32, scale: 0.88 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: false, margin: "-40px" }}
+              transition={{ type: "spring", damping: 24, stiffness: 160, delay: i * 0.1 }}
+            >
               <div className="flex justify-center mb-2">
                 <I className="w-4 h-4" style={{ color: s.c }} />
               </div>
@@ -2189,10 +2336,10 @@ function StatsSection() {
                 <CountUp to={s.v} duration={2} delay={i * 0.15} separator="," />{s.s}
               </div>
               <p className="text-gray-600 text-[10px] font-mono uppercase tracking-widest">{s.l}</p>
-            </div>
+            </motion.div>
           );
         })}
-      </FadeIn>
+      </div>
     </section>
   );
 }
@@ -2249,10 +2396,28 @@ function FinalCTA() {
   return (
     <section className="py-24 px-4 sm:px-6 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[320px] bg-[#FF2D87]/10 blur-[130px] rounded-full" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[200px] bg-[#00F7FF]/6 blur-[100px] rounded-full" />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[320px] bg-[#FF2D87]/10 blur-[130px] rounded-full"
+          initial={{ opacity: 0, scale: 0.4 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: false, margin: "-300px" }}
+          transition={{ duration: 1.4, ease: "easeOut" }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[200px] bg-[#00F7FF]/6 blur-[100px] rounded-full"
+          initial={{ opacity: 0, scale: 0.4 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: false, margin: "-300px" }}
+          transition={{ duration: 1.6, ease: "easeOut", delay: 0.2 }}
+        />
       </div>
-      <FadeIn className="max-w-xl mx-auto text-center relative z-10">
+      <motion.div
+        className="max-w-xl mx-auto text-center relative z-10"
+        initial={{ opacity: 0, scale: 0.92, y: 32 }}
+        whileInView={{ opacity: 1, scale: 1, y: 0 }}
+        viewport={{ once: false, margin: "-100px" }}
+        transition={{ type: "spring", damping: 22, stiffness: 120 }}
+      >
         <ElectricBorder color="#FF2D87" speed={1.2} chaos={0.11} borderRadius={28}>
           <div className="p-8 sm:p-12">
             <div className="mb-6 flex justify-center">
@@ -2262,7 +2427,7 @@ function FinalCTA() {
             </div>
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-3 leading-tight">Your ZID is waiting.</h2>
             <p className="text-gray-400 text-base leading-relaxed mb-1">Grab your unique identity before someone else does.</p>
-            <p className="text-gray-600 text-sm mb-9">30 seconds. No credit card. Magic link, no password to forget.</p>
+            <p className="text-gray-600 text-sm mb-9">30 seconds. No credit card. 6-digit code, no password to forget.</p>
             <TiltWrapper>
               <KeyStarBorder color="#FF2D87" speed="2.5s">
                 <Link href="/login" className="key-btn key-pink" style={{ fontSize: "13px", padding: "12px 32px", minHeight: "42px" }}>
@@ -2279,7 +2444,7 @@ function FinalCTA() {
             </p>
           </div>
         </ElectricBorder>
-      </FadeIn>
+      </motion.div>
     </section>
   );
 }
