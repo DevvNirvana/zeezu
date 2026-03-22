@@ -18,7 +18,7 @@ let _resolve: ((value: boolean) => void) | null = null;
 
 /** Drop-in replacement for window.confirm() — returns a Promise<boolean> */
 export async function confirmModal(opts: ConfirmOptions): Promise<boolean> {
-    if (!_open) return window.confirm(opts.message); // fallback if portal not mounted
+    if (!_open) return typeof window !== "undefined" ? window.confirm(opts.message) : false;
     return new Promise<boolean>((resolve) => {
         _resolve = resolve;
         _open!(opts);
