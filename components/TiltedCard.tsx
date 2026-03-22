@@ -55,7 +55,7 @@ export default function TiltedCard({
   const [lastY, setLastY] = useState(0);
   const hoveredRef = useRef(false);
   const idleRafRef = useRef<number>(0);
-  const idleStartRef = useRef(performance.now());
+  const idleStartRef = useRef(typeof performance !== "undefined" ? performance.now() : 0);
 
   // Gentle idle float — only runs when visible, pauses when off-screen
   useEffect(() => {

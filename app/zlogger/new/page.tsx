@@ -267,6 +267,7 @@ export default function ZloggerNewPage() {
   // ── Draft autosave ────────────────────────────────────────────
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [draftPreview, setDraftPreview] = useState<{ title: string; savedAt: number } | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const primary = "#FF2D87";
@@ -287,6 +288,7 @@ export default function ZloggerNewPage() {
     const draft = loadDraft();
     if (draft && (draft.title || draft.markdown)) {
       setShowRestoreBanner(true);
+      setDraftPreview({ title: draft.title, savedAt: draft.savedAt });
     }
   }, []);
 
@@ -414,7 +416,7 @@ export default function ZloggerNewPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 900, color: "#FF2D87", letterSpacing: "1px", marginBottom: "2px" }}>UNSAVED DRAFT FOUND</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.4)", letterSpacing: "1px" }}>
-              {(() => { const d = loadDraft(); return d ? `"${d.title || "Untitled"}" · saved ${timeAgo(d.savedAt)}` : ""; })()}
+              {draftPreview ? `"${draftPreview.title || "Untitled"}" · saved ${timeAgo(draftPreview.savedAt)}` : ""}
             </div>
           </div>
           <button
