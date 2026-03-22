@@ -110,6 +110,9 @@ export default function LoginPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [typedLines, setTypedLines] = useState<string[]>([]);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Online counter — starts at a seed, drifts slowly
@@ -184,17 +187,27 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      localStorage.setItem("zeezu_fresh_login", "1");
       setSubmitted(true);
       setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyingOtp(true);
+    setVerifyError("");
+    const { error } = await supabase.auth.verifyOtp({ email, token: otpCode, type: "email" });
+    if (error) {
+      setVerifyError(error.message);
+      setVerifyingOtp(false);
+    } else {
+      localStorage.setItem("zeezu_fresh_login", "1");
+      router.push("/dashboard");
     }
   };
 
@@ -336,9 +349,9 @@ export default function LoginPage() {
           style={{
             position: "relative",
             zIndex: 10,
-            width: "100%",
+            width: "calc(100% - 32px)",
             maxWidth: "410px",
-            margin: "0 16px",
+            margin: "0 auto",
             animation: "zee-slide-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both",
           }}
         >
@@ -528,67 +541,140 @@ export default function LoginPage() {
                       Zeezu User
                     </p>
                     <p style={{ margin: 0, fontSize: "10px", color: "rgba(255,45,135,0.7)", fontFamily: "'VT323', monospace", letterSpacing: "1px" }}>
-                      MAGIC LINK · NO PASSWORD
+                      EMAIL CODE · NO PASSWORD
                     </p>
                   </div>
                 </div>
 
                 {/* Form or terminal output */}
                 {submitted ? (
-                  <div
-                    style={{
-                      background: "#000d1a",
-                      border: "1px solid rgba(0,229,255,0.2)",
-                      borderRadius: "10px",
-                      padding: "12px",
-                      fontFamily: "'VT323', monospace",
-                      fontSize: "14px",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {typedLines.map((line, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          color:
-                            i === 0
-                              ? "#00E5FF"
-                              : i === typedLines.length - 1
-                                ? "#6BCB77"
-                                : "rgba(255,255,255,0.5)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "2px",
-                        }}
-                      >
-                        {line}
-                        {i === typedLines.length - 1 && (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              width: "6px",
-                              height: "13px",
-                              backgroundColor: "#6BCB77",
-                              marginLeft: "3px",
-                              animation: "zee-blink 1s step-end infinite",
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    <p
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {/* Terminal animation */}
+                    <div
                       style={{
-                        color: "rgba(255,255,255,0.2)",
-                        fontSize: "10px",
-                        margin: "8px 0 0 0",
-                        paddingTop: "8px",
-                        borderTop: "1px solid rgba(255,255,255,0.07)",
-                        fontFamily: "'Nunito', sans-serif",
-                        letterSpacing: "0.3px",
+                        background: "#000d1a",
+                        border: "1px solid rgba(0,229,255,0.2)",
+                        borderRadius: "10px",
+                        padding: "12px",
+                        fontFamily: "'VT323', monospace",
+                        fontSize: "14px",
+                        lineHeight: "1.6",
                       }}
                     >
-                      Check your inbox · click the magic link
-                    </p>
+                      {typedLines.map((line, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            color:
+                              i === 0
+                                ? "#00E5FF"
+                                : i === typedLines.length - 1
+                                  ? "#6BCB77"
+                                  : "rgba(255,255,255,0.5)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "2px",
+                          }}
+                        >
+                          {line}
+                          {i === typedLines.length - 1 && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                width: "6px",
+                                height: "13px",
+                                backgroundColor: "#6BCB77",
+                                marginLeft: "3px",
+                                animation: "zee-blink 1s step-end infinite",
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+                      <p
+                        style={{
+                          color: "rgba(255,255,255,0.2)",
+                          fontSize: "10px",
+                          margin: "8px 0 0 0",
+                          paddingTop: "8px",
+                          borderTop: "1px solid rgba(255,255,255,0.07)",
+                          fontFamily: "'Nunito', sans-serif",
+                          letterSpacing: "0.3px",
+                        }}
+                      >
+                        Check your inbox for a 6-digit code
+                      </p>
+                    </div>
+                    {/* OTP code input */}
+                    <form onSubmit={handleVerifyOtp} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        required
+                        value={otpCode}
+                        onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="6-digit code"
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          background: "rgba(0,0,0,0.4)",
+                          border: "1px solid rgba(0,229,255,0.3)",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          color: "#fff",
+                          fontSize: "18px",
+                          fontFamily: "'VT323', monospace",
+                          letterSpacing: "6px",
+                          textAlign: "center",
+                          outline: "none",
+                        }}
+                        onFocus={e => {
+                          e.target.style.borderColor = "rgba(0,229,255,0.7)";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(0,229,255,0.12)";
+                        }}
+                        onBlur={e => {
+                          e.target.style.borderColor = "rgba(0,229,255,0.3)";
+                          e.target.style.boxShadow = "none";
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={verifyingOtp || otpCode.length < 6}
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          flexShrink: 0,
+                          borderRadius: "10px",
+                          background: verifyingOtp || otpCode.length < 6
+                            ? "rgba(0,229,255,0.2)"
+                            : "linear-gradient(135deg, #00E5FF, #0099cc)",
+                          border: "1px solid rgba(0,229,255,0.5)",
+                          color: "#fff",
+                          cursor: verifyingOtp || otpCode.length < 6 ? "not-allowed" : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 0 14px rgba(0,229,255,0.3)",
+                        }}
+                      >
+                        {verifyingOtp
+                          ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                          : <ArrowRight size={16} />}
+                      </button>
+                    </form>
+                    {verifyError && (
+                      <p style={{ color: "#FF6B6B", fontSize: "10px", margin: "0", fontFamily: "'VT323', monospace", letterSpacing: "0.5px" }}>
+                        ⚠ {verifyError}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => { setSubmitted(false); setOtpCode(""); setVerifyError(""); setTypedLines([]); }}
+                      style={{ background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "10px", fontFamily: "'Nunito', sans-serif", cursor: "pointer", padding: 0, textAlign: "left" }}
+                    >
+                      ← wrong email? go back
+                    </button>
                   </div>
                 ) : (
                   <>
