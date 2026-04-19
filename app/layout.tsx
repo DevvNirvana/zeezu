@@ -45,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           style={{
             paddingTop: "var(--nav-height, 0px)",
             paddingBottom: "var(--mobile-dock-height, 0px)",
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "flex",
             flexDirection: "column"
           }}

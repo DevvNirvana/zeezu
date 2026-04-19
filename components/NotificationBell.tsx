@@ -215,6 +215,7 @@ export default function NotificationBell() {
         onClick={toggleDropdown}
         className={`
           relative p-2 rounded-full transition-all duration-200
+          min-h-[44px] min-w-[44px] flex items-center justify-center
           text-gray-400 hover:text-white hover:bg-gray-800/60
           ${pulse ? "animate-[wiggle_0.4s_ease-in-out_2]" : ""}
         `}

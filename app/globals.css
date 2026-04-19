@@ -47,14 +47,26 @@ html.lenis, html.lenis body {
 }
 
 /* Force the dark mode aesthetic globally */
+html {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--color-void);
   color: white;
+  overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 /* Eliminate 300ms tap delay on all interactive elements globally */
 a, button, input, select, textarea, [role="button"], [tabindex] {
   touch-action: manipulation;
+}
+
+/* Prevent iOS Safari from zooming the viewport on input focus.
+   Any input rendered below 16px triggers auto-zoom — this floors it. */
+input, textarea, select {
+  font-size: max(16px, 1em);
 }
 
 :root {
@@ -67,12 +79,16 @@ a, button, input, select, textarea, [role="button"], [tabindex] {
 /* ── Mobile Overrides ── */
 @media (max-width: 768px) {
   :root {
-    /* If you ever want the top nav to be shorter on mobile, change it here */
-    --nav-height: 56px;
+    /* With black-translucent status bar on iOS PWA, the system UI sits
+       ON TOP of the app. The nav must be tall enough to occupy that zone.
+       env(safe-area-inset-top) = Dynamic Island / notch / status bar height. */
+    --nav-height: calc(56px + env(safe-area-inset-top));
 
-    /* Adds bottom padding so content isn't hidden behind the mobile dock */
-    /* 48px dock + 8px padding + safe area */
-    --mobile-dock-height: calc(56px + env(safe-area-inset-bottom, 5px));
+    /* True rendered dock height:
+       48px (panelHeight) + 8px top padding + 8px bottom padding = 64px.
+       Safe area inset (home indicator) is handled by the dock's own
+       padding-bottom, so we only add it here for content clearance. */
+    --mobile-dock-height: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
 

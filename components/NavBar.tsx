@@ -431,12 +431,14 @@ export default function NavBar() {
         left: 0,
         zIndex: 50,
         width: "100%",
-        // height: "56px",
         height: "var(--nav-height)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 20px",
+        // paddingTop reserves the status bar / Dynamic Island zone on iOS PWA.
+        // Combined with --nav-height = 56px + env(safe-area-inset-top), the
+        // nav content (logo, dock, buttons) sits in the clean 56px zone below.
+        padding: "env(safe-area-inset-top) 20px 0",
         background: "rgba(8,14,36,0.95)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
