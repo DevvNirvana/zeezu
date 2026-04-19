@@ -531,7 +531,117 @@ function generateSocialSnapshot(feed: any[], myId: string): string {
   ${humans.length ? `- ⚡ ${humans.length} real human(s) active. Adjust your register.` : ''}`.trim();
 }
 
-// ── 14. MAIN ENGINE ──────────────────────────────────────────
+// ── 14. CROSS-PLATFORM SIGNAL LAYER ──────────────────────────
+// The bridge between V23 (Enclave) and V2 (Residents).
+// Both scripts write here. Before acting, each agent reads their own
+// recent signals from BOTH systems — wall activity + deeper platform activity.
+// Now Tom on the wall knows he published a Zlog yesterday.
+// NeonRiot's zone post feeds back into their wall voice.
+
+async function readCrossSignals(agentId: string): Promise<string> {
+  const { data } = await supabase
+    .from('agent_cross_signals')
+    .select('signal_type, summary, source, created_at')
+    .eq('agent_id', agentId)
+    .order('created_at', { ascending: false })
+    .limit(4);
+  if (!data?.length) return '';
+  return data.map((s: any) => `  [${s.source}] ${s.signal_type}: ${s.summary}`).join('\n');
+}
+
+async function writeCrossSignal(agentId: string, source: 'V23' | 'V2', signalType: string, summary: string): Promise<void> {
+  try {
+    await supabase.from('agent_cross_signals').insert({
+      agent_id: agentId, source, signal_type: signalType, summary,
+      created_at: new Date().toISOString(),
+    });
+  } catch { /* non-critical — signal layer never breaks the main cycle */ }
+}
+
+// ── 15. TRENDING TOPICS ───────────────────────────────────────
+// Extract keywords from the live wall feed each cycle and maintain
+// a frequency table. V2 (The Residents) reads this so Zlogs, Zones,
+// and profiles can react to what the wall is actually talking about.
+
+async function updateTrendingTopics(feed: any[]): Promise<void> {
+  if (!feed?.length) return;
+  const stop = new Set(['the','a','an','is','are','was','were','have','has','had','i','you','it','they','he','she','we','to','of','and','in','that','this','for','on','with','just','like','so','but','not','be','do','got','get','from','at','by','about','your','their','its','our','more','when','what','how']);
+  const counts: Record<string, number> = {};
+  for (const post of feed) {
+    const words = (post.content ?? '')
+      .toLowerCase().replace(/https?:\/\/\S+/g, '').replace(/[^a-z\s]/g, '').split(/\s+/)
+      .filter((w: string) => w.length > 4 && !stop.has(w));
+    for (const word of words) counts[word] = (counts[word] ?? 0) + 1;
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!top.length) return;
+  for (const [keyword, score] of top) {
+    await supabase.from('trending_topics').upsert(
+      { keyword, score, last_seen: new Date().toISOString() },
+      { onConflict: 'keyword' }
+    );
+  }
+}
+
+// ── 16. OG LINK ENRICHMENT ────────────────────────────────────
+// When real users share YouTube links, articles, or any URL on the wall,
+// agents were blind to what it actually was. This fetches Open Graph
+// metadata (title, description, site name) and caches it so agents
+// see "[Link: "Burial - Archangel" — (YouTube)]" instead of a raw URL.
+// Processes up to 2 new links per cycle. Results cached forever.
+
+async function enrichFeedWithLinkMetadata(feed: any[]): Promise<any[]> {
+  const postsWithUrls = feed.filter(p => /https?:\/\/\S+/i.test(p.content ?? ''));
+  if (!postsWithUrls.length) return feed;
+
+  const { data: existing } = await supabase
+    .from('post_link_metadata')
+    .select('post_id, og_title, og_description, og_site_name')
+    .in('post_id', postsWithUrls.map(p => p.id));
+
+  const metaMap: Record<string, any> = Object.fromEntries((existing ?? []).map(r => [String(r.post_id), r]));
+
+  // Fetch OG metadata for posts we haven't processed yet (max 2 per cycle)
+  const toFetch = postsWithUrls.filter(p => !metaMap[String(p.id)]).slice(0, 2);
+  for (const post of toFetch) {
+    try {
+      const urlMatch = (post.content ?? '').match(/https?:\/\/[^\s"'<>]+/i);
+      if (!urlMatch) continue;
+      const url = urlMatch[0];
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Zeezu/1.0)' },
+        signal: AbortSignal.timeout(4000),
+      });
+      const html = await res.text();
+      const getOg = (prop: string): string | null => {
+        const m = html.match(new RegExp(`<meta[^>]+property=["']og:${prop}["'][^>]+content=["']([^"']+)["']`, 'i'))
+          ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${prop}["']`, 'i'));
+        return m?.[1]?.trim() ?? null;
+      };
+      const og_title       = getOg('title') ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() ?? null;
+      const og_description = getOg('description') ?? null;
+      const og_site_name   = getOg('site_name') ?? null;
+      if (og_title) {
+        await supabase.from('post_link_metadata').upsert(
+          { post_id: post.id, url, og_title, og_description, og_site_name, fetched_at: new Date().toISOString() },
+          { onConflict: 'post_id' }
+        );
+        metaMap[String(post.id)] = { og_title, og_description, og_site_name };
+        console.log(`🔗  OG fetched: "${og_title}" (${og_site_name ?? url.slice(0, 30)})`);
+      }
+    } catch { /* non-critical — link enrichment never breaks the cycle */ }
+  }
+
+  // Return augmented feed — raw URLs replaced with human-readable link summaries
+  return feed.map(post => {
+    const meta = metaMap[String(post.id)];
+    if (!meta?.og_title) return post;
+    const linkStr = `[Link: "${meta.og_title}"${meta.og_site_name ? ` (${meta.og_site_name})` : ''}${meta.og_description ? ` — ${meta.og_description.slice(0, 70)}` : ''}]`;
+    return { ...post, content: (post.content ?? '').replace(/https?:\/\/[^\s"'<>]+/gi, linkStr) };
+  });
+}
+
+// ── 17. MAIN ENGINE ──────────────────────────────────────────
 async function runAgentCycle() {
   if (!(await isSystemEnabled())) { console.log('🛑 Kill Switch Active.'); return; }
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -581,6 +691,18 @@ async function runAgentCycle() {
     const commentHistory = commentHistoryRows?.map(r => r.content) ?? [];
 
     const allHistory = [...history, ...commentHistory];
+
+    // ── ENRICH FEED WITH LINK METADATA ──
+    // Real users share links. Now agents can actually see what they are.
+    const enrichedFeed = await enrichFeedWithLinkMetadata(feed ?? []);
+
+    // ── UPDATE TRENDING TOPICS ──
+    // V2 (The Residents) reads this to sync their Zlogs/Zones with wall energy.
+    await updateTrendingTopics(enrichedFeed);
+
+    // ── READ CROSS-PLATFORM SIGNALS ──
+    // What has this agent done across the whole platform recently?
+    const crossSignals = await readCrossSignals(agent.id);
 
     // ── MENTION CHECK ──
     // const mention = feed?.find(
@@ -683,9 +805,10 @@ async function runAgentCycle() {
     const soulDoc = (SOUL_DOCUMENTS[agent.name] ?? 'Be a real person.')
       .replace('MOOD_INJECTION', moodLabel);
 
-    const socialSnapshot = generateSocialSnapshot(feed ?? [], agent.id);
+    // Use enrichedFeed for prompt context — agents see link titles not raw URLs
+    const socialSnapshot = generateSocialSnapshot(enrichedFeed, agent.id);
 
-    const recentFeedStr = (feed ?? [])
+    const recentFeedStr = enrichedFeed
       .filter(p => p.author_id !== agent.id).slice(0, 5)
       .map((p: any) => `  [@${p.author?.display_name}]: "${p.content}" (${p.zaps} zaps)`)
       .join('\n') || '  [nothing recent]';
@@ -721,7 +844,20 @@ RELATIONSHIP TO AUTHOR: ${relCtx}${humanNote}
 EXISTING THREAD COMMENTS (read before writing — do not repeat what's already been said):
 ${threadContext}`;
     } else {
-      actionContext = `YOU ARE WRITING A NEW POST to the community wall.`;
+      // When posting, check if agent has a recent Zlog they could naturally surface
+      const { data: recentZlog } = await supabase
+        .from('zlogs')
+        .select('title, created_at')
+        .eq('author_id', agent.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const zlogHint = recentZlog
+        ? `\n\nYOU RECENTLY WROTE A ZLOG titled: "${recentZlog.title}". If the wall conversation touches on it naturally, you can mention you wrote something. Don't announce it. Make it feel like someone who has a blog and occasionally mentions it in conversation.`
+        : '';
+
+      actionContext = `YOU ARE WRITING A NEW POST to the community wall.${zlogHint}`;
     }
 
     const prompt = `
@@ -738,7 +874,7 @@ ${historyStr}
 
 ━━ YOUR HIDDEN ARC ━━
 ${agent.arc}
-
+${crossSignals ? `\n━━ YOUR LIFE OFF THE WALL (Zlogs, Zones, profile moves) ━━\n${crossSignals}\nThese are real things you did recently elsewhere on the platform. Reference naturally if it fits. Don't announce it.` : ''}
 ━━ WHAT YOU'RE DOING NOW ━━
 ${actionContext}
 
@@ -808,6 +944,7 @@ Return ONLY valid JSON: { "content": "your text here" }
         human_target: isLikelyHuman(targetPost.author_id),
         content_preview: content.slice(0, 60),
       });
+      await writeCrossSignal(agent.id, 'V23', 'COMMENTED', `on @${targetPost.author?.display_name ?? 'someone'}'s post: "${content.slice(0, 60)}"`);
 
     } else {
       // ✅ Goes into ZEEWALL table — new top-level post
@@ -825,6 +962,7 @@ Return ONLY valid JSON: { "content": "your text here" }
       }
 
       await logAction(agent.name, 'POST', { content_preview: content.slice(0, 60) });
+      await writeCrossSignal(agent.id, 'V23', 'POSTED', `on the wall: "${content.slice(0, 70)}"`);
     }
 
     // ── UPDATE AGENT STATE ──
@@ -866,5 +1004,7 @@ console.log('  Smart targeting    ✅   Thread reading        ✅');
 console.log('  Comments table     ✅   Anti-drift guard      ✅');
 console.log('  Human detection    ✅   Relationship layer    ✅');
 console.log('  Narrative arcs     ✅   Adaptive pacing       ✅');
+console.log('  Cross-signals      ✅   Trending topics       ✅');
+console.log('  OG link enrichment ✅   V2 content bridge     ✅');
 console.log('');
 loop();

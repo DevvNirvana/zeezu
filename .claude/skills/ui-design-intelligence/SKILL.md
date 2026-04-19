@@ -1,434 +1,293 @@
 ---
-name: ui-design-intelligence
+name: ui-design-intelligence  
 description: >
-  Elite UI/UX design intelligence for React, Next.js, Vue, Svelte, Vite, and any
-  modern frontend stack. TRIGGER on: /design, build page, build component, landing page,
-  hero section, dashboard, nav, card, animation, dark mode, layout, color palette,
-  typography, redesign, make it look better, make it prettier, add animations, style this,
-  improve UI, add polish, professional look, modern design, it looks bad, too plain,
-  frontend, visual design, what does X look like, inspire me, show me examples,
-  or ANY request that involves building or improving a UI.
-  Produces Awwwards-caliber output: reads the codebase, does live research across
-  Smashing Magazine, Codrops, Awwwards, Godly, Dribbble, Lapa.ninja and 30+ more sources,
-  generates a full design system, selects the BEST component from 12+ libraries (React Bits,
-  Aceternity UI, Magic UI, Origin UI, Kibo UI, Skiper UI, MVPBlocks, shadcn/ui,
-  NextUI, Chakra, Flowbite, Stunning UI), applies 18 UX psychology laws, and delivers
-  complete production-ready code. Never placeholder text, never TODOs, never lorem ipsum.
+  World-class UI/UX design intelligence — Tvastar v4.0.
+  TRIGGER on: /design /preview /approved /apply /review /ship /component /heal
+  /tokens /dark /a11y /cro /color /typography /motion /extract /storybook,
+  build page, build component, landing page, hero section, dashboard, nav, card,
+  animation, dark mode, layout, color palette, typography, redesign, make it look
+  better, add animations, style this, improve UI, add polish, professional look,
+  modern design, review my code, check before deploy, is this ready to ship.
 ---
 
-# UI Design Intelligence v2.1
-**Awwwards-quality frontend design. 12+ libraries. Live research from 30+ sources. Zero compromises.**
+# UI Design Intelligence — Tvastar v4.0
+**18 libraries · 24 styles · 86 lint rules · 14 intelligent slots · March 2026**
 
 ---
 
-## The /design Workflow — Always Follow This Order
+## The /design Workflow — 7 Steps (follow in exact order)
 
-### Step 1 — Scan the codebase
+### Step 1 — Scan the stack
 ```bash
 python3 .claude/skills/ui-design-intelligence/scripts/detect_stack.py
 ```
-Outputs: framework, router, Tailwind version, shadcn, Framer Motion, AND all 12 UI libraries.
-**If no package.json exists**: Ask user their stack before proceeding.
+Detects: framework, Tailwind v3/v4, all 18 libraries (React Bits, Aceternity, Magic UI,
+Tremor, Animata, Motion Primitives, Cult UI, Eldora UI, Kibo UI, Origin UI, etc.)
+
+**READ NOW based on detection:**
+- `has_react_bits: true` → read `references/react-bits-catalog.md`
+- Any new 2026 lib detected → read `references/component-library-catalog.md`
+- Next.js detected → read `references/nextjs-guidelines.md` (Next.js 15 + React 19)
+- shadcn/tailwind detected → read `references/shadcn-tailwind-guidelines.md`
+- Vue/Nuxt detected → read `references/vue-svelte-guidelines.md`
 
 ### Step 2 — Understand the request
-Extract from user message:
-- **What**: page, component, feature, full redesign, section
-- **Vibe**: any style words (minimal, bold, dark, playful, luxury, gaming, editorial, etc.)
-- **Constraints**: existing brand colors, must match existing design, a11y
+Extract: **What** (page/component), **Aesthetic** (style keywords), **Constraints**, **Existing colors**.
+Ask ONE clarifying question only if completely blocked. Never ask multiple questions.
 
-Ask ONE clarifying question if critical info is missing. Never block on non-critical info.
+### Step 3 — Live Research (always run)
+**READ NOW:** `references/resources-blogs.md` — full search routing brain with 2026-updated sources.
 
-### Step 3 — Live Research (do this for every non-trivial request)
-Read `references/resources-blogs.md` for the full search routing brain.
-
-**Trigger live web searches based on request type:**
-
-For landing pages / hero sections:
+Run at minimum 2 web searches:
 ```
-web_search: "[product type] landing page design 2025 site:lapa.ninja OR site:land-book.com"
-web_search: "[style keyword] hero section inspiration site:dribbble.com"
+1. "[product type] design inspiration 2026 site:dribbble.com"
+2. "[aesthetic] UI site:godly.website OR site:awwwards.com"
+3. (if new library needed) "[library name] component examples site:github.com"
 ```
-
-For CSS techniques / animations:
-```
-web_search: "[technique] tutorial site:codrops.com"
-web_search: "[technique] site:smashingmagazine.com"
-```
-
-For "what does X look like now" / trends:
-```
-web_search: "[topic] UI design trends 2025 site:smashingmagazine.com"
-web_search: "awwwards [category] website 2025"
-```
-
-For UX patterns / flows:
-```
-web_search: "[feature] UX pattern site:uxdesign.cc"
-web_search: "[app type] [feature] site:mobbin.com"
-```
-
-**What to extract from search results and apply:**
-- Note the dominant visual treatment (type scale, color count, spacing)
-- Identify the ONE delight element per section
-- Look for spacing/whitespace patterns — what feels "generous"?
-- Note what animation triggers are used (scroll, hover, mount)
-
-**Skip live research when:** request is very specific + user already has brand guidelines,
-or they explicitly say "just build it".
+Extract from results: dominant visual treatment, typography scale, ONE unexpected interaction.
 
 ### Step 4 — Generate design system
 ```bash
 python3 .claude/skills/ui-design-intelligence/scripts/design_system.py \
-  --product "[product type]" --style "[keywords]" [--dark] [--persist] [--page landing|dashboard|auth|pricing]
+  --product "[type]" --style "[keywords]" [--dark] [--persist] \
+  --page landing|dashboard|auth|pricing|portfolio|feature
 ```
-Always `--persist` to save `design-system/MASTER.md`. Outputs: palette, typography, type scale,
-animation tokens, multi-library component selections, CSS variables, Tailwind config, checklist.
 
-### Step 5 — Show the design plan (ALWAYS wait for approval)
+The output contains ALL of these — read every section:
+- **PALETTE + COLOR SCIENCE** — WCAG ratios, failing colors with suggested fixes
+- **TYPOGRAPHY** — pairing + Fontshare/Google URL + weights
+- **TYPE SCALE** — display→caption with exact px/rem values
+- **ANIMATION TOKENS + MOTION DURATION TABLE** — exact ms + easing per context
+- **STYLE PROFILE** — effects to use, anti-patterns to avoid
+- **COMPONENT LIBRARY SELECTIONS** — 14 slots, each mapped to the RIGHT library:
+  - background, hero_text, sub_text, cta_button, feature_cards, stats
+  - testimonials, logos, borders, mobile_menu, navigation
+  - delight (cursor/wow effect), forms (if form present), charts/kpi_cards (if dashboard)
+  - advanced_ui (kanban/datepicker if enterprise)
+- **INSTALL COMMANDS** — exact npx/npm/copy commands per library
+- **INSPIRATION BENCHMARKS** — product-type-specific reference sites
+- **SENIOR DESIGNER EYE TEST** — 8-point quality checklist
+- **GESTALT CHECKS** — 7 principles applied to this specific palette
+- **REACT BITS INSTALL** — TS+TW variants for TypeScript
+- **PSYCHOLOGY LAWS** — 3 UX laws applied to this product
+- **PAGE PATTERN** — section-by-section layout blueprint
+- **CHART TYPE GUIDANCE** — appears for dashboard/analytics
+- **PRE-DELIVERY CHECKLIST** — 15 must-pass gates
+
+**READ NOW (framework-specific):**
+- Next.js → `references/nextjs-guidelines.md` (Next.js 15, React 19, Turbopack, PPR, params awaiting)
+- shadcn/Tailwind → `references/shadcn-tailwind-guidelines.md`
+- React/Vite → `references/react-guidelines.md`
+- Vue/Nuxt → `references/vue-svelte-guidelines.md`
+- SwiftUI/Flutter → `references/native-guidelines.md`
+
+### Step 5 — Design plan (WAIT for approval — never skip this)
+Show this exact format:
 ```
-╔══ DESIGN PLAN ════════════════════════════════════════════════╗
-║ Page/Component:  [what you're building]                       ║
-║ Style:           [style name + why it fits this product]      ║
-║ Research refs:   [2-3 sites studied + key observations]       ║
-║ Colors:          Primary — CTA — Background                   ║
-║ Fonts:           [Heading font] / [Body font]                 ║
-║ Statement piece: [ONE wow component — lib + name]             ║
-║ Supporting libs: [other libraries used + which components]    ║
-║ Psychology:      [top 3 UX laws applied + how]                ║
-╚═══════════════════════════════════════════════════════════════╝
+╔══ TVASTAR DESIGN PLAN ═════════════════════════════════════════╗
+║ Building:        [what exactly]                                 ║
+║ Style:           [name + 1-line why it fits]                    ║
+║ Research:        [2 sites studied + key insight from each]      ║
+║                                                                 ║
+║ PALETTE          Primary — CTA — Bg   [WCAG ratios]            ║
+║ TYPOGRAPHY       [Heading] / [Body]   [scale name]             ║
+║                                                                 ║
+║ STATEMENT PIECE  [lib: component] — the one wow moment         ║
+║ SUPPORTING       [slot: lib/component] × 4-5 key slots         ║
+║                                                                 ║
+║ UX LAWS          [law 1 + how applied]                         ║
+║                  [law 2 + how applied]                         ║
+║ GESTALT          [principle + application]                      ║
+║                                                                 ║
+║ MISSING LIBS?    [install commands if anything not installed]   ║
+╚═════════════════════════════════════════════════════════════════╝
 Build with this plan? (yes / change [what])
 ```
-**Do not write a single line of code before approval.**
 
-### Step 6 — Build production-ready code
-Deliver in this order:
-1. `globals.css` — CSS variables block
-2. `tailwind.config.ts` — theme extensions
-3. Font import (Google Fonts URL or `next/font`)
-4. Install commands for all statement components
-5. Complete component code — no TODOs, no placeholders, no lorem ipsum
-6. Every interactive state covered (default, hover, focus, active, loading, disabled, error)
+### Step 6 — Build production code
+Output order: globals.css/`@theme` → install commands → component code.
 
-### Step 7 — Framework lint (always run, always fix High issues before delivering)
+**READ NOW during code generation:**
+- Page patterns → `references/page-patterns.md` (section order, mobile-first, empty states)
+- Icons/charts → `references/charts-icons-reference.md` (chart matrix, Lucide lookup)
+- Animations → `references/motion-principles.md` (library-specific patterns, duration table)
+- UX laws → `references/ux-principles.md` (Gestalt, psychology laws)
+
+**Cover every state:**
+default → hover → focus → active → loading → disabled → error → empty state
+
+**2026 code standards:**
+- Next.js 15: `await params` and `await searchParams` — they are Promises
+- React 19: `useActionState` not `useFormState` | `use()` hook for async | `useFormStatus`
+- Tailwind v4: `@theme {}` not `tailwind.config.ts` extend | `bg-linear-to-r` not gradient
+- Framer Motion: `useReducedMotion()` on EVERY animation component
+- React Bits: TS+TW variant — `https://reactbits.dev/r/ComponentName-TS-TW`
+- No raw `<img>` in Next.js — always `next/image`
+- No `key={index}` — always `key={item.id}` or stable string
+- All `<button>` and icon-only elements have `aria-label`
+- `focus-visible:ring-2 ring-primary` on every interactive element
+
+### Step 7 — Lint + heal
 ```bash
-python3 .claude/skills/ui-design-intelligence/scripts/framework_lint.py \
-  [generated-file.tsx] --framework [detected-frameworks-csv]
+python3 scripts/framework_lint.py [file] --stack-check   # 86 rules, auto-detects all frameworks
+python3 scripts/heal.py [file]                           # auto-fix Critical+High
 ```
-Fix all 🔴 High before delivering. Mention 🟡 Medium to user.
+Fix ALL 🔴 High immediately. Report 🟡 Medium with specific fixes.
 
 ---
 
-## Library Selection Intelligence
+## 18-Library Tier System
 
-This is the core of what makes this skill award-winning.
-**Never use one library for everything. Select the BEST tool for each slot.**
+### Tier 1 — Foundation (always present)
+**shadcn/ui** + **Tailwind CSS** — accessible base, keyboard navigation, theming
 
-### The 5 Library Tiers
+### Tier 2 — Statement Visual WOW (1-2 per design, chosen by style)
+| Library | Best For | When to Use |
+|---------|----------|-------------|
+| **React Bits** | Hero backgrounds, text animations, scroll effects | Dark premium, editorial, portfolio |
+| **Aceternity UI** | Cinematic heroes, 3D cards, editorial reveals | Luxury, gaming, 3D immersive |
+| **Magic UI** | SaaS CTAs, border effects, bento grids, marquee | SaaS, minimal, dark premium |
+| **Animata** | Cursor delight, liquid effects, number morphing | Y2K, social, portfolio |
+| **Motion Primitives** | Morphing dialogs, magnetic, polished transitions | Luxury, editorial, portfolio |
+| **Cult UI** | Direction-aware hover, Dynamic Island | Social, Y2K, portfolio |
 
-**Tier 1: Foundation** (always present)
-- `shadcn/ui` — accessible primitives, forms, dialogs, tables, navigation menus
-- `Tailwind CSS` — utility classes for everything custom
+### Tier 3 — Structural Sections
+| Library | Best For |
+|---------|----------|
+| **Eldora UI** | Complete pre-built landing page sections |
+| **MVPBlocks** | Rapid MVP scaffolding |
+| **shadcn/ui Blocks** | Dashboard layouts, auth flows |
+| **Skiper UI** | Bold navigation, unique hero |
 
-**Tier 2: Statement Pieces** (the wow moments — use 2-3 per design)
-- `React Bits` — best for: hero backgrounds (Aurora/Particles/Silk), text animations
-  (SplitText/BlurText), interactive cards (SpotlightCard/TiltedCard), scroll effects
-- `Aceternity UI` — best for: dark premium hero effects (Spotlight/LampEffect/BackgroundBeams),
-  3D cards (ThreeDCardEffect), editorial text (TextGenerateEffect), scroll-reveal (StickyScrollReveal)
-- `Magic UI` — best for: SaaS CTAs (ShimmerButton/RainbowButton), number stats (NumberTicker),
-  border effects (BorderBeam/AnimatedBeam), backgrounds (GridPattern/RetroGrid)
+### Tier 4 — Data & Forms
+| Library | Best For |
+|---------|----------|
+| **Tremor** | Charts, KPI metrics, dashboards |
+| **Kibo UI** | DateRangePicker, MultiSelect, Kanban |
+| **Origin UI** | Production form inputs (OTP, phone, tags) |
+| **Flowbite** | Admin panels, table-heavy dashboards |
 
-**Tier 3: Enhanced Components** (upgrades over plain shadcn)
-- `Origin UI` — best for: complex form inputs (OTP, phone, tags, combo), button variants
-- `Kibo UI` — best for: kanban, date range picker, rich text editor, color picker, file upload
-- `Skiper UI` — best for: bold hero sections, unique navigation, statement pricing cards
-
-**Tier 4: Section Blocks** (speed mode)
-- `MVPBlocks` — best for: complete section layouts when you need them fast
-
-**Tier 5: Framework-Specific**
-- `Stunning UI` — Vue/Nuxt only: animated components equivalent to React Bits
-- `Flowbite` — dashboards, admin panels, data-heavy apps
-- `NextUI/HeroUI` — when you need a full component system, good defaults
-- `Chakra UI` — theming-first apps, semantic tokens, good a11y
-
----
-
-### Component Slot Decision Matrix
-
-| Slot | Dark Premium | Light SaaS | Editorial | Dashboard | Vue/Nuxt |
-|------|-------------|-----------|-----------|-----------|---------|
-| Hero bg | React Bits: Aurora | Magic UI: GridPattern | React Bits: Silk | — | Stunning UI: AnimatedGradient |
-| Hero text | React Bits: SplitText | Magic UI: WordPullUp | React Bits: BlurText | — | Stunning UI: TextScramble |
-| Sub-text | React Bits: BlurText | Magic UI: WordFadeIn | Aceternity: TextGenerateEffect | — | — |
-| CTA button | Magic UI: ShimmerButton | React Bits: MagneticButton | React Bits: MagneticButton | shadcn: Button | Stunning UI: MagneticButton |
-| Feature cards | React Bits: SpotlightCard | Magic UI: MagicCard | React Bits: TiltedCard | shadcn: Card | Stunning UI: GlowCard |
-| Stats | React Bits: CountUp | Magic UI: NumberTicker | React Bits: CountUp | React Bits: CountUp | — |
-| Testimonials | React Bits: BounceCards | shadcn: Card grid | Aceternity: CardStack | — | — |
-| Logo strip | Magic UI: MarqueeComponent | Magic UI: MarqueeComponent | React Bits: ScrollVelocity | — | — |
-| Nav (mobile) | React Bits: FlowingMenu | shadcn: Sheet | React Bits: FlowingMenu | shadcn: Sidebar | — |
-| Pricing card | React Bits: StarBorder | shadcn + scale-105 | Skiper UI: PricingCard | — | — |
-| Forms | Origin UI inputs | Origin UI inputs | shadcn: Form | Origin UI + Kibo | — |
-| Borders | Aceternity: MovingBorder | Magic UI: ShineBorder | — | Magic UI: BorderBeam | — |
-| Backgrounds | React Bits: Particles | Magic UI: DotPattern | Aceternity: WavyBackground | — | — |
-
-**One statement piece per section. Restraint is what makes each piece land.**
+### Tier 5 — Framework-Specific
+| Library | Stack |
+|---------|-------|
+| **Stunning UI** | Vue/Nuxt only |
+| **Chakra UI** | React with theming system |
+| **NextUI/HeroUI** | Clean Next.js components |
 
 ---
 
-### Install Command Reference
+## Intelligence Rules (select_components logic)
 
-```bash
-# React Bits (all components)
-npx shadcn@latest add "https://reactbits.dev/r/[ComponentName]"
-# Examples:
-npx shadcn@latest add "https://reactbits.dev/r/Aurora"
-npx shadcn@latest add "https://reactbits.dev/r/SplitText"
-npx shadcn@latest add "https://reactbits.dev/r/SpotlightCard"
-npx shadcn@latest add "https://reactbits.dev/r/MagneticButton"
-npx shadcn@latest add "https://reactbits.dev/r/BlurText"
-npx shadcn@latest add "https://reactbits.dev/r/TiltedCard"
-npx shadcn@latest add "https://reactbits.dev/r/BounceCards"
-npx shadcn@latest add "https://reactbits.dev/r/FlowingMenu"
-npx shadcn@latest add "https://reactbits.dev/r/ScrollVelocity"
-npx shadcn@latest add "https://reactbits.dev/r/CountUp"
-npx shadcn@latest add "https://reactbits.dev/r/StarBorder"
-npx shadcn@latest add "https://reactbits.dev/r/FadeContent"
-npx shadcn@latest add "https://reactbits.dev/r/TextReveal"
-npx shadcn@latest add "https://reactbits.dev/r/ImageTrail"
-npx shadcn@latest add "https://reactbits.dev/r/Silk"
-npx shadcn@latest add "https://reactbits.dev/r/Particles"
-npx shadcn@latest add "https://reactbits.dev/r/Orb"
-npx shadcn@latest add "https://reactbits.dev/r/Ripple"
-npx shadcn@latest add "https://reactbits.dev/r/DotGrid"
-npx shadcn@latest add "https://reactbits.dev/r/ShinyText"
-npx shadcn@latest add "https://reactbits.dev/r/GradientText"
-npx shadcn@latest add "https://reactbits.dev/r/FuzzyText"
+The `select_components()` function in `core.py` reads:
+1. **Style profile** — each style has specific library arrays (rb, ace, mu, etc.)
+2. **Product keywords** — y2k/cyber/dashboard/editorial/portfolio detected, route accordingly
+3. **14 slots** — each slot has contextual logic, not hardcoded defaults
 
-# Magic UI (components)
-npx magicui-cli@latest add shimmer-button
-npx magicui-cli@latest add rainbow-button
-npx magicui-cli@latest add number-ticker
-npx magicui-cli@latest add border-beam
-npx magicui-cli@latest add animated-beam
-npx magicui-cli@latest add magic-card
-npx magicui-cli@latest add marquee
-npx magicui-cli@latest add word-pull-up
-npx magicui-cli@latest add word-fade-in
-npx magicui-cli@latest add sparkles-text
-npx magicui-cli@latest add grid-pattern
-npx magicui-cli@latest add dot-pattern
-npx magicui-cli@latest add retro-grid
-npx magicui-cli@latest add orbiting-circles
-npx magicui-cli@latest add animated-gradient-text
-npx magicui-cli@latest add hyper-text
-npx magicui-cli@latest add box-reveal
-npx magicui-cli@latest add cool-mode
+**Never suggest Aurora for light backgrounds.** Aurora is dark-only.
+**Never repeat the same library for background + hero + sub-text.** Variation is the goal.
+**Delight slot is mandatory** — every design gets one unexpected wow element.
+**Dashboard/analytics gets Tremor** for charts and KPI slots — not Recharts from scratch.
 
-# Kibo UI
-npx kiui@latest add multi-select
-npx kiui@latest add date-range-picker
-npx kiui@latest add kanban
-npx kiui@latest add file-upload
-npx kiui@latest add rich-text-editor
+---
 
-# Flowbite React
-npm install flowbite-react
+## Reference File READ Triggers
 
-# NextUI / HeroUI
-npm install @nextui-org/react framer-motion
+| File | READ When | Contains |
+|------|-----------|---------|
+| `resources-blogs.md` | **Step 3 always** | 2026 search routing, 8 new library search strategies |
+| `inspiration.md` | **Step 5** — design plan | 2026 trends: chrome, direction-aware, morphing dialogs, bento grids |
+| `react-bits-catalog.md` | **Step 1** if `has_react_bits` | Full 50+ component catalog with TS+TW install variants |
+| `component-library-catalog.md` | **Step 4** | Decision tree for all 18 libraries + new Tremor/Animata/Cult UI sections |
+| `page-patterns.md` | **Step 6** | Landing/dashboard/auth/pricing layouts, mobile rules |
+| `charts-icons-reference.md` | **Step 6** if dashboard | Chart matrix, Recharts code, Lucide icon table |
+| `motion-principles.md` | **Step 6** if animations | Duration table, easing library, library-specific patterns |
+| `ux-principles.md` | **Step 5** | 18 UX laws, 7 Gestalt principles |
+| `nextjs-guidelines.md` | **Step 6** if Next.js | Next.js 15, React 19, Turbopack, PPR, params→Promise |
+| `shadcn-tailwind-guidelines.md` | **Step 6** if shadcn/Tailwind | Dialog/Form/Table, v4 syntax |
+| `react-guidelines.md` | **Step 6** if React/Vite | Hooks, cleanup, performance |
+| `vue-svelte-guidelines.md` | **Step 6** if Vue/Nuxt/Svelte | Reactivity, pinia, sveltekit |
+| `native-guidelines.md` | **Step 6** if SwiftUI/Flutter | Platform conventions |
 
-# Chakra UI
-npm install @chakra-ui/react
+---
 
-# Aceternity UI (copy from site)
-# → https://ui.aceternity.com/components/[component-name]
-# Required: npm install framer-motion clsx tailwind-merge
+## Quality Gates — Zero Tolerance
 
-# Required for cn() utility (most statement libs need this):
-# Ensure @/lib/utils.ts has:
-# import { clsx } from 'clsx'; import { twMerge } from 'tailwind-merge';
-# export function cn(...inputs) { return twMerge(clsx(inputs)) }
-npm install clsx tailwind-merge
+```
+❌ NEVER (from 86 lint rules — auto-checked by framework_lint.py):
+
+CODE:
+  key={index} in .map()                 → always key={item.id}
+  <img> in Next.js                      → always next/image
+  params.id without await               → Next.js 15 breaking change
+  useFormState                          → React 19 renamed to useActionState
+  useState in Server Component          → crashes in production
+  fetch() without cache option          → Next.js 15 behavior changed
+  Server Action without auth check      → security vulnerability
+  Aurora on light background            → component is invisible
+  3+ statement components per section   → visual chaos
+  focus:outline-none without ring       → keyboard users locked out
+  animate-* without motion-reduce       → violates accessibility
+  Linear easing on discrete UI          → violates motion principles
+  duration > 600ms on UI elements       → feels broken/slow
+  Hex in className                      → hardcoded, breaks theming
+  Aceternity without framer-motion      → runtime crash
+  SplashCursor without pointer-events-none → blocks all clicks
+
+DESIGN:
+  Emoji as icons                        → broken rendering across OS
+  Placeholder text in production code  → unprofessional
+  Missing cursor-pointer on clickable  → usability failure
+  No focus states                      → WCAG failure
+  WCAG AA contrast failure on text     → legal and ethical issue
+  Icon button without aria-label       → screen reader failure
+  Touch targets < 44px                 → mobile usability failure
+  No loading states                    → janky perceived performance
+  No error states                      → silent failures confuse users
+
+✅ MUST-HAVE (every design):
+  cubic-bezier(0.16,1,0.3,1) entrance easing
+  useReducedMotion() on every animation
+  focus-visible:ring-2 ring-primary on every interactive element
+  min-h-[44px] on every button and link
+  AnimatePresence wrapping conditional Framer renders
+  All states: default→hover→focus→active→loading→disabled→error→empty
+  TS+TW React Bits variant for TypeScript projects
+  @theme {} for Tailwind v4 (not tailwind.config.ts extend)
+  await params / await searchParams in Next.js 15 pages
 ```
 
 ---
 
-## Reference Files (read on demand — never load all upfront)
+## Motion System (from motion-principles.md)
 
-| File | When to read |
-|------|-------------|
-| `references/resources-blogs.md` | **Step 3** — search routing brain, live research queries, all 30+ sources |
-| `references/inspiration.md` | Agency study, trend analysis, the senior designer eye test |
-| `references/component-library-catalog.md` | Selecting components — detailed catalog of all 12 libs |
-| `references/react-bits-catalog.md` | When using React Bits components |
-| `references/ux-principles.md` | Applying psychology laws to layout decisions |
-| `references/page-patterns.md` | Landing pages, dashboards, auth, pricing, portfolio |
-| `references/nextjs-guidelines.md` | framework = nextjs |
-| `references/react-guidelines.md` | framework = react/nextjs/vite |
-| `references/shadcn-tailwind-guidelines.md` | has_shadcn=true or tailwind=true |
-| `references/vue-svelte-guidelines.md` | framework = vue/nuxt/svelte/sveltekit |
-| `references/native-guidelines.md` | platform = ios (SwiftUI) or cross-platform (Flutter) |
-| `references/charts-icons-reference.md` | dashboards, data viz, icon usage |
+| Interaction | Duration | Easing |
+|-------------|----------|--------|
+| Hover color/bg | 150ms | ease-out |
+| Tooltip | 150ms | ease-out |
+| Dropdown | 200ms | ease-out |
+| Badge/state | 250ms | ease-out |
+| Modal open | 300ms | spring s:300 d:30 |
+| Drawer | 350ms | cubic-bezier(0.16,1,0.3,1) |
+| Section entrance | 400ms | cubic-bezier(0.16,1,0.3,1) |
+| Hero reveal | 500-600ms | cubic-bezier(0.16,1,0.3,1) |
+| Exit | 200ms | cubic-bezier(0.5,0,1,1) |
+| Loop/shimmer | 700ms+ | linear ONLY |
 
----
-
-## Framework-Specific Critical Rules
-
-### Next.js (App Router)
-Read `references/nextjs-guidelines.md`. Non-negotiable:
-- `'use client'` on any file using hooks or event handlers
-- `next/image` — never raw `<img>`
-- `next/font` — never `@import url(fonts.googleapis...)`
-- `cache:` explicitly set on every `fetch()` (Next.js 15 uncached by default)
-- Server Action inputs validated with Zod before touching DB
-- `NEXT_PUBLIC_` prefix on all client-side env vars
-
-### React / Vite
-Read `references/react-guidelines.md`. Non-negotiable:
-- `key={item.id}` on list items — never `key={index}`
-- Handler reference not invocation: `onClick={fn}` not `onClick={fn()}`
-- Cleanup from `useEffect` for subscriptions/timers
-- Hooks only at top level — never in conditions/loops
-- Context values wrapped in `useMemo`
-
-### shadcn/ui
-Read `references/shadcn-tailwind-guidelines.md`. Non-negotiable:
-- `<DialogTitle>` inside every `<DialogContent>`
-- `<TooltipProvider>` in root layout
-- `<Toaster>` in root layout only
-- `asChild` when composing Button as Link
-- `<FormMessage>` after every `<FormControl>`
-
-### Tailwind
-Read `references/shadcn-tailwind-guidelines.md`. Non-negotiable:
-- Never `focus:outline-none` without `focus:ring-2 focus:ring-primary`
-- `motion-reduce:animate-none` alongside every `animate-*` class
-- `min-h-[44px]` on all mobile interactive elements
-- No hardcoded hex in className — use CSS variables
-- Tailwind v4: `bg-linear-to-r` not `bg-gradient-to-r`
-
-### Framer Motion
-- `<AnimatePresence>` wrapping every conditional `<motion.*>` render
-- `key` prop on AnimatePresence children (required for exit animation)
-- `layout` prop on elements that change size/position
-
-### Vue / Nuxt / Svelte
-Read `references/vue-svelte-guidelines.md`.
-
-### Charts / Dashboards
-Read `references/charts-icons-reference.md`.
+**RULE:** NEVER linear for discrete UI. Spring for bouncy elements.  
+**RULE:** `useReducedMotion()` check on EVERY Framer Motion component.
 
 ---
 
-## Quality Gates — Absolute Zero Tolerance
+## Design Philosophy (the 6 principles that separate world-class from good)
 
-```
-❌ Emoji as icons — SVGs only (Lucide, Heroicons, Phosphor, Radix Icons)
-❌ Placeholder text in delivered code ("Lorem ipsum", "TODO", "Insert here")
-❌ Missing cursor-pointer on ANY clickable element
-❌ Layout-shifting hover effects (scale-105 on block elements with siblings)
-❌ Light mode text contrast below 4.5:1 WCAG AA
-❌ Hardcoded hex values in className — always CSS variables
-❌ !important hacks — if you need !important, redesign the structure
-❌ Raw <img> in Next.js
-❌ React .map() without keys
-❌ Client-side hooks in Server Components
-❌ framer-motion missing when using Aceternity or Magic UI animated components
-❌ Icon-only buttons without aria-label
-❌ focus:outline-none without focus:ring replacement
-```
+1. **One star per section.** The delight slot exists for this reason. Not three wow components — one perfect one.
 
-```
-✅ Smooth transitions on ALL interactive states (150–300ms ease)
-✅ Visible focus states for keyboard navigation (focus-visible:ring-2)
-✅ prefers-reduced-motion respected (motion-reduce:animate-none)
-✅ Alt text on all images
-✅ aria-label on all icon-only interactive elements
-✅ Labels on all form inputs (visible or aria-label)
-✅ Mobile-first — breakpoints at 375 / 768 / 1024 / 1440px
-✅ Dark mode handled if project uses it
-✅ AnimatePresence around all conditional Framer Motion renders
-✅ Every state covered: default → hover → focus → active → loading → disabled → error
-```
+2. **Whitespace is not empty.** Section padding on award-winning sites is 96-128px. When unsure: double it.
 
----
+3. **Typography does 80% of the work.** H1 to body ratio of 3:1 minimum. The type scale commitment IS the design.
 
-## Psychology Laws — Quick Reference
+4. **Motion communicates state, not decoration.** Every animation answers: Did this appear? Did my action succeed? Where did it go? No answer = cut it.
 
-| Law | Application |
-|-----|------------|
-| **Fitts's Law** | Primary CTAs: min 44px. Size = importance. |
-| **Hick's Law** | Max 7 nav items. ONE primary action per screen. |
-| **Miller's Law** | Feature lists in chunks of 3. Cards in sets of 3. |
-| **Jakob's Law** | Logo top-left, nav top, search top-right. Users know these. |
-| **Von Restorff** | ONE element uses CTA color per page. Pro card breaks the pattern. |
-| **Peak-End Rule** | Hero moment + success state = the two that matter most. |
-| **Aesthetic-Usability** | Beautiful = perceived as easier. Polish is not vanity. |
-| **Proximity** | Related: 4-8px. Siblings: 16-24px. Sections: 64-96px. |
-| **Prägnanz** | Simplest interpretation always. Remove anything that doesn't earn its space. |
-| **Serial Position** | Most important feature: first. Second most important: last. |
-| **Doherty Threshold** | Optimistic UI. Skeleton loaders >100ms. Perceived > actual performance. |
-| **Zeigarnik** | Onboarding checklists. Progress bars. "3 of 5 steps done." |
+5. **Restraint is harder than maximalism.** Knowing which component NOT to use — Aurora on light bg, three statement pieces stacked — separates senior designers from everyone else.
 
----
-
-## Stack-Specific Implementation Quick Reference
-
-### Next.js App Router
-```typescript
-// next/font — zero layout shift
-import { Outfit, Inter } from 'next/font/google'
-const heading = Outfit({ subsets: ['latin'], weight: ['600','700','800'], variable: '--font-heading' })
-const body = Inter({ subsets: ['latin'], weight: ['400','500'], variable: '--font-body' })
-// In layout: <body className={`${heading.variable} ${body.variable}`}>
-```
-
-### Vite + React
-```typescript
-// @fontsource — no FOUT, zero external request
-npm install @fontsource/outfit @fontsource/inter
-import '@fontsource/outfit/700.css'
-import '@fontsource/inter/400.css'
-```
-
-### Aceternity minimum setup
-```bash
-npm install framer-motion clsx tailwind-merge
-# In @/lib/utils.ts:
-# export function cn(...inputs) { return twMerge(clsx(inputs)) }
-```
-
-### Magic UI minimum setup
-```bash
-npm install framer-motion
-npx magicui-cli@latest init  # optional CLI setup
-```
-
-### Tailwind v4 specifics
-```css
-@theme {
-  --color-primary: #6366F1;
-  --font-heading: 'Outfit', sans-serif;
-}
-/* Gradients: bg-linear-to-r, NOT bg-gradient-to-r */
-```
-
----
-
-## Design Philosophy
-
-**Hierarchy is everything.** One star per section. CTA breaks the visual pattern (Von Restorff). Everything else recedes into supporting roles.
-
-**Whitespace is not empty space.** It's the breath between notes that makes music. When a design feels "off," add more padding first — this fixes 80% of amateur designs.
-
-**Typography does 80% of the work.** A perfect palette with mediocre typography looks amateur. The jump from body text to H1 should feel dramatic. Never settle for Inter/Roboto when Outfit/Fraunces/Bricolage exists.
-
-**Motion communicates state, not decoration.** Every animation answers a question: Did this appear or was it already here? Did my action succeed? Where did that element go? If it doesn't answer a question, it shouldn't exist.
-
-**Statement pieces win awards.** The gap between "looks professional" and "wins an award" is always one unexpected delight — a React Bits Aurora background, an Aceternity LampEffect, a cursor effect, a text reveal. Not ten features. One perfect thing per section.
-
-**Restraint is the hardest skill.** Knowing which library component NOT to use is harder than knowing which to use. One statement piece per section. The rest recedes. This is what separates senior designers from everyone else.
-
-**Consistency = "designed."** Inconsistent border radii, mixed font weights, random spacing — these are what makes a site feel "built" vs "designed." Pick your system and execute it with discipline everywhere.
-
-**The Awwwards principle.** Award-winning sites are not complex. They are *committed* — committed to their style, their spacing, their type scale. Commit fully and execute perfectly.
+6. **Accessibility is not a checklist.** 44px targets, visible focus, reduced motion — not box-checking. The design breaks for real people without these.

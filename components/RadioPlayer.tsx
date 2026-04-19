@@ -433,6 +433,16 @@ const RadioPlayer = memo(function RadioPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Pause when AnthemWidget plays — mutual exclusion ─────────────
+  useEffect(() => {
+    const handle = () => {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    };
+    window.addEventListener("zeezu:anthem-play", handle);
+    return () => window.removeEventListener("zeezu:anthem-play", handle);
+  }, []);
+
   // ── Time tracking ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
@@ -527,8 +537,17 @@ const RadioPlayer = memo(function RadioPlayer() {
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) { audio.pause(); setIsPlaying(false); }
-    else { audio.play().then(() => setIsPlaying(true)).catch(() => setError(true)); }
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+          window.dispatchEvent(new CustomEvent("zeezu:radio-play"));
+        })
+        .catch(() => setError(true));
+    }
   };
 
   const goNext = () => { setStationIdx((stationIdx + 1) % STATIONS.length); setSubIdx(0); };

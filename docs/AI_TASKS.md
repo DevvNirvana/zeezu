@@ -1,7 +1,7 @@
 # Zeezu — Task Tracker
 
 > Authoritative list of completed, in-progress, and planned work.
-> Last updated: 2026-03-21
+> Last updated: 2026-03-24
 
 ---
 
@@ -17,123 +17,122 @@
 - [x] Toast notification provider
 - [x] PWA icons — `icon-192.png` + `icon-512.png` in `/public`, wired in manifest
 
-### Performance Optimizations (completed 2026-03-21)
-- [x] NavBar style injection → module-level (eliminates per-render DOM writes)
-- [x] NotificationBell polling → `visibilitychange` + Supabase realtime subscription (replaces 10s interval)
-- [x] MarqueeTicker polling → `visibilitychange` + Supabase realtime subscription (replaces 60s interval, 3 queries)
-- [x] CSS animations: removed `filter: hue-rotate()` from `holo-shift` + `aurora-shift` (was running at 60fps on CPU)
-- [x] Gen Z badge: replaced `glitch-shift` (clip-path, CPU) with `chroma-ab` (chromatic aberration via text-shadow, GPU)
-- [x] Added `will-change: background-position / text-shadow` to all badge animations
+### Performance Optimizations
+- [x] NavBar style injection → module-level
+- [x] NotificationBell + MarqueeTicker polling → `visibilitychange` + Supabase realtime
+- [x] CSS animations: removed `filter: hue-rotate()` from badge animations (CPU→GPU)
+- [x] Gen Z badge: `glitch-shift` (clip-path) → `chroma-ab` (text-shadow, GPU)
 - [x] `touch-action: manipulation` global rule — removes 300ms mobile tap delay
-- [x] Loading skeletons: 13 `loading.tsx` files + `LoadingShell` component (instant visual on every route)
-- [x] Route prefetching — `router.prefetch()` on NavBar mount for all static routes
-- [x] NavBar re-renders: extracted `OnlinePill` (owns its own state), `React.memo` on `NavDockIcon`, `useMemo` on `dockItems`
-- [x] GlobalFeed: extracted `PostCard` as `memo()`, `useCallback` on all 12 handlers, pure helpers moved outside component, state refs pattern for stable callbacks — typing in one comment box no longer re-renders all 15 posts
-- [x] RadioPlayer: wrapped in `memo()` — 1200-line component no longer re-renders on parent state changes
+- [x] Loading skeletons: 13 `loading.tsx` files + `LoadingShell` component
+- [x] Route prefetching on NavBar mount
+- [x] NavBar re-renders: `OnlinePill`, `NavDockIcon memo`, `dockItems useMemo`
+- [x] GlobalFeed: `PostCard memo`, `useCallback` on 12 handlers, pure helpers outside component
+- [x] RadioPlayer: `memo()` wrapping
+- [x] **FAQ section rewrite** — terminal/BBS aesthetic, CSS grid-template-rows accordion, zero Framer Motion
+- [x] **FinalCTA blur blobs** — `blur-[130px]` + `blur-[100px]` replaced with `radial-gradient` (root cause of GPU lag)
 
 ### Social Features
-- [x] Dashboard with Core 8 slot management (drag to assign)
-- [x] ZeeWall (global public chronological feed)
-- [x] GlobalFeed with rich content:
-  - GIF picker
-  - Polls (up to 5 options)
-  - YouTube/Spotify/SoundCloud/Vimeo embeds
-  - Mood tags with gradient colors
-  - Top/New sort tabs
-- [x] Comment threading (nested replies)
-- [x] Comment upvote/downvote (`comment_votes` table)
-- [x] Zap (post reaction) system with toggle logic
-- [x] Share sheet (platform options + native sharing)
+- [x] Dashboard with Core 8 slot management
+- [x] ZeeWall (global public chronological feed) with rich content
+- [x] Comment threading + upvote/downvote
+- [x] Zap reaction system
+- [x] Share sheet
 - [x] Real-time notifications (bell + toast)
-  - Comment, reply, zap, upvote events
-  - Notification deduplication
-- [x] Friend system (requests, accept, decline, remove)
+- [x] Friend system
 - [x] DM/Buzz messaging with BuzzFlash overlays
 - [x] Search & discovery page
 
-### Profile System (fully complete as of 2026-03-12)
-- [x] Profile settings page with 5-tab layout:
-  - Identity (name, status, bio, avatar, personal info, vibes display)
-  - Appearance (theme studio, color pickers, fonts, effects, anthem)
-  - Social Links (6 platforms) — saves to `users.social_links` JSONB
-  - Privacy (4 toggles) — saves to `profile_customization`
-  - Account (email, ZID, sign out, delete account)
-- [x] AppearanceEditor component (600+ lines)
-- [x] PersonalInfoEditor component (29 fields, visibility toggles)
-- [x] ProfileCard 3D preview (Three.js tilt)
-- [x] Profile completeness meter
-- [x] Unsaved changes warning + `beforeunload` handler
-- [x] `social_links` + `personal_info` saved to users table on save
-- [x] Delete account fully implemented (cascading deletes + signOut)
-- [x] Public profile (`/u/[zid]`) — full privacy respect
-- [x] Social links displayed on public profile About tab
-- [x] **Vibes Rating System** — 1–5 widget (trust/cool/sexy), aggregates via `rate_vibes` RPC
+### Profile System
+- [x] Profile settings page (5-tab layout, all tabs complete)
+- [x] AppearanceEditor, PersonalInfoEditor
+- [x] Public profile with privacy gates
+- [x] Vibes Rating System (Trust/Cool/Sexy, 1–5)
+- [x] Real visitor counter via `increment_visit` RPC
+- [x] Delete account with cascading deletes
 
-### Landing Page Overhaul (completed 2026-03-20)
-- [x] Ken Burns hero: 3 Spider-Verse art images with crossfade + 3 unique pan/zoom keyframes
-- [x] TiltedCard overlay fix + idle RAF sinusoidal rotation
-- [x] Rich Buzz chat overlay (Card 1) + Rich Zlogger editor overlay (Card 2)
-- [x] PixelCard `alwaysOn` mode + CardSwap IntersectionObserver pause
-- [x] ElectricBorder optimized — octaves 6, sampleCount ≤250, off-screen RAF stop
-- [x] Landing navbar logo matches in-app
-- [x] RadioPlayer vinyl button: spinning grooves + holographic rainbow + counter-spin Z label
-- [x] RadioPlayer OST: 4 tracks, muted autoplay on `/` with fade-in
+### Landing Page
+- [x] Ken Burns cycling hero (Spider-Verse art, 3 pan+zoom trajectories)
+- [x] TiltedCards with idle RAF animation + rich JSX overlays
+- [x] ElectricBorder optimized (octaves 6, sampleCount ≤250, IntersectionObserver pause)
+- [x] RadioPlayer vinyl button, OST tracks, muted autoplay
+- [x] FAQ section — terminal/BBS aesthetic (completed 2026-03-24)
+- [x] FinalCTA glow blobs — radial-gradient (completed 2026-03-24)
 
-### Platform Components
-- [x] **BootScreen**, **Dock**, **GenBadge**, **ReflectiveCard**, **DecryptedText**, **RadioPlayer**
-- [x] Login page + Onboarding flow
-- [x] NavBar dock: Home / Search / Friends / Messages / Zlogger / Profile
+### Zlogger — Long-Form Blogging
+- [x] `/zlogger` feed with 6 filter modes
+- [x] `/zlogger/new` — split-pane editor + live preview + settings
+- [x] `/zlogger/[slug]` — themed reading page
+- [x] `/zlogger/edit/[id]` — edit page
+- [x] `lib/zlogger-renderer.ts` — renderer, slug gen, Z-tag preprocessor
+- [x] 6 custom Z-tags, 5 reading themes
+- [x] Profile Zlogger tab
 
-### Zlogger — Long-Form Blogging (completed 2026-03-18)
-- [x] `/zlogger` feed — Latest/Trending/Anonymous/Network/Gen Z/Millennial filters
-- [x] `/zlogger/new` — split-pane editor + live preview, Z-tag toolbar, publishing settings
-- [x] `/zlogger/[slug]` — reading page with themed render, engagement, realtime comments, highlight-to-share
-- [x] `/zlogger/edit/[id]` — edit existing zlog
-- [x] `lib/zlogger-renderer.ts` — renderer, slug gen, reading time, ZLOG_CSS, Z-tag preprocessor
-- [x] 10 Zlogger query functions in `lib/supabase/queries.ts`
-- [x] 6 custom Z-tags: `[z-neon]`, `[z-glitch]`, `[z-blink]`, `[z-marquee]`, `[z-divider]`, `[z-track]`
-- [x] 5 reading themes: void_chrome, neon_vapor, midnight_run, candy_chrome, arctic_ghost
-- [x] Profile `/u/[zid]` — ZLOGGER tab with lazy-load
-
-### Zones — Topic Communities (completed ~2026-03-19)
-- [x] `/zones` — zone discovery + search + create zone
-- [x] `/zones/new` — zone creation form
-- [x] `/zones/[slug]` — zone feed (GlobalFeed with `zoneId` prop)
-- [x] `/zones/[slug]/members` — member list
-- [x] `/zones/[slug]/settings` — zone settings (owner only)
+### Zones — Topic Communities
+- [x] `/zones` discovery + search + create
+- [x] `/zones/[slug]` feed, members, settings
 - [x] Loading skeletons for all zone routes
 
-### DB Schema (live in Supabase)
-- [x] `users.social_links` JSONB, `users.personal_info` JSONB
-- [x] `profile_customization` privacy toggles
-- [x] `vibes_ratings` table + `rate_vibes` RPC
-- [x] `users.visit_count` + `increment_visit` RPC
+### Agent Intelligence — The Enclave V23 (`scripts/synthetic-society.ts`)
+- [x] 5 agents with soul documents + emotional state machine
+- [x] Smart post targeting (scored by character fit)
+- [x] Thread-aware commenting (reads existing thread before writing)
+- [x] Anti-drift guard (fingerprint overlap detection)
+- [x] Relationship layer (trust/interaction history affects tone)
+- [x] Human detection (agents shift register for real users)
+- [x] Narrative arcs + adaptive pacing (8-60s cycles)
+- [x] Burnout/recovery cycle
+- [x] Multi-LLM brain routing (Groq, Mistral, Cohere, OpenRouter)
+- [x] **Cross-signal writes** (2026-03-24)
+- [x] **Trending topic extraction** (2026-03-24)
+- [x] **OG link enrichment** — real user URLs become readable titles (2026-03-24)
+- [x] **V2 content surfacing** — POST prompts include recent Zlog hint (2026-03-24)
 
-### DB Schema — Zlogger (SQL provided 2026-03-18)
-- [ ] `zlogs`, `zlog_engagement`, `zlog_comments` tables + RLS + trigger — **awaiting user confirmation it was run in Supabase**
+### Agent Intelligence — The Residents V1 (`scripts/the-residents.ts`)
+- [x] Full platform intelligence (Zlogger, Zones, Profiles, Core 8, Buzz, Vibes)
+- [x] Learned affinity system — agents discover what works through engagement
+- [x] World news layer — NewsAPI filtered by agent temperament
+- [x] World memory dedup — agents only hear new headlines
+- [x] Platform snapshot — active zones, zlogs, vibe leaders, new users
+- [x] Arc phase system (0-10) — gates and amplifies behaviors
+- [x] Delayed affinity measurement — +2h/+6h/+24h checkpoints
+- [x] Buzz reply-aware guard — re-buzz allowed if they replied
+- [x] Vibes bidirectional — profile visit after rating = positive signal
+- [x] Profile rate limiter (48h minimum)
+- [x] Adaptive pacing (3-20 min cycles)
+- [x] Separate kill switch (`v2_enabled`)
+- [x] **Cross-signal reads/writes** (2026-03-24)
+- [x] **Trending topics in platform snapshot** (2026-03-24)
+
+### Cross-Platform Bridge (2026-03-24)
+- [x] `agent_cross_signals` table — shared awareness layer between V23 and V2
+- [x] `trending_topics` table — V23 extracts, V2 reads
+- [x] `post_link_metadata` table + OG fetcher in V23
+- [x] Both scripts inject cross-signals into agent prompts before acting
 
 ---
 
-## 🚧 In Progress
+## 🚧 Pending user action (must be done in Supabase)
 
-- [ ] **Zlogger SQL** — tables + RLS provided to user, awaiting confirmation it was run in Supabase
+- [ ] **Run all agent DB SQL** — See `AI_STATE.md` "DB Tables — Agent Systems" section for the full SQL block. Tables needed: `agent_world_memory`, `agent_platform_affinity`, `agent_affinity_pending_checks`, `agent_narrative_events`, `agent_cross_signals`, `trending_topics`, `post_link_metadata` + ALTER TABLE `agent_state` for `arc_phase` and `last_v2_action_at` columns.
 
 ---
 
 ## 📋 Next Up
 
-- [ ] **End-to-end Zlogger test** — create zlog → publish → read → engage → comment → realtime in two tabs
-- [ ] **Feed engagement counts** — `getPublicZlogs` currently returns `engagementCounts: {0,0,0,0}`; needs a join or parallel fetch
-- [ ] **Anonymous post verification** — confirm author is fully hidden on reading page + feed
+- [ ] **Brain fallback chains** — If Groq/Mistral/Cohere is down, that agent goes silent for the entire run. Add fallback order: NeonRiot: Groq → Mistral → Cohere → OpenRouter. Same for others. No code changes elsewhere needed.
+- [ ] **`profile_views` table** — V2's vibes bidirectional check (`RATE_VIBES` → profile visit = positive signal) queries this table. Create it + populate on profile page visits for the full feedback loop.
+- [ ] **Zlogger engagement counts** — `getPublicZlogs` returns `engagementCounts: {0,0,0,0}` on all feed cards. Needs a join or parallel fetch to pull real counts.
+- [ ] **Run both scripts simultaneously** — `npx tsx scripts/synthetic-society.ts` + `npx tsx scripts/the-residents.ts` in two terminals. Or run 2 instances of each for more activity.
 
 ---
 
 ## 🔮 Future Roadmap
 
-- [ ] **Zlogger response chains** — UI for browsing full response threads (/zlogger/[slug] shows chain)
-- [ ] **Zlogger featured post** — `setFeaturedZlog` is implemented, needs UI on profile to pin one post
+- [ ] **Zlogger featured post** — `setFeaturedZlog` query exists, needs profile UI to pin one post
 - [ ] **Theme Track ambient audio** — Auto-play on profile visit (muted-start pattern proven in RadioPlayer)
 - [ ] **Invite-only launch mechanism** — Referral/invite codes
 - [ ] **Mobile PWA features** — Service worker, push notifications
-- [ ] **AI Enclave agents** — Framework exists in `lib/agents.ts`, needs UI layer
-- [ ] **Notification preferences** — Granular control over which events trigger notifications
+- [ ] **Notification preferences** — Granular per-event control
+- [ ] **Zlogger response chains** — UI for browsing full response threads
+- [ ] **Agent arc visualization** — Dashboard showing arc phases and affinity scores for all 5 agents
+- [ ] **V2 → V23 topic injection** — When V2 agents write a Zlog about a topic, V23 agents could reference it on the wall

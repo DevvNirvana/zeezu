@@ -294,3 +294,68 @@ Every interactive state needs a design:
 8. **Missing loading states** — users think broken, they click again
 9. **Tight touch targets on mobile** — buttons under 44px cause mis-taps
 10. **Inconsistent border-radius** — `rounded` on cards, `rounded-full` on buttons, no system
+
+
+---
+
+## Gestalt Principles — The Science of Visual Grouping
+
+> Gestalt psychology explains why layouts feel right or broken.
+> Apply all 7 to every design. The best designs layer multiple simultaneously.
+
+### 1. Proximity — Objects near each other appear related
+- Label 4-6px ABOVE its input (not 16px — that breaks the group)
+- Related items: 4-8px gap. Siblings: 16-24px. Sections: 64-96px.
+- Card padding creates a proximity group — everything inside = related
+- CSS: .form-group gap: 6px; .form-group + .form-group margin-top: 20px
+
+### 2. Similarity — Shared visual traits signal same type
+- All nav links same size/weight — they're the same category
+- All primary CTAs same color — same importance level
+- Violation: two buttons, same size, different colors = user thinks different function
+
+### 3. Continuity — Eyes follow smooth paths naturally
+- Progress steps left-to-right suggest a path to follow
+- Alternating feature sections create a Z-path the eye follows
+- Lists must be truly aligned — 1px misalignment breaks the line
+
+### 4. Closure — Mind completes incomplete shapes
+- Skeleton loaders: mind completes the shape (match content shape exactly)
+- Partially visible carousel cards = signal more content exists
+- Avatar stacks: overlapping circles = mind sees related group
+
+### 5. Common Fate — Moving together = belonging together
+- Stagger animations: items entering together = same group
+- Hover: ALL cards dim EXCEPT hovered one = they're peers
+- Micro-interaction: form error icon + text shake together = same event
+
+### 6. Figure/Ground — Mind separates foreground from background
+- Modal + backdrop blur: modal = figure, rest = ground
+- Use shadow, opacity, blur to establish z-axis depth
+- Mistake: card on card on card with no clear foreground hierarchy
+
+### 7. Symmetry — Symmetric = stable. Asymmetric = dynamic
+- Symmetric: pricing cards, feature grids, testimonial rows
+- Asymmetric: hero text-left + image-right creates tension and direction
+- Choose deliberately based on brand tone
+
+---
+
+## Gestalt Application by Layout
+
+| Layout | Primary Principle | Application |
+|--------|------------------|-------------|
+| Nav bar | Proximity + Similarity | Links grouped left, CTA right, same text size |
+| Feature grid | Similarity | Equal cards, equal spacing, equal icon size |
+| Form | Proximity + Continuity | Labels 4-6px above, one column, visual flow |
+| Pricing | Figure/Ground | Pro card elevated = figure, others = ground |
+| Dashboard | Similarity + Proximity | KPI cards grouped, same chart style throughout |
+
+---
+
+## Gestalt Quick Audit
+- [ ] Related items have smaller gaps than unrelated items (Proximity)
+- [ ] CTA color appears ONLY on CTAs (Similarity — Von Restorff)
+- [ ] Eye has a clear path to follow (Continuity)
+- [ ] Foreground elements are distinctly elevated (Figure/Ground)
+- [ ] Animated elements that enter together tell a story (Common Fate)

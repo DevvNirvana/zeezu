@@ -216,6 +216,121 @@ Requires: Vue 3, Tailwind CSS
 
 ---
 
+
+---
+
+## Tremor (Dashboards & Data Viz)
+Install: `npm install @tremor/react`
+Requires: React, Tailwind CSS
+Best for: Any project with metrics, charts, or data
+
+CHARTS:
+  AreaChart        → trend over time, smooth curves          WOW:7
+  BarChart         → compare categories                      WOW:7
+  LineChart        → multi-series comparison                 WOW:7
+  DonutChart       → part-to-whole (≤6 categories)          WOW:7
+  BarList          → horizontal ranked list                  WOW:8
+  Tracker          → binary uptime/status tracker            WOW:8
+  ScatterChart     → correlation between variables           WOW:7
+
+METRICS:
+  Metric           → large KPI number + delta + trend        WOW:7
+  BadgeDelta       → colored up/down/neutral badge           WOW:7
+  ProgressBar      → percentage completion bar               WOW:6
+  ProgressCircle   → circular progress indicator             WOW:7
+
+DECISION: Default chart library for any dashboard. Replaces raw Recharts setup.
+
+---
+
+## Animata (Micro-interactions & WOW Effects)
+Copy from: https://animata.design
+Requires: Tailwind CSS, framer-motion
+
+CURSOR / ATMOSPHERE:
+  SplashCursor     → fluid simulation cursor trail           WOW:10
+  LiquidChrome     → liquid mercury animation                WOW:10
+  MetaBalls        → blob merging metaballs                  WOW:9
+  FollowCursor     → element follows cursor                  WOW:9
+
+TEXT:
+  NumberFlow       → smooth morphing number transitions      WOW:9
+  RotatingText     → 3D rotating word transitions            WOW:8
+  WavyText         → characters wave on mount                WOW:8
+  FadeInText       → sequential character fade               WOW:7
+
+DECISION: Use for the ONE delight moment per page that nobody expects.
+
+---
+
+## Motion Primitives (Polished Framer Transitions)
+Copy from: https://motion-primitives.com
+Requires: framer-motion, Tailwind CSS
+
+INTERACTIONS:
+  MorphingDialog   → dialog morphs from its trigger element  WOW:10
+  Cursor           → custom cursor with magnetic pull        WOW:9
+  Magnetic         → magnetic pull effect on any element     WOW:9
+  Tilt             → 3D tilt with spring physics             WOW:8
+  InfiniteSlider   → smooth infinite carousel                WOW:8
+
+TEXT:
+  TextEffect       → character-by-character physics reveals  WOW:9
+  TextShimmer      → shimmer sweep on text                   WOW:8
+  AnimatedNumber   → smooth morphing between numbers         WOW:9
+  GlitchText       → glitch/corruption text effect           WOW:8
+
+DECISION: When Framer Motion alone feels too raw but Aceternity is too heavy.
+
+---
+
+## Cult UI (Unique High-Impact Components)
+Copy from: https://www.cult-ui.com
+Requires: framer-motion, Tailwind CSS
+
+SPECIAL:
+  DirectionAwareHover → card reveals image from cursor direction  WOW:9
+  DynamicIsland       → Apple Dynamic Island component            WOW:10
+  Carousel3D          → 3D perspective carousel                   WOW:9
+  FamilyButton        → spring-expand button group                WOW:9
+  ExpandableCard      → card expands to full content              WOW:8
+  DialogStack         → stacked dialogs with depth                WOW:9
+
+DECISION: Use for the single most interactive card on the page. One per design.
+
+---
+
+## Eldora UI (Landing Page Section Blocks)
+Copy from: https://www.eldoraui.site
+Requires: framer-motion, Tailwind CSS
+
+SECTIONS:
+  HeroGeometric    → rotating geometric shapes hero           WOW:9
+  TestimonialsMarquee → two-row infinite testimonial strip    WOW:8
+  FeaturesBento    → bento grid features section              WOW:8
+  PricingCards     → animated pricing with hover effects      WOW:8
+  LogoCloud        → animated logo grid                       WOW:7
+  TimelineScroll   → scroll-triggered timeline                WOW:8
+
+DECISION: Use when you need a battle-tested complete section block.
+
+---
+
+## Library Decision Matrix (Updated March 2026)
+
+| Need | Best Library | Runner-Up |
+|------|-------------|-----------|
+| Dashboard charts | Tremor | Recharts (shadcn chart wrapper) |
+| KPI metrics | Tremor Metric | Magic UI NumberTicker |
+| Cursor delight | Animata SplashCursor | Motion Primitives Cursor |
+| Number morphing | Animata NumberFlow | Motion Primitives AnimatedNumber |
+| Dialog wow | Motion Primitives MorphingDialog | Cult UI DialogStack |
+| Card wow interaction | Cult UI DirectionAwareHover | React Bits SpotlightCard |
+| Dynamic Island | Cult UI DynamicIsland | custom |
+| Complete section | Eldora UI | MVPBlocks |
+| Enterprise forms | Kibo UI | Origin UI |
+| Advanced inputs | Origin UI | shadcn/ui |
+
 ## Critical Anti-Patterns
 
   Aurora on white bg       → invisible, dark-only component

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -117,20 +117,10 @@ export default function BootScreen({
         playModemSound(ctx);
         setTimeout(() => ctx.close(), 2000);
       } else {
-        [261.63, 329.63, 392].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.06 + i * 0.18);
-          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5 + i * 0.18);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + i * 0.18);
-          osc.stop(ctx.currentTime + 0.6 + i * 0.18);
-        });
-        setTimeout(() => ctx.close(), 1500);
+        const audio = new Audio("https://axsmyeghciyf6aru.public.blob.vercel-storage.com/audio/Zeezu%20Dawn%20Chime.mp3");
+        audio.volume = 0.5;
+        audio.play().catch(() => { /* Autoplay blocked */ });
+        ctx.close(); // Not needed for this branch anymore
       }
     } catch { /* AudioContext blocked — silently ignore */ }
   }, [isFirstEver]);
@@ -163,7 +153,7 @@ export default function BootScreen({
       if (elapsed < TOTAL) {
         rafId = requestAnimationFrame(tick);
       } else {
-        setTimeout(finish, 200);
+        setTimeout(finish, 700); // Increased from 200 to 700 for readability pause
       }
     };
 

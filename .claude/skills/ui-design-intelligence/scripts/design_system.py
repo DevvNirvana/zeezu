@@ -9,7 +9,12 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent))
-from core import resolve_product, search_ux_laws, get_pattern, select_components, UX_LAWS, LIBRARY_CATALOG
+from core import resolve_product, search_ux_laws, get_pattern, select_components, UX_LAWS, LIBRARY_CATALOG, get_palette_science
+try:
+    from color_science import contrast_ratio, wcag_grade, full_color_audit, color_temperature, generate_harmony
+    HAS_COLOR_SCIENCE = True
+except ImportError:
+    HAS_COLOR_SCIENCE = False
 
 def generate(product, style, dark_mode, persist, page_type="landing"):
     resolved = resolve_product(product, style)
@@ -83,6 +88,32 @@ def generate(product, style, dark_mode, persist, page_type="landing"):
         lines.append(box(cmd))
     lines.append("")
 
+
+    # ── Color science section ────────────────────────────────────────
+    if HAS_COLOR_SCIENCE:
+        ps = get_palette_science(palette['name'])
+        lines += [div("COLOR SCIENCE")]
+        lines.append(box(f"Palette:    {palette['name']}"))
+        lines.append(box(f"Industry:   {ps.get('industry','general')}"))
+        lines.append(box(f"Emotion:    {ps.get('emotion','modern')}"))
+        lines.append(box(f"Harmony:    {ps.get('harmony','analogous')}"))
+        lines.append(box(f"WCAG note:  {ps.get('wcag_note','verify contrast')}"))
+        lines.append(box(""))
+        lines.append(box("Contrast ratios (WCAG 2.1):"))
+        bg_color = palette['bg'] if dark_mode else "#FFFFFF"
+        for name, fg in [("text on bg",    palette['text']),
+                          ("primary on bg", palette['primary']),
+                          ("muted on bg",   palette['muted'])]:
+            try:
+                ratio = contrast_ratio(fg, bg_color)
+                _, _, grade = wcag_grade(ratio)
+                lines.append(box(f"  {name+':':<18} {ratio}:1  {grade}"))
+            except Exception:
+                pass
+        lines.append(box(""))
+        lines.append(box(f"Temperature: {color_temperature(palette['primary'])}"))
+        lines.append("")
+
     lines += [div("CSS VARIABLES  (→ globals.css / app/globals.css)")]
     lines.append(box(":root {"))
     lines += [box(f"  --color-primary:   {palette['primary']};"),
@@ -119,6 +150,151 @@ def generate(product, style, dark_mode, persist, page_type="landing"):
         for law in ux_laws:
             lines += [box(f"[{law['law']}]"), box(f"  → {law['apply']}")]
         lines.append("")
+
+
+    # ── INSPIRATION BENCHMARKS (from inspiration.md) ─────────────────────
+    # Map product/style keywords to real reference sites
+    q_low = f"{product} {style}".lower()
+    inspo_map = [
+        (["saas","b2b","tool","productivity","developer"],
+         ["linear.app — type scale, spacing discipline",
+          "vercel.com — dark/light toggle, motion quality",
+          "raycast.com — dark premium, cursor spotlight"]),
+        (["ai","ml","llm","artificial"],
+         ["cursor.sh — dark premium, editor screenshot hero",
+          "runway.ml — demo-first hero, dark sophistication",
+          "perplexity.ai — functional minimal, restrained"]),
+        (["ecommerce","shop","product","store"],
+         ["allbirds.com — product photography standard",
+          "ugmonk.com — product page + typography execution",
+          "glossier.com — editorial grid, single-product focus"]),
+        (["portfolio","agency","creative","studio"],
+         ["obys.agency — fluid layout, typography-forward",
+          "cuberto.com — cursor effects, bold motion",
+          "fantasy.co — product design, restraint benchmark"]),
+        (["dashboard","analytics","admin","data"],
+         ["nicelydone.club — data-dense layouts, table design",
+          "cal.com — clean open source dashboard quality",
+          "clerk.dev — auth UI + clean dark dashboard"]),
+        (["social","community","platform","network"],
+         ["layers.to — new-gen Dribbble, polished work",
+          "dribbble.com/search/social platform UI",
+          "mobbin.com — social app UI patterns"]),
+    ]
+    inspo_refs = []
+    for keywords, refs in inspo_map:
+        if any(k in q_low for k in keywords):
+            inspo_refs = refs
+            break
+    if not inspo_refs:
+        inspo_refs = ["lapa.ninja — filter by product type, study 3 examples",
+                      "godly.website — motion reference for the style",
+                      "awwwards.com/websites — aspirational quality bar"]
+    lines += [div("INSPIRATION BENCHMARKS")]
+    lines.append(box("Study these before or during design (15min research protocol):"))
+    for ref in inspo_refs:
+        lines.append(box(f"  → {ref}"))
+    lines += [box(""),
+              box("Awwwards formula — what winning sites share:"),
+              box("  1. One exceptional typographic moment (H1: 56-96px, committed scale)"),
+              box("  2. One unexpected interactive element (cursor, scroll, 3D, trail)"),
+              box("  3. Extreme whitespace confidence (96-128px section padding minimum)"),
+              box("  4. Complete color discipline (2-3 colors, accent on ONE element only)"),
+              box("  5. Motion that communicates state (not decoration)"),
+              box(""), ""]
+
+    # ── MOTION DURATION TABLE (from motion-principles.md) ─────────────────
+    lines += [div("MOTION DURATION TABLE")]
+    motion_rows = [
+        ("hover bg/color",     "150ms", "ease-out"),
+        ("tooltip show/hide",  "150ms", "ease-out"),
+        ("dropdown open",      "200ms", "ease-out"),
+        ("badge/state update", "250ms", "ease-out"),
+        ("modal open",         "300ms", "spring stiffness:300 damping:30"),
+        ("drawer slide",       "350ms", "cubic-bezier(0.16,1,0.3,1)"),
+        ("page section enter", "400ms", "cubic-bezier(0.16,1,0.3,1)"),
+        ("hero text reveal",   "500-600ms", "cubic-bezier(0.16,1,0.3,1)"),
+        ("exit animations",    "200ms", "cubic-bezier(0.5,0,1,1)"),
+        ("continuous loops",   "700ms+", "linear — ONLY for spinners/shimmer"),
+    ]
+    for ctx, dur, ease in motion_rows:
+        lines.append(box(f"  {ctx:<24} {dur:<12} {ease}"))
+    lines += [box(""),
+              box("Entrance easing: cubic-bezier(0.16, 1, 0.3, 1)  ← fast start, soft settle"),
+              box("Exit easing:     cubic-bezier(0.5, 0, 1, 1)     ← accelerates out"),
+              box("Spring:          type:'spring' stiffness:300 damping:30"),
+              box("RULE: NEVER linear for discrete UI. Always ease-out minimum."),
+              box("RULE: useReducedMotion() check on ALL Framer Motion components."),
+              box(""), ""]
+
+    # ── SENIOR EYE TEST (from inspiration.md) ─────────────────────────────
+    lines += [div("SENIOR DESIGNER EYE TEST")]
+    eye_tests = [
+        ("Scale test",       "H1 and body feel dramatically different — 3:1 minimum ratio"),
+        ("Whitespace test",  "Every section breathes. If unsure, double the padding."),
+        ("Hierarchy test",   "Cover all text — visual weight alone shows what matters most"),
+        ("Color discipline", "CTA color appears ONLY on the CTA. Nowhere else on page."),
+        ("Motion purpose",   "Remove any animation — does UX suffer? If no, cut it."),
+        ("Mobile test",      "Hero text wraps gracefully at 375px. Tap targets ≥ 44px."),
+        ("B&W test",         "Print in grayscale — hierarchy still clear via layout?"),
+        ("Von Restorff",     "Is there exactly ONE thing that breaks the visual pattern?"),
+    ]
+    for test, condition in eye_tests:
+        lines.append(box(f"  [ ] {test:<20} {condition}"))
+    lines.append("")
+
+    # ── CHART GUIDANCE (from charts-icons-reference.md) ──────────────────
+    if any(k in q_low for k in ["dashboard","analytics","data","chart","metric","kpi","report"]):
+        lines += [div("CHART TYPE GUIDANCE")]
+        chart_rows = [
+            ("Trend over time",     "Line / Area",   "Recharts LineChart"),
+            ("Compare categories",  "Bar (horiz)",   "Recharts BarChart"),
+            ("Part-to-whole ≤6",   "Donut",         "Recharts PieChart inner=60"),
+            ("Part-to-whole >6",   "Stacked Bar",   "Recharts BarChart stacked"),
+            ("KPI vs target",       "Gauge",         "ApexCharts / D3"),
+            ("Correlation",         "Scatter",       "Recharts ScatterChart"),
+            ("Funnel/conversion",   "Funnel",        "Recharts FunnelChart"),
+            ("Realtime/streaming",  "Canvas area",   "CanvasJS (not SVG at 60fps)"),
+        ]
+        for data, chart, lib in chart_rows:
+            lines.append(box(f"  {data:<24} → {chart:<16} {lib}"))
+        lines += [box(""),
+                  box("Chart colors: primary=#0080FF success=#10B981 warning=#F59E0B danger=#EF4444"),
+                  box("Always: <figure><Chart/><figcaption>Description</figcaption></figure>"),
+                  box("A11y: role='img' aria-label='Chart name: data summary' on wrapper"),
+                  box(""), ""]
+
+    # ── GESTALT QUICK AUDIT (from ux-principles.md) ───────────────────────
+    lines += [div("GESTALT CHECKS FOR THIS LAYOUT")]
+    gestalt_checks = [
+        ("Proximity",     "Label 4-6px above input. Related items 4-8px. Sections 64-96px."),
+        ("Similarity",    f"CTA color ({palette['cta']}) appears on ONLY ONE element."),
+        ("Continuity",    "Feature sections alternate → Z-path eye follows naturally."),
+        ("Figure/Ground", "Modal/dropdown elevated 3+ levels above page bg."),
+        ("Common Fate",   "Staggered items entering together = they belong together."),
+        ("Closure",       "Skeleton loaders match the exact shape of content they replace."),
+        ("Symmetry",      "Centered layout = stable/authoritative. Off-center = dynamic."),
+    ]
+    for principle, check in gestalt_checks:
+        lines.append(box(f"  [ ] {principle:<16} {check}"))
+    lines.append("")
+
+    # ── REACT BITS SELECTION GUIDE (from react-bits-catalog.md) ──────────
+    rb_sels = components["selections"]
+    rb_used = [v["component"] for v in rb_sels.values() if v["lib"] == "react-bits"]
+    if rb_used:
+        lines += [div("REACT BITS INSTALL (TS+TW variant for TypeScript projects)")]
+        lines.append(box("Use TS+TW variant for Next.js + TypeScript:"))
+        for comp in rb_used:
+            lines.append(box(f'  npx shadcn@latest add "https://reactbits.dev/r/{comp}-TS-TW"'))
+        lines += [box(""),
+                  box("React Bits rules (from react-bits-catalog.md):"),
+                  box("  • One statement piece per SECTION — FadeContent for everything else"),
+                  box("  • Aurora/Particles/Silk: hero backgrounds only, never repeated"),
+                  box("  • Counter on ALL numeric social proof — never static numbers"),
+                  box("  • SplitText on ONE headline per page — the most important one"),
+                  box("  • Always wrap components in FadeContent for scroll entrance"),
+                  box(""), ""]
 
     lines += [div("TAILWIND CONFIG EXTENSIONS")]
     lines.append(box("// tailwind.config.ts → theme.extend:"))

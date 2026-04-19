@@ -283,6 +283,18 @@ export default function ZeeWallFeed() {
   // Helper: Avatar URL
   const getAvatar = (zid: string) => `https://api.dicebear.com/7.x/avataaars/svg?seed=${zid}`;
 
+  // Helper: Extract YouTube ID from any YouTube URL in text
+  const getYouTubeId = (text: string): string | null => {
+    const m = text.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  };
+
+  // Helper: Extract full Instagram URL (reel or post) from text
+  const getInstagramUrl = (text: string): string | null => {
+    const m = text.match(/(https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p)\/[A-Za-z0-9_-]+\/?)/);
+    return m ? m[1] : null;
+  };
+
   return (
     <div className="flex flex-col h-full bg-black/90 text-white font-sans">
 
@@ -398,6 +410,46 @@ export default function ZeeWallFeed() {
               <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap pl-13">
                 {post.content}
               </p>
+
+              {/* Media Embed — YouTube or Instagram */}
+              {(() => {
+                const ytId = getYouTubeId(post.content);
+                if (ytId) return (
+                  <div className="mt-3 rounded-xl overflow-hidden aspect-video border border-gray-800">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${ytId}`}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+                const igUrl = getInstagramUrl(post.content);
+                if (igUrl) return (
+                  <a
+                    href={igUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-900/60 hover:border-pink-500/50 hover:bg-gray-900 transition-all group/ig"
+                  >
+                    {/* Instagram gradient icon */}
+                    <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)" }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white group-hover/ig:text-pink-400 transition-colors">Instagram Reel</p>
+                      <p className="text-[11px] text-gray-500 truncate">{igUrl.replace(/^https?:\/\/(www\.)?/, '')}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-600 group-hover/ig:text-pink-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                );
+                return null;
+              })()}
 
               {/* Actions Bar */}
               <div className="mt-4 flex items-center gap-6 border-t border-gray-800/50 pt-3">

@@ -19,7 +19,7 @@ import {
 } from "@/lib/supabase/queries";
 import {
   Zap, MessageCircle, Flame, Shield, Snowflake,
-  Play, Pause, Share2, Clock, Camera,
+  Share2, Clock, Camera,
   Edit3, Image as ImageIcon, Pencil, Award, Settings,
   UserPlus, UserCheck, Loader2, Check, X,
   Globe, Github, Instagram, Link as LinkIcon, Users,
@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import NavBar from "@/components/NavBar";
+import AnthemWidget from "@/components/AnthemWidget";
 import GlobalFeed from "@/components/GlobalFeed";
 import ShareSheet from "@/components/ShareSheet";
 
@@ -41,7 +42,8 @@ import ShareSheet from "@/components/ShareSheet";
 
 type ProfileUser = {
   id: string; zid: string; display_name: string; mdx_profile: string | null;
-  theme_track_url: string | null; influence_score: number;
+  theme_track_url: string | null; theme_track_title: string | null; theme_track_artist: string | null;
+  influence_score: number;
   status_message: string | null; status_updated_at: string | null;
   online_status: string | null;
   avatar_url: string | null; social_links: Record<string, string> | null;
@@ -1083,6 +1085,11 @@ export default function PublicProfile() {
   const [scrolled, setScrolled] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [activeWallTab, setActiveWallTab] = useState<"posts" | "zlogs">("posts");
+  const [userSounds, setUserSounds] = useState<{
+    id: string; track_title: string | null; track_artist: string | null; track_url: string;
+    discovered_from: { display_name: string; zid: string } | null;
+  }[]>([]);
+  const [userSoundsKey, setUserSoundsKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1248,6 +1255,21 @@ export default function PublicProfile() {
     getUserZlogs(profileUser.id).then(data => { setProfileZlogs(data); setZlogsLoading(false); });
   }, [activeTab, profileUser, profileZlogs.length]);
 
+  // ── My Sounds — reload when userSoundsKey bumps (e.g. after steal) ──
+  useEffect(() => {
+    if (!profileUser) return;
+    supabase
+      .from("user_sounds")
+      .select("id, track_title, track_artist, track_url, discovered_from:users!discovered_from_user_id(display_name, zid)")
+      .eq("user_id", profileUser.id)
+      .order("added_at", { ascending: false })
+      .limit(30)
+      .then(({ data, error }) => {
+        if (error) console.error("[My Sounds] query failed:", error.message);
+        if (data) setUserSounds(data as any);
+      });
+  }, [profileUser?.id, userSoundsKey]);
+
   // ── Audio — UNCHANGED ──────────────────────────────────────────
   useEffect(() => {
     if (!profileUser?.theme_track_url) return;
@@ -1291,6 +1313,11 @@ export default function PublicProfile() {
     await supabase.from("messages").insert({ sender_id: viewerId, receiver_id: profileUser.id, content: "⚡", is_buzz: true });
     setBuzzCount(prev => prev + 1);
   };
+  const handleRemoveSound = useCallback(async (soundId: string) => {
+    if (!isOwner) return;
+    setUserSounds(prev => prev.filter(s => s.id !== soundId));
+    await supabase.from("user_sounds").delete().eq("id", soundId);
+  }, [isOwner]);
   const handleC8Select = async (friendId: string) => {
     if (c8EditSlot === null || !profileUser) return;
     await addToCoreEight(friendId, c8EditSlot);
@@ -1973,25 +2000,21 @@ export default function PublicProfile() {
                     </PortalCard>
                   )}
                   {/* Profile Anthem */}
-                  {profileUser?.theme_track_url && (() => {
-                    const ytId = getYouTubeId(profileUser.theme_track_url);
-                    const scEmbedUrl = !ytId ? getSoundCloudEmbedUrl(profileUser.theme_track_url) : null;
-                    const spEmbedUrl = !ytId && !scEmbedUrl ? getSpotifyEmbedUrl(profileUser.theme_track_url) : null;
-                    const trackName = decodeURIComponent(profileUser.theme_track_url.split("/").pop() ?? "").replace(/\.(mp3|wav|ogg|m4a)$/i, "").replace(/[-_]/g, " ") || "Profile Anthem";
-                    return (
-                      <PortalCard accent={`${primary}22`} className="zee-entry" style={{ overflow: "hidden" }}>
-                        <div style={{ height: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 6px 0 8px", background: `linear-gradient(90deg,${primary}44,rgba(255,45,135,.2),rgba(11,75,143,.3))`, borderBottom: "1px solid rgba(0,0,0,.4)" }}>
-                          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,.85)", letterSpacing: "3px" }}>PROFILE ANTHEM</span>
-                          <Music size={10} style={{ color: `${primary}80` }} />
-                        </div>
-                        {ytId ? <div style={{ margin: "4px 4px 0", borderRadius: "3px", overflow: "hidden", border: `1px solid ${primary}22` }}><iframe src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`} style={{ width: "100%", height: "120px", border: "none", display: "block" }} allow="autoplay; encrypted-media" allowFullScreen /></div>
-                          : scEmbedUrl ? <iframe width="100%" height="100" scrolling="no" frameBorder={0} allow="autoplay" src={scEmbedUrl} style={{ display: "block", border: "none", margin: "4px 4px 0" }} />
-                            : spEmbedUrl ? <iframe src={spEmbedUrl} width="100%" height="152" frameBorder={0} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style={{ display: "block", border: "none", margin: "4px 4px 0" }} loading="lazy" />
-                              : <div style={{ padding: "8px 10px", fontFamily: "'VT323',monospace", fontSize: "11px", color: primary, letterSpacing: "1.5px" }}>{trackName}</div>
-                        }
-                      </PortalCard>
-                    );
-                  })()}
+                  {profileUser?.theme_track_url && (
+                    <div className="zee-entry">
+                      <AnthemWidget
+                        profileUserId={profileUser.id}
+                        profileDisplayName={profileUser.display_name}
+                        trackUrl={profileUser.theme_track_url}
+                        trackTitle={profileUser.theme_track_title}
+                        trackArtist={profileUser.theme_track_artist}
+                        viewerId={viewerId}
+                        isOwner={isOwner}
+                        primary={primary}
+                        onSteal={() => setUserSoundsKey(k => k + 1)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2054,29 +2077,72 @@ export default function PublicProfile() {
 
               {/* ════ MEDIA STATION ════ */}
               {activeStation === "media" && (
-                <PortalCard accent={`${primary}25`}>
-                  <ModuleHeader icon={<ImageIcon size={11} />} title="PHOTOS" accent={primary} right={<span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}60`, letterSpacing: "1px" }}>{photos.length}/5</span>} />
-                  <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {isOwner && (
-                      <>
-                        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
-                        <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto || photos.length >= 5} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "12px", borderRadius: "10px", background: "transparent", border: `1px dashed ${primary}45`, color: primary, fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: (uploadingPhoto || photos.length >= 5) ? "not-allowed" : "pointer", opacity: (uploadingPhoto || photos.length >= 5) ? .4 : 1 }}>
-                          <Camera size={14} /> {uploadingPhoto ? "UPLOADING..." : photos.length >= 5 ? "LIMIT REACHED (5/5)" : "UPLOAD PHOTO"}
-                        </button>
-                      </>
-                    )}
-                    {photos.length === 0 ? <EmptyTerminal label="NO PHOTOS YET" primary={primary} /> : (
-                      <div className="photos-grid">
-                        {photos.map(url => (
-                          <div key={url} style={{ aspectRatio: "1", borderRadius: "8px", overflow: "hidden", border: `1px solid ${primary}20`, position: "relative" }}>
-                            <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                            <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.08) 3px,rgba(0,0,0,.08) 4px)", pointerEvents: "none" }} />
-                          </div>
-                        ))}
+                <>
+                  <PortalCard accent={`${primary}25`}>
+                    <ModuleHeader icon={<ImageIcon size={11} />} title="PHOTOS" accent={primary} right={<span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}60`, letterSpacing: "1px" }}>{photos.length}/5</span>} />
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {isOwner && (
+                        <>
+                          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
+                          <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto || photos.length >= 5} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "12px", borderRadius: "10px", background: "transparent", border: `1px dashed ${primary}45`, color: primary, fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "1px", cursor: (uploadingPhoto || photos.length >= 5) ? "not-allowed" : "pointer", opacity: (uploadingPhoto || photos.length >= 5) ? .4 : 1 }}>
+                            <Camera size={14} /> {uploadingPhoto ? "UPLOADING..." : photos.length >= 5 ? "LIMIT REACHED (5/5)" : "UPLOAD PHOTO"}
+                          </button>
+                        </>
+                      )}
+                      {photos.length === 0 ? <EmptyTerminal label="NO PHOTOS YET" primary={primary} /> : (
+                        <div className="photos-grid">
+                          {photos.map(url => (
+                            <div key={url} style={{ aspectRatio: "1", borderRadius: "8px", overflow: "hidden", border: `1px solid ${primary}20`, position: "relative" }}>
+                              <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                              <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.08) 3px,rgba(0,0,0,.08) 4px)", pointerEvents: "none" }} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </PortalCard>
+
+                  {/* ── MY SOUNDS (mobile) ── */}
+                  {(userSounds.length > 0 || isOwner) && (
+                    <PortalCard accent={`${primary}18`}>
+                      <ModuleHeader
+                        icon={<Music size={11} />}
+                        title="MY SOUNDS"
+                        accent={primary}
+                        right={<span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}55`, letterSpacing: "1px" }}>{userSounds.length} TRACK{userSounds.length !== 1 ? "S" : ""}</span>}
+                      />
+                      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                        {userSounds.length === 0 ? (
+                          <EmptyTerminal label="NO SOUNDS COLLECTED YET" primary={primary} />
+                        ) : (
+                          userSounds.map(s => (
+                            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", background: "rgba(255,255,255,.025)", border: `1px solid ${primary}18`, borderRadius: "7px" }}>
+                              <div style={{ flexShrink: 0, width: "22px", height: "22px", borderRadius: "5px", background: `${primary}18`, border: `1px solid ${primary}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Music size={10} color={primary} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,255,255,.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {s.track_title || decodeURIComponent(s.track_url.split("/").pop() ?? "").replace(/\.(mp3|wav|ogg|m4a)$/i, "").replace(/[-_]/g, " ") || "Unknown"}
+                                </div>
+                                {s.track_artist && (
+                                  <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.3)", letterSpacing: "1px" }}>{s.track_artist.toUpperCase()}</div>
+                                )}
+                                {s.discovered_from && (
+                                  <Link href={`/u/${s.discovered_from.zid}`} style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: `${primary}80`, letterSpacing: "1px", textDecoration: "none" }}>
+                                    VIA @{s.discovered_from.zid}
+                                  </Link>
+                                )}
+                              </div>
+                              {isOwner && (
+                                <button onClick={() => handleRemoveSound(s.id)} style={{ flexShrink: 0, width: "18px", height: "18px", borderRadius: "4px", background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", lineHeight: 1 }} title="Remove">×</button>
+                              )}
+                            </div>
+                          ))
+                        )}
                       </div>
-                    )}
-                  </div>
-                </PortalCard>
+                    </PortalCard>
+                  )}
+                </>
               )}
             </>
           )}
@@ -2189,211 +2255,20 @@ export default function PublicProfile() {
               {/* ── PERSONAL INFO (moved from middle column) ── */}
               {personalInfoSection}
 
-              {profileUser?.theme_track_url && (() => {
-                const ytId = getYouTubeId(profileUser.theme_track_url);
-                const scEmbedUrl = !ytId ? getSoundCloudEmbedUrl(profileUser.theme_track_url) : null;
-                const spEmbedUrl = !ytId && !scEmbedUrl ? getSpotifyEmbedUrl(profileUser.theme_track_url) : null;
-                const trackName = decodeURIComponent(profileUser.theme_track_url.split("/").pop() ?? "")
-                  .replace(/\.(mp3|wav|ogg|m4a)$/i, "").replace(/[-_]/g, " ") || "Profile Anthem";
-
-                return (
-                  <PortalCard accent={`${primary}22`} className="zee-entry" style={{ overflow: "hidden" }}>
-                    {/* ZeeAmp title bar */}
-                    <div style={{
-                      height: "20px", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0 6px 0 8px",
-                      background: `linear-gradient(90deg,${primary}44,rgba(255,45,135,.2),rgba(11,75,143,.3))`,
-                      borderBottom: "1px solid rgba(0,0,0,.4)",
-                    }}>
-                      <span style={{
-                        fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 700,
-                        color: "rgba(255,255,255,.85)", letterSpacing: "3px"
-                      }}>PROFILE ANTHEM</span>
-                      <Music size={10} style={{ color: `${primary}80` }} />
-                    </div>
-
-                    {ytId ? (
-                      /* ── YouTube path ── */
-                      <div>
-                        <div style={{
-                          margin: "4px 4px 0", borderRadius: "3px", overflow: "hidden",
-                          border: `1px solid ${primary}22`,
-                          background: "#000a14",
-                        }}>
-                          {/* LCD header */}
-                          <div style={{
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "4px 7px 3px", borderBottom: `1px solid ${primary}15`,
-                          }}>
-                            <div style={{ overflow: "hidden", flex: 1 }}>
-                              <div className="anthem-marquee" style={{
-                                whiteSpace: "nowrap",
-                                fontFamily: "'VT323',monospace", fontSize: "12px", color: primary,
-                                textShadow: `0 0 6px ${primary}99`, letterSpacing: "2px",
-                                animation: "za-scroll 12s linear infinite",
-                              }}>
-                                {`YOUTUBE  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  `}
-                                {`YOUTUBE  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  `}
-                              </div>
-                            </div>
-                            <span style={{
-                              fontFamily: "'VT323',monospace", fontSize: "8px",
-                              color: `${primary}66`, letterSpacing: "1px", marginLeft: "8px", flexShrink: 0
-                            }}>YT</span>
-                          </div>
-                          <iframe
-                            src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
-                            style={{ width: "100%", height: "120px", border: "none", display: "block" }}
-                            allow="autoplay; encrypted-media"
-                            allowFullScreen
-                          />
-                        </div>
-                        <div style={{
-                          padding: "4px 8px 8px", fontFamily: "'VT323',monospace", fontSize: "9px",
-                          color: "rgba(255,255,255,.2)", letterSpacing: "1.5px", textAlign: "center"
-                        }}>
-                          CLICK PLAY ABOVE TO START
-                        </div>
-                      </div>
-                    ) : scEmbedUrl ? (
-                      /* ── SoundCloud path ── */
-                      <div style={{ padding: "4px" }}>
-                        <div style={{ background: "#000a14", border: `1px solid ${primary}22`, borderRadius: "3px", overflow: "hidden" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 7px 3px", borderBottom: `1px solid ${primary}15` }}>
-                            <div style={{ overflow: "hidden", flex: 1 }}>
-                              <div style={{ whiteSpace: "nowrap", fontFamily: "'VT323',monospace", fontSize: "12px", color: primary, textShadow: `0 0 6px ${primary}99`, letterSpacing: "2px", animation: "za-scroll 12s linear infinite" }}>
-                                {`SOUNDCLOUD  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  SOUNDCLOUD  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  `}
-                              </div>
-                            </div>
-                            <span style={{ fontFamily: "'VT323',monospace", fontSize: "8px", color: `${primary}66`, letterSpacing: "1px", marginLeft: "8px", flexShrink: 0 }}>SC</span>
-                          </div>
-                          <iframe
-                            width="100%" height="100" scrolling="no" frameBorder={0} allow="autoplay"
-                            src={scEmbedUrl}
-                            style={{ display: "block", border: "none" }}
-                          />
-                        </div>
-                      </div>
-                    ) : spEmbedUrl ? (
-                      /* ── Spotify path ── */
-                      <div style={{ padding: "4px" }}>
-                        <div style={{ background: "#000a14", border: `1px solid ${primary}22`, borderRadius: "3px", overflow: "hidden" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 7px 3px", borderBottom: `1px solid ${primary}15` }}>
-                            <div style={{ overflow: "hidden", flex: 1 }}>
-                              <div style={{ whiteSpace: "nowrap", fontFamily: "'VT323',monospace", fontSize: "12px", color: "#1DB954", textShadow: "0 0 6px #1DB95499", letterSpacing: "2px", animation: "za-scroll 12s linear infinite" }}>
-                                {`SPOTIFY  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  SPOTIFY  •  ${profileUser.display_name?.toUpperCase()}  •  PROFILE ANTHEM  •  `}
-                              </div>
-                            </div>
-                            <span style={{ fontFamily: "'VT323',monospace", fontSize: "8px", color: "#1DB95466", letterSpacing: "1px", marginLeft: "8px", flexShrink: 0 }}>SP</span>
-                          </div>
-                          <iframe
-                            src={spEmbedUrl}
-                            width="100%" height="152" frameBorder={0} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                            style={{ display: "block", border: "none" }}
-                            loading="lazy"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      /* ── Direct audio path — ZeeAmp LCD player ── */
-                      <div>
-                        {/* LCD display */}
-                        <div style={{
-                          position: "relative", margin: "4px 4px 0", borderRadius: "3px",
-                          background: "#000a14", border: `1px solid ${primary}22`,
-                          padding: "5px 7px 4px", overflow: "hidden",
-                        }}>
-                          {/* CRT scanlines overlay */}
-                          <div aria-hidden style={{
-                            position: "absolute", inset: 0, pointerEvents: "none",
-                            backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.18) 2px,rgba(0,0,0,.18) 4px)",
-                            borderRadius: "3px"
-                          }} />
-                          {/* Row 1: play indicator + EQ bars */}
-                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "6px" }}>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                              <span style={{
-                                fontFamily: "'VT323',monospace", fontSize: "10px",
-                                color: musicPlaying ? primary : "rgba(255,255,255,.25)",
-                                textShadow: musicPlaying ? `0 0 6px ${primary}` : "none"
-                              }}>
-                                {musicPlaying ? "▶" : "⏸"}
-                              </span>
-                              <span style={{
-                                fontFamily: "'VT323',monospace", fontSize: "22px", lineHeight: 1,
-                                color: primary, textShadow: `0 0 8px ${primary}cc`, letterSpacing: "2px"
-                              }}>
-                                ANTHEM
-                              </span>
-                            </div>
-                            {/* 10-bar EQ spectrum */}
-                            <div style={{ display: "flex", alignItems: "flex-end", gap: "1.5px", height: "16px", paddingBottom: "1px" }}>
-                              {[4, 9, 6, 11, 5, 8, 4, 7, 10, 6].map((h, i) => (
-                                <div key={i} className={musicPlaying ? `za-eq-${i + 1}` : ""}
-                                  style={{
-                                    width: "3px", height: musicPlaying ? undefined : `${h}px`,
-                                    minHeight: "3px", backgroundColor: primary,
-                                    boxShadow: musicPlaying ? `0 0 4px ${primary}99` : "none",
-                                    borderRadius: "1px", opacity: musicPlaying ? 1 : 0.22, transition: "opacity .3s"
-                                  }} />
-                              ))}
-                            </div>
-                          </div>
-                          {/* Row 2: scrolling track title */}
-                          <div style={{
-                            marginTop: "4px", overflow: "hidden", height: "14px",
-                            background: `${primary}0a`, borderRadius: "2px", border: `1px solid ${primary}18`
-                          }}>
-                            <span className="anthem-marquee" style={{
-                              display: "block",
-                              fontFamily: "'VT323',monospace", fontSize: "12px", color: primary,
-                              textShadow: `0 0 5px ${primary}99`, letterSpacing: "2px", lineHeight: "14px",
-                              paddingLeft: "5px", whiteSpace: "nowrap",
-                              animation: "za-scroll 10s linear infinite"
-                            }}>
-                              {`${trackName}  •  PROFILE ANTHEM  •  `}
-                              {`${trackName}  •  PROFILE ANTHEM  •  `}
-                            </span>
-                          </div>
-                        </div>
-                        {/* Transport row */}
-                        <div style={{ display: "flex", alignItems: "center", padding: "5px 6px 6px", gap: "4px" }}>
-                          {/* Play/Pause bevel button */}
-                          <div style={{
-                            border: "1px solid rgba(255,255,255,.1)",
-                            boxShadow: "1px 1px 2px rgba(0,0,0,.5),-1px -1px 2px rgba(255,255,255,.04)"
-                          }}>
-                            <button onClick={toggleMusic} aria-label={musicPlaying ? "Pause profile anthem" : "Play profile anthem"} className="za-btn" style={{
-                              width: "34px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center",
-                              background: musicPlaying
-                                ? `linear-gradient(180deg,${primary}40,${primary}18)`
-                                : "linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.3))",
-                              border: "none", cursor: "pointer", color: musicPlaying ? primary : "rgba(255,255,255,.7)",
-                              boxShadow: musicPlaying ? `inset 0 0 8px ${primary}33` : undefined,
-                              transition: "all .15s", borderRadius: "1px",
-                            }}>
-                              {musicPlaying
-                                ? <Pause size={11} style={{ color: primary }} />
-                                : <Play size={11} style={{ color: primary }} />
-                              }
-                            </button>
-                          </div>
-                          <div style={{ flex: 1 }} />
-                          {/* STEREO badge */}
-                          <span style={{
-                            fontFamily: "'VT323',monospace", fontSize: "9px", color: primary,
-                            textShadow: `0 0 5px ${primary}99`, letterSpacing: "1px",
-                            background: `${primary}14`, border: `1px solid ${primary}33`,
-                            borderRadius: "2px", padding: "0 4px", lineHeight: "14px"
-                          }}>
-                            STEREO
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </PortalCard>
-                );
-              })()}
+              {profileUser?.theme_track_url && (
+                <div className="zee-entry">
+                  <AnthemWidget
+                    profileUserId={profileUser.id}
+                    profileDisplayName={profileUser.display_name}
+                    trackUrl={profileUser.theme_track_url}
+                    trackTitle={profileUser.theme_track_title}
+                    trackArtist={profileUser.theme_track_artist}
+                    viewerId={viewerId}
+                    isOwner={isOwner}
+                    primary={primary}
+                  />
+                </div>
+              )}
 
 
               {socialLinksSection}
@@ -2647,6 +2522,69 @@ export default function PublicProfile() {
               </div>
             </div>
           </PortalCard>
+
+          {/* ── MY SOUNDS ── */}
+          {(userSounds.length > 0 || isOwner) && (
+            <PortalCard accent={`${primary}18`} className="zee-entry">
+              <ModuleHeader
+                icon={<Music size={11} />}
+                title="MY SOUNDS"
+                accent={primary}
+                right={
+                  <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: `${primary}55`, letterSpacing: "1px" }}>
+                    {userSounds.length} TRACK{userSounds.length !== 1 ? "S" : ""}
+                  </span>
+                }
+              />
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                {userSounds.length === 0 ? (
+                  <EmptyTerminal label="NO SOUNDS COLLECTED YET" primary={primary} />
+                ) : (
+                  userSounds.map(s => (
+                    <div key={s.id} style={{
+                      display: "flex", alignItems: "center", gap: "8px",
+                      padding: "7px 9px",
+                      background: "rgba(255,255,255,.025)",
+                      border: `1px solid ${primary}18`,
+                      borderRadius: "7px",
+                      transition: "background .12s",
+                    }}>
+                      {/* note icon */}
+                      <div style={{ flexShrink: 0, width: "22px", height: "22px", borderRadius: "5px", background: `${primary}18`, border: `1px solid ${primary}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Music size={10} color={primary} />
+                      </div>
+                      {/* track info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,255,255,.85)", letterSpacing: "0.5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {s.track_title || decodeURIComponent(s.track_url.split("/").pop() ?? "").replace(/\.(mp3|wav|ogg|m4a)$/i, "").replace(/[-_]/g, " ") || "Unknown"}
+                        </div>
+                        {s.track_artist && (
+                          <div style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.3)", letterSpacing: "1px" }}>
+                            {s.track_artist.toUpperCase()}
+                          </div>
+                        )}
+                        {s.discovered_from && (
+                          <Link href={`/u/${s.discovered_from.zid}`} style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: `${primary}80`, letterSpacing: "1px", textDecoration: "none" }}>
+                            VIA @{s.discovered_from.zid}
+                          </Link>
+                        )}
+                      </div>
+                      {/* remove button (owner only) */}
+                      {isOwner && (
+                        <button
+                          onClick={() => handleRemoveSound(s.id)}
+                          style={{ flexShrink: 0, width: "18px", height: "18px", borderRadius: "4px", background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", lineHeight: 1, transition: "all .12s" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#FF2D8755"; (e.currentTarget as HTMLButtonElement).style.color = "#FF2D87"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,.1)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,.25)"; }}
+                          title="Remove"
+                        >×</button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </PortalCard>
+          )}
 
           {/* ── VIBES ── */}
           {privacySettings.show_vibes && (

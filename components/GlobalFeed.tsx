@@ -8,7 +8,7 @@ import {
     Zap, MessageSquare, Loader2, Send, Trash2, Globe, Users,
     Radio, Plus, Pin, XCircle, Palette, Share2,
     ArrowUp, ArrowDown, ChevronDown, ChevronUp, Hash, Reply, CornerDownRight,
-    Image as ImageIcon, BarChart3, Flame, Clock,
+    Image as ImageIcon, BarChart3, Flame, Clock, BookOpen, Star, Music,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import GifPicker from "@/components/GifPicker";
@@ -55,6 +55,20 @@ type CommentRaw = {
 };
 
 type FeedMode = "all" | "friends";
+
+type ActivityEvent = {
+    id: string;
+    event_type: "zap" | "comment" | "reply" | "core8_change" | "zlog_published" | "zone_created" | "zone_post" | "vibes_rated" | "anthem_stolen";
+    actor_id: string;
+    actor: { display_name: string; zid: string; avatar_url?: string | null; birth_year?: number | null; birth_month?: number | null; birth_day?: number | null; } | null;
+    target_user_id?: string | null;
+    target_user?: { display_name: string; zid: string } | null;
+    reference_id?: string | null;
+    meta: Record<string, any>;
+    created_at: string;
+};
+
+type FeedItem = { kind: "post"; data: Post } | { kind: "activity"; data: ActivityEvent };
 
 // ── PURE HELPERS — defined outside component, never recreated ────────────────
 const getAvatar = (zid: string, url?: string | null) =>
@@ -132,6 +146,112 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
   `;
     document.head.appendChild(s);
 }
+
+// ── ACTIVITY CARD ────────────────────────────────────────────────────────────
+const ACTIVITY_COLORS: Record<string, string> = {
+    zap: "#B4FF00",
+    comment: "#00F7FF",
+    reply: "#00F7FF",
+    core8_change: "#8A2EFF",
+    zlog_published: "#FF007A",
+    zone_created: "#8A2EFF",
+    zone_post: "#00F7FF",
+    vibes_rated: "#FF007A",
+    anthem_stolen: "#FF6B35",
+};
+
+const ActivityCard = memo(function ActivityCard({ event }: { event: ActivityEvent }) {
+    const actor = event.actor;
+    const target = event.target_user as { display_name: string; zid: string } | null;
+    const meta = event.meta || {};
+    const color = ACTIVITY_COLORS[event.event_type] || "#8A2EFF";
+    const avatarSrc = actor ? getAvatar(actor.zid, actor.avatar_url) : "";
+
+    const actorEl = actor
+        ? <Link href={`/u/${actor.zid}`} className="font-bold text-white hover:underline">{actor.display_name}</Link>
+        : <span className="font-bold text-gray-400">Someone</span>;
+
+    const targetEl = target
+        ? <Link href={`/u/${target.zid}`} className="font-bold text-white hover:underline">{target.display_name}</Link>
+        : null;
+
+    const actionText = () => {
+        switch (event.event_type) {
+            case "zap":
+                return <>{actorEl} <span className="text-gray-500">zapped</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
+            case "comment":
+                return <>{actorEl} <span className="text-gray-500">commented on</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
+            case "reply":
+                return <>{actorEl} <span className="text-gray-500">replied in a thread on</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
+            case "core8_change":
+                return <>{actorEl} <span className="text-gray-500">added</span> {targetEl} <span className="text-gray-500">to their Core 8</span>{meta.slot ? <span className="text-gray-700 font-mono text-[9px]"> · slot #{meta.slot}</span> : null}</>;
+            case "zlog_published":
+                return <>{actorEl} <span className="text-gray-500">published a Zlog</span></>;
+            case "zone_created":
+                return <>{actorEl} <span className="text-gray-500">started a new Zone</span></>;
+            case "zone_post":
+                return <>{actorEl} <span className="text-gray-500">posted in</span> {meta.zone_slug ? <Link href={`/zones/${meta.zone_slug}`} className="font-bold hover:underline" style={{ color }}>#{meta.zone_name}</Link> : <span className="text-gray-500">a zone</span>}</>;
+            case "vibes_rated":
+                return <>{actorEl} <span className="text-gray-500">rated</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s Vibes</span></> : <span className="text-gray-500">someone&apos;s Vibes</span>}</>;
+            case "anthem_stolen":
+                return <>{actorEl} <span className="text-gray-500">stole</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s anthem</span></> : <span className="text-gray-500">an anthem</span>}{meta.track_title ? <span className="text-gray-600 font-mono text-[9px]"> · {meta.track_title}</span> : null}</>;
+            default:
+                return <>{actorEl} <span className="text-gray-500">was active</span></>;
+        }
+    };
+
+    const snippet = event.event_type === "comment" || event.event_type === "reply"
+        ? meta.comment_snippet
+        : event.event_type === "zap" || event.event_type === "zone_post"
+            ? meta.post_snippet
+            : event.event_type === "zlog_published"
+                ? meta.title
+                : null;
+
+    const EventIcon = () => {
+        if (event.event_type === "zap") return <Zap className="w-2.5 h-2.5" style={{ color }} />;
+        if (event.event_type === "comment" || event.event_type === "reply") return <MessageSquare className="w-2.5 h-2.5" style={{ color }} />;
+        if (event.event_type === "core8_change") return <Users className="w-2.5 h-2.5" style={{ color }} />;
+        if (event.event_type === "zlog_published") return <BookOpen className="w-2.5 h-2.5" style={{ color }} />;
+        if (event.event_type === "vibes_rated") return <Star className="w-2.5 h-2.5" style={{ color }} />;
+        if (event.event_type === "anthem_stolen") return <Music className="w-2.5 h-2.5" style={{ color }} />;
+        return <Hash className="w-2.5 h-2.5" style={{ color }} />;
+    };
+
+    return (
+        <div className="flex gap-3 px-4 py-3 hover:bg-white/[0.015] transition-colors" style={{ borderLeft: `2px solid ${color}25` }}>
+            <div className="flex-shrink-0 pt-0.5">
+                <Link href={actor ? `/u/${actor.zid}` : "#"}>
+                    <img src={avatarSrc} alt="" className="w-7 h-7 rounded-lg border border-gray-800/60 object-cover" />
+                </Link>
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-[11px] leading-snug text-gray-400 flex flex-wrap items-baseline gap-x-1">{actionText()}</p>
+                {snippet && (
+                    <p className="text-[10px] text-gray-600 font-mono mt-1 truncate">&ldquo;{snippet}&rdquo;</p>
+                )}
+                {event.event_type === "zlog_published" && meta.slug && (
+                    <Link href={`/zlogger/${meta.slug}`} className="text-[9px] font-mono mt-1 inline-block hover:underline" style={{ color }}>
+                        {meta.reading_time ? `${meta.reading_time} min read →` : "Read Zlog →"}
+                    </Link>
+                )}
+                {event.event_type === "zone_created" && meta.zone_slug && (
+                    <Link href={`/zones/${meta.zone_slug}`} className="text-[9px] font-mono mt-1 inline-block hover:underline" style={{ color }}>
+                        Visit #{meta.zone_name} →
+                    </Link>
+                )}
+                <p className="text-[9px] font-mono text-gray-700 mt-1">
+                    {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                </p>
+            </div>
+            <div className="flex-shrink-0 self-start mt-0.5">
+                <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: `${color}12` }}>
+                    <EventIcon />
+                </div>
+            </div>
+        </div>
+    );
+});
 
 // ── POST CARD — memoized: only re-renders when its own slice of state changes ─
 interface PostCardProps {
@@ -425,6 +545,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
     const commentInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
     const [myVotes, setMyVotes] = useState<Map<number, "up" | "down">>(new Map());
+    const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
 
     const notifiedZaps = useRef<Set<number>>(new Set());
     const notifiedVotes = useRef<Set<string>>(new Set());
@@ -491,7 +612,24 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
         }
     }, [userId, zoneId, wallOwnerId]);
 
-    useEffect(() => { setPage(0); fetchPosts(0, mode, activeTopic, sortMode); }, [mode, activeTopic, sortMode, fetchPosts]);
+    const fetchActivityEvents = useCallback(async (feedMode: FeedMode) => {
+        if (wallOwnerId || zoneId) return;
+        let query = supabase.from("activity_events")
+            .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(display_name, zid)")
+            .neq("actor_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+        if (feedMode === "friends") {
+            const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+            const ids = (fr || []).map((r: any) => r.sender_id === userId ? r.receiver_id : r.sender_id);
+            if (ids.length === 0) { setActivityEvents([]); return; }
+            query = query.in("actor_id", ids);
+        }
+        const { data } = await query;
+        setActivityEvents((data || []) as unknown as ActivityEvent[]);
+    }, [userId, zoneId, wallOwnerId]);
+
+    useEffect(() => { setPage(0); fetchPosts(0, mode, activeTopic, sortMode); fetchActivityEvents(mode); }, [mode, activeTopic, sortMode, fetchPosts, fetchActivityEvents]);
     useEffect(() => { (async () => { const z = await getMyZaps(); setMyZaps(new Set(z)); })(); }, []);
 
     // ── Fetch comments ───────────────────────────────────
@@ -603,7 +741,21 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
             })
             .subscribe();
 
-        return () => { supabase.removeChannel(ch); supabase.removeChannel(commentCh); };
+        const activityCh = supabase.channel("global_activity_rt")
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_events" }, async (p: any) => {
+                if (wallOwnerId || zoneId || p.new.actor_id === userId) return;
+                if (mode === "friends") {
+                    const { count } = await supabase.from("friend_requests").select("id", { count: "exact", head: true }).eq("status", "accepted").or(`and(sender_id.eq.${userId},receiver_id.eq.${p.new.actor_id}),and(sender_id.eq.${p.new.actor_id},receiver_id.eq.${userId})`);
+                    if (!count) return;
+                }
+                const { data } = await supabase.from("activity_events")
+                    .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(display_name, zid)")
+                    .eq("id", p.new.id).single();
+                if (data) setActivityEvents(prev => [data as unknown as ActivityEvent, ...prev.slice(0, 49)]);
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(ch); supabase.removeChannel(commentCh); supabase.removeChannel(activityCh); };
     }, [mode, page, userId, activeTopic, fetchComments]);
 
     useEffect(() => {
@@ -794,6 +946,13 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
     const activeTopicName = useMemo(() => activeTopic ? topics.find(t => t.id === activeTopic)?.title ?? null : null, [activeTopic, topics]);
 
+    const feedItems = useMemo((): FeedItem[] => {
+        if (wallOwnerId || zoneId) return posts.map(p => ({ kind: "post", data: p }));
+        const postItems = posts.map(p => ({ kind: "post" as const, data: p, ts: new Date(p.created_at).getTime() }));
+        const actItems = activityEvents.map(e => ({ kind: "activity" as const, data: e, ts: new Date(e.created_at).getTime() }));
+        return [...postItems, ...actItems].sort((a, b) => b.ts - a.ts);
+    }, [posts, activityEvents, wallOwnerId, zoneId]);
+
     // ── RENDER ───────────────────────────────────────────
     return (
         <div>
@@ -950,12 +1109,12 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
             {/* ── FEED ── */}
             <div>
-                {loading && posts.length === 0 ? (
+                {loading && feedItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <Loader2 className="w-6 h-6 text-electric animate-spin" />
                         <span className="text-[9px] font-mono text-gray-700 uppercase tracking-widest">Tuning in...</span>
                     </div>
-                ) : posts.length === 0 ? (
+                ) : feedItems.length === 0 ? (
                     <div className="text-center py-16 px-6">
                         <div className="text-3xl mb-3">📡</div>
                         <p className="text-sm font-bold text-gray-500 mb-1">{wallOwnerId ? "No wall posts yet" : mode === "friends" ? "Your network is quiet" : activeTopicName ? `No posts in #${activeTopicName.toLowerCase()}` : "The grid awaits"}</p>
@@ -963,20 +1122,22 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-800/30">
-                        {posts.map((post, idx) => (
+                        {feedItems.map((item, idx) => item.kind === "activity" ? (
+                            <ActivityCard key={`act-${item.data.id}`} event={item.data} />
+                        ) : (
                             <PostCard
-                                key={post.id}
-                                post={post}
+                                key={`post-${item.data.id}`}
+                                post={item.data}
                                 idx={idx}
-                                isNew={newPostIds.has(post.id)}
-                                isZapped={myZaps.has(post.id)}
-                                isZapping={zappingPost === post.id}
-                                isExpanded={expandedComments.has(post.id)}
-                                commentCount={commentCounts[post.id] || 0}
-                                postComments={comments[post.id] || []}
-                                myCommentText={newComment[post.id] || ""}
-                                currentReply={replyingTo[post.id] || null}
-                                isPostingComment={postingComment === post.id}
+                                isNew={newPostIds.has(item.data.id)}
+                                isZapped={myZaps.has(item.data.id)}
+                                isZapping={zappingPost === item.data.id}
+                                isExpanded={expandedComments.has(item.data.id)}
+                                commentCount={commentCounts[item.data.id] || 0}
+                                postComments={comments[item.data.id] || []}
+                                myCommentText={newComment[item.data.id] || ""}
+                                currentReply={replyingTo[item.data.id] || null}
+                                isPostingComment={postingComment === item.data.id}
                                 expandedReplies={expandedReplies}
                                 myVotes={myVotes}
                                 activeTopic={activeTopic}

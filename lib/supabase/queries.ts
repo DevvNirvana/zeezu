@@ -52,7 +52,25 @@ export async function syncUserSession(): Promise<SyncedUser | null> {
     .single();
 
   if (error) {
-    console.error("Identity Sync Error:", error);
+    // Log actual fields — Supabase errors don't serialize with console.error({})
+    console.error("Identity Sync Error:", {
+      message: error.message,
+      code:    error.code,
+      details: error.details,
+      hint:    error.hint,
+    });
+
+    // code 23505 = unique_violation — user row was created by a concurrent request.
+    // Recover gracefully: fetch the row that already exists.
+    if (error.code === "23505") {
+      const { data: recovered } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      if (recovered) return { ...recovered, _isNew: true };
+    }
+
     return null;
   }
 

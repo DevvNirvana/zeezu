@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 import Lenis from "lenis";
+import gsap from "gsap";
+import ScrollTrigger from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function SmoothScroll() {
   useEffect(() => {
@@ -17,12 +21,15 @@ export default function SmoothScroll() {
       touchMultiplier: 1.4,
     });
 
-    let rafId: number;
-    function raf(time: number) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
+    // ── Lenis + GSAP ScrollTrigger sync ──────────────────────────
+    // Both now share the same ticker — ScrollTrigger reads Lenis's
+    // virtual scroll position instead of the real browser position.
+    // Required for pinned sections and scrub-based timelines.
+    lenis.on("scroll", ScrollTrigger.update);
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+    gsap.ticker.lagSmoothing(0);
 
     // Pause when tab hidden — saves CPU/battery (addresses heating issue)
     const handleVisibility = () => {
@@ -32,8 +39,10 @@ export default function SmoothScroll() {
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      lenis.off("scroll", ScrollTrigger.update);
+      gsap.ticker.remove((time) => lenis.raf(time * 1000));
       document.removeEventListener("visibilitychange", handleVisibility);
+      ScrollTrigger.getAll().forEach(t => t.kill());
       lenis.destroy();
     };
   }, []);

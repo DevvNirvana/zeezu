@@ -18,6 +18,7 @@ import CountUp from "@/components/reactbits/CountUp";
 import RotatingText from "@/components/RotatingText";
 import PixelCard from "@/components/PixelCard";
 import ElectricBorder from "@/components/ElectricBorder";
+import StarBorder from "@/components/StarBorder";
 import CardSwap, { Card } from "@/components/CardSwap";
 import ScrollReveal from "@/components/ScrollReveal";
 import TiltedCard from "@/components/TiltedCard";
@@ -1396,7 +1397,12 @@ function ManifestoSection() {
         }
       `}</style>
 
-      <div className="crt-container">
+      <motion.div className="crt-container"
+        initial={{ opacity: 0, y: 80 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "0px" }}
+        transition={{ type: "spring", damping: 24, stiffness: 90, delay: 0.1 }}
+      >
 
         <div className="crt-top">
           <div className="crt-top-vent"></div>
@@ -1501,7 +1507,7 @@ function ManifestoSection() {
           </div>
         </div>
 
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -2357,35 +2363,85 @@ const FAQS = [
 
 function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
+  const colors = ["#FF2D87", "#00F7FF", "#B4FF00", "#FFD700", "#FF2D87", "#00F7FF", "#B4FF00"];
+
   return (
     <section className="py-20 px-4 sm:px-6 max-w-3xl mx-auto">
-      <FadeIn className="text-center mb-12">
-        <p className="text-[#FFD700] text-[10px] font-mono tracking-[0.2em] uppercase mb-3">Questions</p>
-        <h2 className="text-4xl sm:text-5xl font-black text-white">We know you have them</h2>
-      </FadeIn>
-      <div className="space-y-2">
-        {FAQS.map((f, i) => (
-          <FadeIn key={f.q} delay={i * 40}>
-            <button onClick={() => setOpen(open === i ? null : i)}
-              className="w-full lp-glass-dark rounded-xl px-5 py-4 text-left transition-all hover:border-[#FFD700]/25"
-              style={{ borderColor: open === i ? "rgba(255,215,0,.2)" : "rgba(255,255,255,.06)" }}>
-              <div className="flex items-center justify-between gap-4">
-                <span className="font-bold text-sm text-white">{f.q}</span>
-                <span className="flex-shrink-0 text-[#FFD700]/60">
-                  {open === i ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+      {/* Header */}
+      <div className="mb-12">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#FF2D87]/30" />
+          <span className="text-[#FF2D87] text-[9px] font-mono tracking-[0.3em] uppercase">faq.exe</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#FF2D87]/30" />
+        </div>
+        <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight">
+          We know you<br />
+          <span className="lp-chrome-text">have them.</span>
+        </h2>
+        <p className="text-gray-600 text-xs font-mono mt-3 flex items-center gap-2">
+          <span className="text-[#00F7FF]">root@zeezu:~$</span>
+          <span className="text-gray-500">./query --all</span>
+          <span className="w-1.5 h-3.5 bg-[#00F7FF]/70 inline-block" style={{ animation: "none" }} />
+        </p>
+      </div>
+
+      {/* Terminal FAQ items */}
+      <div className="space-y-px">
+        {FAQS.map((f, i) => {
+          const isOpen = open === i;
+          const col = colors[i % colors.length];
+          const idx = String(i + 1).padStart(2, "0");
+
+          return (
+            <div
+              key={f.q}
+              style={{
+                background: isOpen ? "rgba(14,8,12,0.98)" : "rgba(10,6,9,0.6)",
+                borderLeft: `2px solid ${isOpen ? col : "rgba(255,255,255,0.05)"}`,
+                transition: "background .2s, border-color .2s",
+              }}
+            >
+              {/* Question row */}
+              <button
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="w-full px-4 py-4 text-left flex items-center gap-4 group"
+              >
+                {/* Index */}
+                <span className="text-[10px] font-mono flex-shrink-0 tabular-nums" style={{ color: col, opacity: 0.7 }}>
+                  [{idx}]
                 </span>
+                {/* Prompt + question */}
+                <span className="flex items-baseline gap-2 flex-1 min-w-0">
+                  <span className="text-[10px] font-mono flex-shrink-0" style={{ color: col }}>{">"}</span>
+                  <span className="text-white text-sm font-semibold leading-snug">{f.q}</span>
+                </span>
+                {/* Toggle */}
+                <span
+                  className="flex-shrink-0 text-[10px] font-mono w-6 text-center"
+                  style={{ color: col, transition: "transform .18s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+                >
+                  {">"}
+                </span>
+              </button>
+
+              {/* Answer — CSS grid collapse, zero JS per frame */}
+              <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows .28s cubic-bezier(0.4,0,0.2,1)" }}>
+                <div style={{ overflow: "hidden" }}>
+                  <div className="px-4 pb-5 pl-12 flex gap-3">
+                    <span className="text-[9px] font-mono flex-shrink-0 pt-0.5 tracking-widest" style={{ color: col, opacity: 0.5 }}>OUT</span>
+                    <p className="text-gray-400 text-sm leading-relaxed">{f.a}</p>
+                  </div>
+                </div>
               </div>
-              <AnimatePresence>
-                {open === i && (
-                  <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                    className="text-gray-400 text-sm leading-relaxed mt-3 overflow-hidden">
-                    {f.a}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </button>
-          </FadeIn>
-        ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer line */}
+      <div className="mt-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-[#FF2D87]/20 to-transparent" />
+        <span className="text-[8px] font-mono text-gray-700">7 queries returned</span>
       </div>
     </section>
   );
@@ -2397,14 +2453,16 @@ function FinalCTA() {
     <section className="py-24 px-4 sm:px-6 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[320px] bg-[#FF2D87]/10 blur-[130px] rounded-full"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[380px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(255,45,135,0.13) 0%, transparent 70%)" }}
           initial={{ opacity: 0, scale: 0.4 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: false, margin: "-300px" }}
           transition={{ duration: 1.4, ease: "easeOut" }}
         />
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[200px] bg-[#00F7FF]/6 blur-[100px] rounded-full"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[260px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(0,247,255,0.07) 0%, transparent 70%)" }}
           initial={{ opacity: 0, scale: 0.4 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: false, margin: "-300px" }}

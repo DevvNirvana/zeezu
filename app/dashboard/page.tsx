@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -144,12 +144,31 @@ export default function Dashboard() {
     async function init() {
       const identity = await syncUserSession();
       if (!identity) { router.push("/login"); return; }
-      if ((identity as SyncedUser)._isNew) { router.push("/onboarding"); return; }
+
+      // Redirect to onboarding if:
+      // 1. Brand new user (_isNew)
+      // 2. No birth_year = no Generation Badge = onboarding never properly completed
+      //    This self-heals broken signups without any SQL migration needed.
+      // 3. onboarding_complete column exists and is explicitly false
+      // 4. Pre-migration fallback: column null AND no avatar_url
+      const needsOnboarding =
+        (identity as SyncedUser)._isNew ||
+        !identity.birth_year ||
+        identity.onboarding_complete === false ||
+        (identity.onboarding_complete == null && !identity.avatar_url);
+      if (needsOnboarding) { router.push("/onboarding"); return; }
       setUserData(identity);
 
       const freshLogin = localStorage.getItem("zeezu_fresh_login") === "1";
       const bootSeen = localStorage.getItem("zeezu_boot_seen") === "1";
-      const shouldBoot = freshLogin || !bootSeen;
+      // zeezu_onboarding_done: set by the new onboarding flow when it fires its own BootScreen.
+      // If present, skip dashboard BootScreen entirely (would be a double-play).
+      const onboardingJustDone = localStorage.getItem("zeezu_onboarding_done") === "1";
+      if (onboardingJustDone) {
+        localStorage.removeItem("zeezu_onboarding_done");
+        localStorage.setItem("zeezu_boot_seen", "1");
+      }
+      const shouldBoot = !onboardingJustDone && (freshLogin || !bootSeen);
 
       try {
         const [top8, dashStats, { data: customData }, fCount, zones] = await Promise.all([

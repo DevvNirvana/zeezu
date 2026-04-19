@@ -62,7 +62,7 @@
 Type: In-depth technical + design articles
 Best for: CSS techniques, accessibility, UX strategy, performance, trends
 Search queries to use:
-  "smashing magazine [topic] 2024" OR site:smashingmagazine.com [topic]
+  "smashing magazine [topic] 2026" OR site:smashingmagazine.com [topic]
 Key series to know:
   - "Designing for Performance" articles
   - "UX Design Patterns" series
@@ -269,6 +269,98 @@ Best for: Design tool comparisons, UX process resources
 Best for: UI kits, component libraries, design templates
 
 ---
+
+
+---
+
+## TIER 2B: 2025-2026 COMPONENT LIBRARIES (New Essential Resources)
+
+### Tremor — tremor.so
+Type: Dashboard & data visualization component library
+Best for: Analytics dashboards, KPI cards, charts, data tables
+Install: `npm install @tremor/react`
+Key components: AreaChart, BarChart, DonutChart, Metric, BadgeDelta, BarList, Tracker, ProgressBar
+Decision: Use Tremor when the project has charts/metrics. It replaces custom Recharts setup with production-ready components.
+Search: "tremor react dashboard component" OR site:tremor.so docs
+
+### Animata — animata.design
+Type: Creative animation components (copy/paste)
+Best for: Micro-interactions, cursor effects, loading states, unique visual effects
+Key components: LiquidChrome, SplashCursor, MetaBalls, NumberFlow, RotatingText, WavyText, Blobby
+Decision: Use Animata for the ONE delight moment per section — the thing nobody else has.
+Search: "animata design component" OR animata.design
+
+### Motion Primitives — motion-primitives.com
+Type: Framer Motion primitive components
+Best for: Polished transitions, cursor effects, morphing dialogs, physics animations
+Key components: MorphingDialog, Cursor, Magnetic, TextEffect, TextShimmer, AnimatedNumber, GlitchText
+Decision: Fills the gap between "raw Framer" and "Aceternity-level polish"
+Search: "motion primitives framer motion" OR motion-primitives.com
+
+### Cult UI — cult-ui.com
+Type: Unique interactive components
+Best for: Direction-aware hover, Dynamic Island, 3D carousels, dialog stacks
+Key components: DirectionAwareHover (wow:9), DynamicIsland (wow:10), Carousel3D, FamilyButton, DialogStack
+Decision: Use for the single most interactive card/element on the page.
+Search: "cult ui components" OR cult-ui.com
+
+### Eldora UI — eldoraui.site
+Type: Section-level landing page components
+Best for: Complete hero sections, testimonial marquees, feature grids, pricing
+Key components: HeroGeometric, TestimonialsMarquee, FeaturesBento, PricingCards, TimelineScroll
+Decision: Use when you need a complete pre-built section rather than composing components.
+Search: "eldora ui components" OR eldoraui.site
+
+### shadcn/ui Blocks — ui.shadcn.com/blocks
+Type: Full page layouts built with shadcn/ui
+Best for: Dashboard layouts, settings pages, auth flows, sidebar layouts
+Install: `npx shadcn@latest add block [name]`
+Key blocks: Sidebar, Login, Calendar, Chart, Mail, Settings
+Decision: Use blocks for structural scaffolding — customize from there.
+Search: site:ui.shadcn.com blocks
+
+### Kibo UI — kiboui.com
+Type: Enhanced shadcn/ui components
+Best for: Enterprise forms, date ranges, kanban boards, multi-select
+Install: `npx kiui@latest add [component]`
+Key components: MultiSelect, DateRangePicker, Kanban, FileUpload, RichTextEditor, ColorPicker
+Decision: Use when shadcn doesn't have it. DateRangePicker and Kanban have no good shadcn equivalent.
+Search: "kibo ui" OR kiboui.com
+
+### Origin UI — originui.com
+Type: Production-grade form input variants
+Best for: Advanced form UX — OTP inputs, phone inputs, tag inputs, floating labels
+Install: Copy from originui.com
+Key inputs: OTP Input, Phone input (flag+format), Tags input, Floating label, Icon prefix/suffix
+Decision: Always use Origin UI for complex form interactions instead of rolling your own.
+Search: "origin ui inputs" OR originui.com
+
+---
+
+## SEARCH ROUTING ADDENDUM: New Library Discovery (2025-2026)
+
+### When asked about animation libraries:
+  Primary:    animata.design [component type]
+  Secondary:  motion-primitives.com [effect name]
+  Also:       "framer motion variants 2026 advanced"
+
+### When building dashboards with charts:
+  Primary:    tremor.so docs [chart type]
+  Secondary:  "recharts vs tremor dashboard 2026"
+
+### When asked about unique interactions:
+  Primary:    cult-ui.com components
+  Secondary:  "direction aware hover react" OR "dynamic island react"
+
+### When asked about current best practice for landing pages:
+  Primary:    eldoraui.site
+  Secondary:  mvpblocks.app
+  Also:       "shadcn blocks landing page 2026"
+
+### When asked about the best design in 2026:
+  Primary:    godly.website (updated daily — most current)
+  Secondary:  awwwards.com/websites/2026
+  Also:       layers.to/explore recent
 
 ## TIER 5: AGENCY INSPIRATION (study for award-level quality)
 # These agencies represent the ceiling of web design craft.

@@ -131,6 +131,9 @@ export default function ProfileSettings() {
   const [statusMsg, setStatusMsg] = useState("");
   const [bio, setBio] = useState("");
   const [themeUrl, setThemeUrl] = useState("");
+  const [trackTitle, setTrackTitle] = useState("");
+  const [trackArtist, setTrackArtist] = useState("");
+  const [fetchingMeta, setFetchingMeta] = useState(false);
 
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -191,6 +194,8 @@ export default function ProfileSettings() {
         setOnlineStatus((userData.online_status as OnlineStatus) ?? "online");
         setBio(userData.mdx_profile || "");
         setThemeUrl(userData.theme_track_url || "");
+        setTrackTitle((userData as any).theme_track_title || "");
+        setTrackArtist((userData as any).theme_track_artist || "");
         setAvatarUrl(userData.avatar_url || null);
         if (userData.social_links) setSocialLinks(userData.social_links);
         if (userData.personal_info) setPersonalInfo(userData.personal_info);
@@ -226,6 +231,32 @@ export default function ProfileSettings() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+
+  // ── Auto-fetch track title + artist from oEmbed ───────────────────
+  useEffect(() => {
+    if (!themeUrl || (trackTitle && trackArtist)) return;
+    const timer = setTimeout(async () => {
+      let oembedUrl: string | null = null;
+      if (/youtube\.com|youtu\.be/.test(themeUrl)) {
+        oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(themeUrl)}&format=json`;
+      } else if (/soundcloud\.com/.test(themeUrl)) {
+        oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(themeUrl)}&format=json`;
+      }
+      if (!oembedUrl) return;
+      setFetchingMeta(true);
+      try {
+        const res = await fetch(oembedUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.title && !trackTitle)  { setTrackTitle(data.title);       markDirty(); }
+          if (data.author_name && !trackArtist) { setTrackArtist(data.author_name); markDirty(); }
+        }
+      } catch { /* silently skip if oEmbed fails */ }
+      setFetchingMeta(false);
+    }, 900);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themeUrl]);
 
   // ── Avatar ────────────────────────────────────────────────────────
   const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,6 +313,8 @@ export default function ProfileSettings() {
       status_updated_at: new Date().toISOString(),
       mdx_profile: bio,
       theme_track_url: themeUrl,
+      theme_track_title: trackTitle || null,
+      theme_track_artist: trackArtist || null,
       avatar_url: finalAvatarUrl,
       social_links: socialLinks,
       personal_info: personalInfo,
@@ -745,21 +778,42 @@ export default function ProfileSettings() {
                   {/* Profile Anthem */}
                   <SpotlightCard className="rounded-2xl border border-gray-800/80 p-4 sm:p-5 space-y-3" spotlightColor={`${custom.primary_color}20`}>
                     <SectionHeader icon={<Music className="w-3.5 h-3.5" />} title="Profile Anthem" color={custom.primary_color} />
+                    {/* Track URL */}
                     <div className="relative">
                       <input
                         value={themeUrl}
                         onChange={e => { setThemeUrl(e.target.value); markDirty(); }}
-                        placeholder="YouTube, SoundCloud, or direct MP3 URL..."
+                        placeholder="YouTube or SoundCloud URL..."
                         className="w-full bg-black/60 border border-gray-800 hover:border-gray-600 focus:border-cyan rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none transition-colors pr-10"
                         style={{ color: themeUrl ? custom.secondary_color : "#555" }}
                       />
-                      {themeUrl && (
+                      {themeUrl && !fetchingMeta && (
                         <a href={themeUrl} target="_blank" rel="noopener noreferrer" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors">
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
+                      {fetchingMeta && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[9px] text-gray-700 font-mono">Plays when someone visits your public profile — click-to-play, never forced</p>
+                    {/* Track title + artist — auto-filled from oEmbed, editable */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={trackTitle}
+                        onChange={e => { setTrackTitle(e.target.value); markDirty(); }}
+                        placeholder={fetchingMeta ? "Fetching title..." : "Track title..."}
+                        className="bg-black/60 border border-gray-800 hover:border-gray-600 focus:border-cyan rounded-xl px-3.5 py-2 text-sm font-mono outline-none transition-colors text-white placeholder:text-gray-700"
+                      />
+                      <input
+                        value={trackArtist}
+                        onChange={e => { setTrackArtist(e.target.value); markDirty(); }}
+                        placeholder={fetchingMeta ? "Fetching artist..." : "Artist name..."}
+                        className="bg-black/60 border border-gray-800 hover:border-gray-600 focus:border-cyan rounded-xl px-3.5 py-2 text-sm font-mono outline-none transition-colors text-white placeholder:text-gray-700"
+                      />
+                    </div>
+                    <p className="text-[9px] text-gray-700 font-mono">Title and artist are auto-fetched from YouTube / SoundCloud. Edit to override. Shown in the NOW PLAYING widget on your profile.</p>
                   </SpotlightCard>
                 </div>
               )}

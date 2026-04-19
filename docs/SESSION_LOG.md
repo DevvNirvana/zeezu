@@ -4,257 +4,205 @@
 
 ---
 
+## Session: 2026-03-24
+
+**Focus:** Performance fixes, FAQ redesign, The Residents V1 (full platform intelligence), Claude feedback fixes, V23↔V2 cross-platform bridge
+
+### What was done
+
+#### Performance investigation + FinalCTA fix
+- Root cause of GPU lag at bottom of landing page: two large `motion.div` blobs in `FinalCTA` with `blur-[130px]` and `blur-[100px]`
+- These create separate GPU compositor layers even when partially off-screen
+- Fix: replaced both with `radial-gradient` divs — zero filter cost, same visual glow effect
+- Conclusion: `filter: blur()` on large elements is expensive; `radial-gradient` is a single paint operation
+
+#### FAQ section rewrite
+- Problem: original FAQ used Framer Motion `AnimatePresence` with `height: "auto"` (requires JS layout measurement) + `once: false` on 7 simultaneous spring animations
+- Replaced entirely with terminal/BBS aesthetic:
+  - `[01]` index badges, `>` prompt, `OUT` label, color cycling across 7 neon colors
+  - CSS `grid-template-rows: 0fr → 1fr` for accordion collapse — zero JS, GPU-composited
+  - Zero Framer Motion in the entire FAQ component
+  - Dark BBS-style background with left-border color accent on open item
+
+#### The Residents V1 — Full Platform Intelligence (`scripts/the-residents.ts`)
+- Created new script as companion to V23 (The Enclave). Runs simultaneously, never conflicts.
+- **Owns:** Zlogger, Zones, Profiles, Core 8, Buzz, Vibes. **Never touches:** ZeeWall.
+- Same 5 agents, same soul documents — extended with `newsFilter` arrays and deeper cultural memory
+- **Action space:** WRITE_ZLOG, UPDATE_PROFILE, UPDATE_CORE8, CREATE_ZONE, POST_IN_ZONE, SEND_BUZZ, RATE_VIBES, LURK
+- **Learned affinity system:** `agent_platform_affinity` table. All agents start at 1.0. Engagement feedback shapes scores: `0.7 * ratio + 0.3 * last_result`. Platform teaches them what works.
+- **World news:** NewsAPI filtered by agent temperament (`newsFilter` array). Deduped via `agent_world_memory` table so agents only hear genuinely new headlines.
+- **Arc phase:** 0-10, stored in `agent_state`. Advances 15% chance per successful action. Gates: CREATE_ZONE requires > 3, WRITE_ZLOG multiplied at > 7.
+- **Adaptive pacing:** 3-20 min cycles (much slower than V23's 8-60s — Zlogs take thought).
+- **Separate kill switch:** `v2_enabled` key in `system_config`.
+
+#### Claude AI feedback — 6 fixes applied to The Residents
+1. **Profile rate limiter:** 18h → 48h minimum between profile updates
+2. **Buzz reply-aware guard:** Re-buzz within 12h window allowed if target Buzzed back (checks `buzz` table for incoming messages)
+3. **World memory dedup:** `fetchWorldContext` now hashes each headline (first 60 chars normalized), checks `agent_world_memory`, inserts fresh ones only
+4. **Delayed affinity measurement:** Replaced naive "next cycle" check with `agent_affinity_pending_checks` table. After WRITE_ZLOG and POST_IN_ZONE success, schedules 3 checkpoints at +2h, +6h, +24h. `processDueAffinityChecks` fires each cycle instead of the old instant check.
+5. **Vibes bidirectional:** After RATE_VIBES success, schedules a `profile_visit` type checkpoint. If rated user visits agent's profile within 24h (via `profile_views` table), records positive outcome for RATE_VIBES affinity.
+6. **Core 8 real users:** Already worked correctly — `agent_relationships` tracks all users including real ones. Documented in header comment.
+
+#### V23 ↔ V2 Cross-Platform Bridge (4 improvements)
+
+**1. Cross-signal table (`agent_cross_signals`)**
+- Both scripts write to this table. V23 writes wall posts/comments. V2 writes Zlogs/zone posts/zone creations.
+- Before acting, each agent reads their own 4 most recent signals from both systems.
+- Injected into prompt as "YOUR LIFE OFF THE WALL" section.
+- Effect: Tom on the wall knows he published a Zlog yesterday. NeonRiot's zone post feeds back into their wall voice. One organism, two processes.
+
+**2. Trending topics (`trending_topics` table)**
+- V23 extracts keywords from the wall feed after each cycle (stops words removed, word frequency counted, top 10 upserted).
+- V2's `getPlatformSnapshot` now includes "TRENDING ON THE WALL: [keywords]" section.
+- Effect: If "AI" is dominating the wall, Tom might write a Zlog about it or create a Zone for it. Platform breathes together.
+
+**3. OG link enrichment (`post_link_metadata` table)**
+- V23 scans feed for posts containing URLs, fetches Open Graph metadata (title, description, site name), caches in `post_link_metadata`.
+- Agents see `[Link: "Burial - Archangel" (YouTube)]` instead of raw URLs. Max 2 new fetches per cycle, 4s timeout, graceful fallback.
+- Effect: When a real user shares a YouTube link, PixelSaint and MidnightPulse can actually react to what it is.
+
+**4. V2 content surfacing in V23**
+- When V23 agent rolls POST action, the prompt checks for the agent's most recent Zlog.
+- If found, adds: "YOU RECENTLY WROTE A ZLOG titled: '[title]'. If wall conversation touches on it naturally, mention it."
+- Effect: Agents occasionally reference their own deeper writing on the wall — like a person who has a blog.
+
+### Files created/modified
+- `scripts/the-residents.ts` — created (1400+ lines)
+- `scripts/synthetic-society.ts` — added 3 function blocks (~120 lines), modified `runAgentCycle` (enriched feed, trending topics, cross-signals, prompt injection, signal writes, V2 content hint in POST context), updated boot log
+- `app/page.tsx` — FAQ section completely rewritten, FinalCTA blobs replaced with radial-gradient
+- `docs/AI_STATE.md`, `docs/AI_TASKS.md`, `docs/SESSION_LOG.md` — updated
+
+### DB tables created this session (SQL in AI_STATE.md)
+- `agent_world_memory` — headline dedup for news layer
+- `agent_platform_affinity` — learned affinity scores per agent per feature
+- `agent_affinity_pending_checks` — delayed engagement measurement queue
+- `agent_narrative_events` — story log for arc events
+- `agent_cross_signals` — shared awareness between V23 and V2
+- `trending_topics` — keyword frequency from wall feed
+- `post_link_metadata` — Open Graph cache for real user links
+- ALTER TABLE `agent_state`: `arc_phase int`, `last_v2_action_at timestamptz`
+
+### Key decisions made
+- **Two scripts, not one:** The Residents runs as a separate process alongside The Enclave. Clean separation of concerns. V23 owns the wall. V2 owns the world.
+- **No feature assignments:** Agents are not told "you write Zlogs, you post in Zones." All start equal (affinity 1.0). The platform teaches them through engagement feedback.
+- **Slow cycles are correct for V2:** Zlogs are supposed to be rare. 12-20 minute cycles are intentional. Run 2 instances simultaneously if more activity is needed.
+- **Lurk-heavy at cold start is expected:** At startup, `agent_relationships` is empty so SEND_BUZZ (trust > 50) and RATE_VIBES (trust > 35) both fail gracefully. V23 needs to run first and build relationships.
+- **Don't add `"type": "module"` to root package.json** — would affect Next.js build. The MODULE_TYPELESS_PACKAGE_JSON warning is harmless.
+
+### Pending for tomorrow
+1. **Run the new DB SQL in Supabase** (all tables listed in AI_STATE.md)
+2. **Brain fallback chains** — if Groq is down, NeonRiot goes silent. Add fallback order per agent.
+3. **`profile_views` table** — needed for V2 vibes bidirectional feedback loop to work fully
+4. **Zlogger engagement counts** on feed cards (known gap since 2026-03-18)
+
+---
+
+## Session: 2026-03-21
+
+**Focus:** Performance audit — module-level style injection, realtime subscriptions, CSS GPU compositing, loading skeletons
+
+### What was done
+
+#### Performance audit (completed)
+- NavBar style injection → module-level (eliminates per-render DOM writes)
+- NotificationBell + MarqueeTicker: polling → `visibilitychange` + Supabase realtime
+- `filter: hue-rotate()` removed from `holo-shift` + `aurora-shift` badge animations
+- Gen Z badge: `glitch-shift` (clip-path, CPU) → `chroma-ab` (text-shadow, GPU)
+- `will-change` added to all badge animations
+- `touch-action: manipulation` global rule
+- 13 `loading.tsx` + `LoadingShell` — instant visual on every route
+- Route prefetching on NavBar mount
+- `OnlinePill` extracted from NavBar, `NavDockIcon memo`, `dockItems useMemo`
+- `PostCard memo` + 12 `useCallback` handlers + pure helpers outside component
+- `RadioPlayer memo()`
+
+### Files modified
+- `components/NavBar.tsx`, `components/GlobalFeed.tsx`, `components/RadioPlayer.tsx`
+- `app/globals.css`
+- 13 `loading.tsx` files across all routes
+- `docs/AI_STATE.md`, `docs/AI_TASKS.md`, `docs/SESSION_LOG.md`
+
+---
+
 ## Session: 2026-03-20
 
-**Focus:** Landing page overhaul — TiltedCard overlays, Ken Burns hero, vinyl RadioPlayer, performance audit
+**Focus:** Landing page overhaul — TiltedCard overlays, Ken Burns hero, vinyl RadioPlayer
 
 ### What was done
 
 #### TiltedCard overlay fix
-- Root cause: overlay `motion.div` had no `width`/`height`, so `absolute inset-0` children collapsed to zero
-- Fix: added `style={{ width: imageWidth, height: imageHeight }}` + `rounded-[15px] overflow-hidden` to overlay wrapper
-- Added idle sinusoidal animation via RAF (`rotateX = sin(t*0.6)*4`, `rotateY = cos(t*0.45)*6`) with IntersectionObserver gate and `hoveredRef` pause on mouseenter
-- Implemented rich JSX overlays for all 3 TiltedCards in `app/page.tsx`:
-  - **Card 1 (Messaging/Buzz)**: Contact header, online dot, ⚡ BUZZ button, chat thread with ✓✓ read receipts, BuzzFlash overlay (hot pink), message input
-  - **Card 2 (Zlogger)**: Split-pane editor — traffic lights + reading theme pills, color-coded markdown source, Z-tag palette, preview pane with glow text + wavy underline, word count + PUBLISH footer
-  - **Card 3 (ZeeWall)**: *(replaced video hero)*
+- Root cause: overlay `motion.div` had no `width`/`height`, children collapsed to zero
+- Added idle sinusoidal animation via RAF (`rotateX = sin(t*0.6)*4`, `rotateY = cos(t*0.45)*6`)
+- Rich JSX overlays: Card 1 (Buzz chat), Card 2 (Zlogger editor), Card 3 (ZeeWall)
 
-#### Hero background: Ken Burns cycling images
-- Replaced video hero with 3 Spider-Verse art-style images (Vercel Blob CDN)
-- CSS `@keyframes` Ken Burns effect: 3 unique pan+zoom trajectories, 8.5s display + 1.2s crossfade
-- Spider-Verse filter: `contrast(1.18) brightness(0.72) saturate(1.06)`
-- React `key` prop resets animation per image cycle
-- IntersectionObserver pauses image cycle when hero off-screen
-
-#### Landing navbar logo
-- Replaced plain "zeezu" text with full in-app logo: SVG quadrant icon + Orbitron "zeezu" + VT323 "NET"
-- Google Fonts (Orbitron + VT323) injected via style element with guard
-
-#### PixelCard `alwaysOn` mode
-- Added `alwaysOn?: boolean` prop — re-triggers `appear` on `mouseleave` instead of `disappear`
-- IntersectionObserver auto-triggers `appear` on viewport entry (100ms delay)
-- RAF paused when off-screen via same observer
-
-#### CardSwap IntersectionObserver
-- Pauses `setInterval` + GSAP timeline when component leaves viewport
-- Resumes on re-entry — zero CPU cost when off-screen
-
-#### ElectricBorder performance
-- `octaves` reduced 10 → 6 (40% fewer Math.sin calls per frame)
-- `sampleCount` capped at 250 (`Math.min(perimeter/2, 250)`)
-- IntersectionObserver fully stops RAF when off-screen, resumes on entry
-
-#### General performance CSS
-- Removed `backdrop-filter` from all `.lp-glass*` classes (GPU compositor layer cost)
-- Removed `will-change` from animation classes (browser auto-promotes as needed)
-- Added `[data-hero-idle]` + `[data-ticker-idle]` CSS rules for `animation-play-state: paused`
-- HeroSection + TickerStrip each got IntersectionObserver toggling idle data attrs
+#### Hero background
+- Replaced video with 3 Spider-Verse art images + CSS Ken Burns keyframes
+- 3 unique pan+zoom trajectories, 8.5s display + 1.2s crossfade
 
 #### RadioPlayer overhaul
-- Added 3 new OST tracks: Drive Home Safe (first), Eurodrive, Dreams We Didn't Get To Live
-- Added `trackNames` array to Station type; marquee shows track name when available
-- Minimized button redesigned as spinning vinyl disc:
-  - `repeating-radial-gradient` groove rings + `conic-gradient` holographic rainbow
-  - `vinyl-spin` / `vinyl-spin-r` keyframes (counter-spin inner label so Z stays upright)
-  - `vinyl-glow` rainbow box-shadow cycling animation when playing
-  - Live pulse dot top-right
-- Muted autoplay on landing page (`pathname === "/"`):
-  - `audio.muted = true` → `play()` → unmute + fade volume from 0 → target over 1.2s
-  - Safari fallback: `pointerdown` listener
+- 3 new OST tracks + vinyl disc button (groove rings, holographic rainbow, counter-spin Z label)
+- Muted autoplay on `/` with volume fade-in
 
 ### Files modified
-- `app/page.tsx` — TiltedCard overlays, Ken Burns hero, navbar logo, performance CSS
-- `components/TiltedCard.tsx` — overlay fix, idle RAF animation
-- `components/PixelCard.tsx` — `alwaysOn` prop + IntersectionObserver
-- `components/CardSwap.tsx` — IntersectionObserver pause/resume
-- `components/ElectricBorder.tsx` — octave reduction, sampleCount cap, IntersectionObserver
-- `components/RadioPlayer.tsx` — vinyl button, OST tracks, muted autoplay
-- `docs/AI_STATE.md`, `docs/AI_TASKS.md`, `docs/SESSION_LOG.md` — updated
+- `app/page.tsx`, `components/TiltedCard.tsx`, `components/PixelCard.tsx`
+- `components/CardSwap.tsx`, `components/ElectricBorder.tsx`, `components/RadioPlayer.tsx`
 
 ---
 
 ## Session: 2026-03-18
 
-**Focus:** Zlogger long-form blogging system + full platform component overhaul
+**Focus:** Zlogger long-form blogging system
 
 ### What was done
+- Full Zlogger implementation: feed, editor, reading page, edit page
+- `lib/zlogger-renderer.ts` with 6 Z-tags, 5 reading themes, slug gen, reading time
+- 10 query functions in `lib/supabase/queries.ts`
+- SQL provided for `zlogs`, `zlog_engagement`, `zlog_comments` tables
 
-#### Zlogger (new feature — full implementation)
-- Designed and implemented complete long-form blogging system from scratch
-- `lib/zlogger-renderer.ts` — `renderZlog()` (marked v17 + DOMPurify), `generateSlug()`, `readingTimeMinutes()`, `ZLOG_CSS` constants, Z-tag preprocessor (6 custom tags)
-- `app/zlogger/page.tsx` — public feed with 6 filter modes (Latest/Trending/Anonymous/Network/Gen Z/Millennial), ZlogCard component, search, load more pagination
-- `app/zlogger/new/page.tsx` — split-pane markdown editor + live preview, Z-tag toolbar with cursor-aware insertion, full publishing settings panel (theme/mood/visibility/toggles/response-to)
-- `app/zlogger/[slug]/page.tsx` — themed reading page with: hero cover image, author row + GenBadge, response chain indicator, rendered HTML body, engagement row (zap/vibe/save toggle), text highlight-to-share tooltip (tweet + copy), Echo button, realtime comments via Supabase channel
-- `app/zlogger/edit/[id]/page.tsx` — edit page, pre-fills all fields from DB, saves via `updateZlog`
-- 10 new query functions appended to `lib/supabase/queries.ts`
-- NavBar dock: ZeeWall item → Zlogger (BookOpen icon, `#B4FF00` lime accent, `/zlogger` route with `startsWith` match)
-- Profile `/u/[zid]`: added `"zlogger"` tab type, lazy-load effect, `ZlogListItem[]` state, full tab panel with owner "+ NEW POST" button
-- Packages installed: `marked` (v17), `dompurify`, `@types/dompurify`
-- SQL provided for: `zlogs`, `zlog_engagement`, `zlog_comments` tables + RLS policies + `set_updated_at` trigger
-
-#### Platform overhaul (from earlier work committed this session)
-- `components/BootScreen.tsx` — animated boot sequence
-- `components/Dock.tsx` + `Dock.css` — macOS-style dock
-- `components/GenBadge.tsx` — generation label badge
-- `components/ReflectiveCard.tsx` — glossy card surface
-- `components/reactbits/DecryptedText.tsx` — text decryption animation
-- `lib/generation.ts` — birth year → generation metadata
-- `lib/agents.ts` — agent definitions
-- `app/login/` + `app/onboarding/` — auth + new user flows
-- Full rebuilds: NavBar, RadioPlayer, ProfileCard, GlobalFeed, NotificationBell, Dashboard, Friends, Messages, Search, ZeeWall pages
-
-### Key decisions made
-- Z-tag preprocessing happens before `marked()` so custom tags survive the markdown parser
-- DOMPurify sanitization is skipped on SSR (no `window`) — safe because Zlogger pages are client components
-- `getPublicZlogs` returns `engagementCounts: {0,0,0,0}` for feed cards (performance trade-off — real counts need a separate join, flagged as Next Up)
-- Editor uses `{ async: false }` marked option to get synchronous string return type
-- Slug is auto-generated from title but user can override; regenerate button resets to auto
-
-### Files modified/created
-- `lib/zlogger-renderer.ts` — new
-- `app/zlogger/page.tsx` — new
-- `app/zlogger/new/page.tsx` — new
-- `app/zlogger/[slug]/page.tsx` — new
-- `app/zlogger/edit/[id]/page.tsx` — new
-- `lib/supabase/queries.ts` — 10 Zlogger functions appended (~260 lines)
-- `components/NavBar.tsx` — BookOpen import, dock item changed
-- `app/u/[zid]/page.tsx` — zlogger tab, state, lazy-load effect, tab panel
-- `docs/AI_TASKS.md`, `docs/SESSION_LOG.md` — updated
-- `package.json` / `package-lock.json` — 3 new packages
-
-### SQL still needed (user to confirm)
-```sql
--- Full SQL provided in session — creates:
--- zlogs, zlog_engagement, zlog_comments tables
--- RLS policies, indexes, set_updated_at trigger
-```
+### Files created/modified
+- `lib/zlogger-renderer.ts`, `app/zlogger/*` (4 pages), `lib/supabase/queries.ts`
 
 ---
 
 ## Session: 2026-03-14
 
-**Focus:** Real Visitor Counter — SQL migration + frontend wiring
+**Focus:** Real Visitor Counter SQL migration
 
 ### What was done
-- Connected existing `increment_visit` RPC call in `app/u/[zid]/page.tsx` to real Supabase backend
-- Provided SQL migration for user to run in Supabase SQL editor:
-  - `ALTER TABLE users ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0;`
-  - `CREATE OR REPLACE FUNCTION increment_visit(p_user_id UUID) RETURNS INTEGER ...`
-- No frontend changes needed — `page.tsx` already had the RPC call wired up from prior session
-- Updated `AI_TASKS.md`: moved Real Visitor Counter to Completed, cleared Next Up
-- Created `docs/AI_STATE.md` with current project state snapshot
-
-### Key decisions made
-- Self-visits count (profile owner increments their own counter) — acceptable for now
-- Graceful degradation: `visitCount ?? 1` means counter shows `1` until SQL is applied
-
-### Files modified
-- `docs/AI_TASKS.md` — Real Visitor Counter moved to Completed
-- `docs/SESSION_LOG.md` — This entry
-- `docs/AI_STATE.md` — Created
-
-### SQL to run (user must apply in Supabase)
-```sql
-ALTER TABLE users ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0;
-
-CREATE OR REPLACE FUNCTION increment_visit(p_user_id UUID)
-RETURNS INTEGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  new_count INTEGER;
-BEGIN
-  UPDATE users
-  SET visit_count = COALESCE(visit_count, 0) + 1
-  WHERE id = p_user_id
-  RETURNING visit_count INTO new_count;
-  RETURN new_count;
-END;
-$$;
-```
+- `ALTER TABLE users ADD COLUMN visit_count` + `increment_visit` RPC
+- No frontend changes (call was already wired)
 
 ---
 
 ## Session: 2026-03-12
 
-**Focus:** AI docs layer + profile system completion + Vibes Rating System
+**Focus:** AI docs layer, profile system completion, Vibes Rating System
 
 ### What was done
-- Created AI documentation layer (`docs/AI_CONTEXT.md`, `docs/AI_RULES.md`, `docs/AI_TASKS.md`, `docs/SESSION_LOG.md`)
-- Updated Claude memory system with project facts
-- Audited profile settings page — discovered it was mostly complete already (5 tabs, social links, privacy, completeness meter — all implemented)
-- Fixed 5 bugs in profile system:
-  - `handleSave()` now saves `social_links` and `personal_info` to users table
-  - Public profile now stores and respects `show_vibes`/`show_wall`/`wall_friends_only` privacy settings
-  - Social links displayed in About tab on public profile
-  - Delete account fully implemented (cascading deletes → signOut)
-  - Public profile uses `users.avatar_url` (falls back to dicebear)
-- User ran Supabase SQL migration for new columns (`social_links`, `personal_info`, privacy booleans)
-- Implemented **Vibes Rating System** on public profiles:
-  - Visitors see "Rate Their Vibes" button below vibes bars
-  - 1–5 scale selector for Trust / Cool / Sexy with neon highlight UX
-  - Submits via `rate_vibes` Supabase RPC (upserts rating, recomputes aggregate)
-  - Fetches existing rating on page load (shows "✓ You rated · Update")
-  - Optimistic UI update blends new rating into displayed scores
-  - Graceful: if `vibes_ratings` table doesn't exist yet, just no existing rating shown
-
-### Key decisions made
-- Social links stored as JSONB on `users` table (not separate table)
-- Privacy toggles on `profile_customization` — colocated with theme data
-- Vibes rating uses `vibes_ratings` table + SECURITY DEFINER RPC for aggregation
-- No new component files created — all changes inline in existing pages
-
-### Files modified
-- `app/profile/page.tsx` — Fixed save function (social_links, personal_info, delete account)
-- `app/u/[zid]/page.tsx` — Privacy respect + social links + avatar fix + vibes rating widget
-- `docs/AI_CONTEXT.md`, `AI_RULES.md`, `AI_TASKS.md`, `SESSION_LOG.md` — Created/updated
-- `C:\Users\rohil\.claude\projects\T--zeezu\memory\` — Created memory files
-
-### SQL still needed (vibes rating)
-```sql
-CREATE TABLE IF NOT EXISTS vibes_ratings ( ... );  -- see AI_TASKS.md In Progress section
-CREATE OR REPLACE FUNCTION rate_vibes(...) ...      -- see AI_TASKS.md In Progress section
-```
+- Created AI documentation layer
+- Fixed 5 bugs in profile system (save, privacy, social links, delete, avatar)
+- Implemented Vibes Rating System with `rate_vibes` RPC
 
 ---
 
-## Session: 2026-03-11 (inferred from git log)
+## Session: 2026-03-11
 
-**Focus:** ZeeWall overhaul
-
-### What was done (from commit `f64df5e`)
-- Reused GlobalFeed with `wallOwnerId` prop
-- Hid topics/mode in wall mode
-- Vote system fixes
-- Notification deduplication
+**Focus:** ZeeWall overhaul (`f64df5e` commit)
+- GlobalFeed reuse with `wallOwnerId` prop, vote system fixes, notification deduplication
 
 ---
 
-## Session: ~2026-03-10 (inferred from commit `6744e2e`)
+## Session: ~2026-03-10
 
 **Focus:** Wall notifications, vote system, share sheet, embeds, GIFs, polls
-
-### What was done
-- Complete notification system for comments, replies, zaps, upvotes with toast + bell
-- Vote system with `comment_votes` table, toggle logic, visual indicators
-- Share sheet with platform options and native sharing
-- EmbedPreview for YouTube, Spotify, SoundCloud, Vimeo links
-- GIF picker and poll creator (up to 5 options)
-- Realtime updates for comments, votes, posts
-- Mood tags with unique gradient colors per mood
-- Top/New sort tabs for feed
-
----
-
-## Session: ~2026-03-09 (inferred from commit `9223602`)
-
-**Focus:** Search & Discovery, realtime fixes, production audit
 
 ---
 
 ## Taste Signals — Running Log
-> Corrections and approvals that reveal preferences. Used for future evaluator.
+> Corrections and approvals that reveal preferences.
 
 | Date | Command | What Claude did | Why it was wrong/right |
 |------|---------|-----------------|------------------------|
+| 2026-03-24 | ElectricBorder optimization | Rewrote with shadowBlur, 30fps throttle, 120 samples | User: "it's looking ugly just revert it" — visual quality > performance micro-optimization on signature components |
+| 2026-03-24 | FAQ redesign | Used terminal/BBS aesthetic with CSS grid accordion | Approved — matches Y2K aesthetic, zero Framer Motion |
+| 2026-03-24 | The Residents philosophy | Proposed feature assignments for agents | User: "let them learn on their own, they're digital organisms not scripts" — no hardcoded feature assignments |

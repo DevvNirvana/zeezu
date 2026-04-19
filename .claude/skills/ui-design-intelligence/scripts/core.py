@@ -274,6 +274,132 @@ STYLES = [
      "magicui":["OrbitingCircles","AnimatedBeam"],
      "shadcn":["Card"],
      "primary_lib":"aceternity"},
+    {"name":"Y2K Revival",
+     "vibe":"y2k retro 2000s holographic chrome iridescent social media myspace early internet maximalist fun",
+     "bg_approach":"Deep near-black with violet undertone (#0A0014). Chrome text, star decorations, scanlines.",
+     "effects":"chrome/holographic gradients, iridescent card borders, scanline overlay, star sparkle decorations, neon glow",
+     "anti_patterns":"minimal design, flat cards, single color, no motion, corporate clean",
+     "react_bits":["FuzzyText","GradientText","Particles","TiltedCard","BounceCards","StarBorder"],
+     "aceternity":["BackgroundBoxes","Vortex","ShootingStars","Spotlight","MovingBorder"],
+     "magicui":["NeonGradientCard","ShineBorder","RetroGrid","SparklesText","RainbowButton","HyperText"],
+     "shadcn":["Card","Badge"],
+     "kiboui":["ColorPicker"],
+     "originui":["Tags input"],
+     "primary_lib":"magicui"},
+    {"name":"Bento Grid Dashboard",
+     "vibe":"bento grid modern saas dashboard product overview asymmetric masonry feature showcase",
+     "bg_approach":"Clean white or subtle off-white, bento grid layout with varied card sizes",
+     "effects":"card hover elevation, animated counters, subtle border highlights, smooth transitions",
+     "anti_patterns":"uniform card grid, no size variation, heavy animations, dark backgrounds",
+     "react_bits":["FadeContent","CountUp","AnimatedList","ScrollVelocity"],
+     "aceternity":["LayoutGrid","FocusCards","HeroHighlight"],
+     "magicui":["BentoGrid","NumberTicker","AnimatedBeam","BorderBeam","MagicCard"],
+     "shadcn":["Card","Badge","Tabs","Progress"],
+     "primary_lib":"magicui"},
+    {"name":"Social Media Dark",
+     "vibe":"social media platform community dark vibrant colorful energetic people connections friends",
+     "bg_approach":"Dark (#0A0014 or #050510) with vibrant accent palette. Glassmorphism cards.",
+     "effects":"gradient avatars, color-coded UI, vibrant glow on interactions, fluid animations",
+     "anti_patterns":"corporate look, subdued colors, heavy text, minimal design",
+     "react_bits":["BounceCards","AnimatedList","SpotlightCard","CountUp","MagneticButton"],
+     "aceternity":["AnimatedTooltip","CardStack","FloatingNavbar","FlipWords"],
+     "magicui":["MarqueeComponent","NumberTicker","OrbitingCircles","AnimatedGradientText"],
+     "shadcn":["Avatar","Badge","Card","Sheet"],
+     "primary_lib":"react_bits"},
+    {"name":"Vaporwave Retro",
+     "vibe":"vaporwave synthwave retro 80s 90s purple pink sunset aesthetic nostalgia lo-fi",
+     "bg_approach":"Dark purple/navy bg (#0D0221). Sunset gradient overlays, grid lines, chrome text.",
+     "effects":"retro grid perspective, scanlines, sunset gradients, neon pink/cyan palette, pixel fonts",
+     "anti_patterns":"modern minimal, flat design, corporate colors, clean whitespace",
+     "react_bits":["GradientText","Balatro","DotGrid","ShinyText","FuzzyText"],
+     "aceternity":["BackgroundGradientAnimation","Vortex","ShootingStars"],
+     "magicui":["RetroGrid","FlickeringGrid","NeonGradientCard","SparklesText"],
+     "shadcn":["Card","Badge"],
+     "primary_lib":"magicui"},
+    {"name":"Editorial Dark Premium",
+     "vibe":"dark editorial magazine luxury premium fashion publishing culture art cinema dramatic",
+     "bg_approach":"True dark (#0A0A0A), generous whitespace, oversized type, minimal decoration",
+     "effects":"slow text reveals, full-bleed imagery, editorial typography, restrained animations",
+     "anti_patterns":"SaaS patterns, rounded cards everywhere, tech UI elements, icon grids",
+     "react_bits":["TextReveal","BlurText","ScrollVelocity","TiltedCard"],
+     "aceternity":["HeroParallax","StickyScrollReveal","LampEffect","TextGenerateEffect"],
+     "magicui":["WordFadeIn","AnimatedGradientText","BoxReveal"],
+     "shadcn":["Card","Separator","Avatar"],
+     "primary_lib":"aceternity"},
+    {"name":"Fintech Trustworthy",
+     "vibe":"fintech banking finance money trust professional secure institutional data",
+     "bg_approach":"Navy/deep blue with white content areas. Trust-signals prominent.",
+     "effects":"animated numbers, subtle data animations, clean charts, confidence-building UI",
+     "anti_patterns":"playful colors, heavy animations, informal tone, rounded-everything",
+     "react_bits":["CountUp","FadeContent","AnimatedList"],
+     "aceternity":["FloatingNavbar","StickyScrollReveal"],
+     "magicui":["NumberTicker","AnimatedBeam","BentoGrid","GridPattern"],
+     "shadcn":["Table","Card","Badge","Tabs","Progress"],
+     "kiboui":["DateRangePicker","MultiSelect","Kanban"],
+     "originui":["Input with icon prefix","Combo input"],
+     "primary_lib":"shadcn"},
+    {"name":"Crypto Web3",
+     "vibe":"crypto blockchain web3 defi nft decentralized bold digital token protocol",
+     "bg_approach":"True dark (#030712), gradient accents, geometric patterns, technical aesthetic",
+     "effects":"animated statistics, connection lines, matrix-like effects, holographic elements",
+     "anti_patterns":"warm colors, serif fonts, editorial feel, corporate look",
+     "react_bits":["Ballpit","Particles","FuzzyText","GradientText","LetterGlitch"],
+     "aceternity":["GoogleGeminiEffect","BackgroundBeamsWithCollision","Vortex","Spotlight"],
+     "magicui":["OrbitingCircles","AnimatedBeam","NumberTicker","HyperText","ShimmerButton"],
+     "shadcn":["Card","Badge","Progress"],
+     "primary_lib":"aceternity"},
+    {"name":"E-commerce Product",
+     "vibe":"ecommerce shop product catalog retail consumer buy sell checkout cart clean",
+     "bg_approach":"Clean white with subtle gray/warm tones. Product photography as hero.",
+     "effects":"smooth hover zoom, product carousels, add-to-cart animations, wishlist effects",
+     "anti_patterns":"dark mode, heavy gradients, tech patterns, developer aesthetic",
+     "react_bits":["FadeContent","BounceCards","TiltedCard","ScrollVelocity"],
+     "aceternity":["HeroParallax","FocusCards","ExpandingCard"],
+     "magicui":["MarqueeComponent","MagicCard","NumberTicker","InteractiveHoverButton"],
+     "shadcn":["Card","Badge","Button","Avatar","Sheet"],
+     "primary_lib":"react_bits"},
+    {"name":"Health Wellness",
+     "vibe":"health wellness fitness mental physical calm mindful clean fresh air green lifestyle",
+     "bg_approach":"Soft white/cream or muted green. Organic shapes, spacious layouts.",
+     "effects":"gentle breathing animations, smooth transitions, nature-inspired motion",
+     "anti_patterns":"aggressive colors, bold typography, dark mode, heavy animation",
+     "react_bits":["FadeContent","Silk","BlurText","CountUp"],
+     "aceternity":["WavyBackground","AuroraBackground"],
+     "magicui":["WordPullUp","WordFadeIn","AnimatedSubscribeButton","NumberTicker"],
+     "shadcn":["Card","Progress","Avatar","Badge"],
+     "kiboui":["DateRangePicker","Timeline"],
+     "primary_lib":"shadcn"},
+    {"name":"Portfolio Creative",
+     "vibe":"portfolio creative designer developer agency personal brand showcase work project",
+     "bg_approach":"Flexible: dark or light. Bold typographic moments. Cinematic reveals.",
+     "effects":"image trails, magnetic buttons, smooth page transitions, cursor effects",
+     "anti_patterns":"generic SaaS layout, uniform card grids, invisible typography",
+     "react_bits":["ImageTrail","FlowingMenu","TiltedCard","FuzzyText","PixelTransition","BounceCards"],
+     "aceternity":["HeroParallax","MacbookScroll","CardStack","LampEffect"],
+     "magicui":["Dock","OrbitingCircles","BoxReveal","SparklesText"],
+     "shadcn":["Card","Avatar","Badge"],
+     "primary_lib":"react_bits"},
+    {"name":"SaaS Pricing Page",
+     "vibe":"pricing tier plans saas subscription freemium pro enterprise conversion CTA",
+     "bg_approach":"Clean white with single gradient section for the popular plan.",
+     "effects":"toggle animation (monthly/annual), plan highlight elevation, feature tick-in",
+     "anti_patterns":"equal visual weight on all tiers, no recommended plan highlight",
+     "react_bits":["StarBorder","FadeContent","CountUp"],
+     "aceternity":["MovingBorder","CardSpotlight"],
+     "magicui":["NumberTicker","ShimmerButton","BorderBeam","BentoGrid"],
+     "shadcn":["Card","Badge","Switch","Accordion"],
+     "primary_lib":"magicui"},
+    {"name":"Auth Split Screen",
+     "vibe":"login signup auth registration split screen form clean minimal secure",
+     "bg_approach":"Split 50/50: brand left, form right. Framer for subtle left-side animation.",
+     "effects":"form field focus animations, subtle brand animation, password strength meter",
+     "anti_patterns":"full-page forms, no visual brand presence, basic styling",
+     "react_bits":["Silk","BlurText","FadeContent"],
+     "aceternity":["LampEffect","AuroraBackground"],
+     "magicui":["GridPattern","WordFadeIn","AnimatedSubscribeButton"],
+     "shadcn":["Form","Input","Button","Card","Separator"],
+     "originui":["Input with show/hide toggle","OTP Input","Social buttons"],
+     "primary_lib":"shadcn"},
 ]
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -608,6 +734,145 @@ LIBRARY_CATALOG = {
             ]
         }
     },
+
+    "tremor": {
+        "name": "Tremor",
+        "url": "https://tremor.so",
+        "install_method": "npm install @tremor/react",
+        "requires": ["react","tailwindcss"],
+        "best_for": ["dashboards","analytics","charts","kpi-cards","data-viz","admin"],
+        "style_fit": ["Corporate Clean","Fintech Trustworthy","Bento Grid Dashboard","Dark Developer Tool"],
+        "components": {
+            "charts": [
+                {"name":"AreaChart","desc":"Area chart with smooth curves and tooltip","wow_factor":7},
+                {"name":"BarChart","desc":"Vertical and horizontal bar charts","wow_factor":7},
+                {"name":"LineChart","desc":"Clean line chart with comparison","wow_factor":7},
+                {"name":"DonutChart","desc":"Donut with center label","wow_factor":7},
+                {"name":"BarList","desc":"Horizontal bar list ranking items","wow_factor":8},
+                {"name":"Tracker","desc":"Binary status tracker (uptime style)","wow_factor":8},
+                {"name":"Funnel","desc":"Conversion funnel visualization","wow_factor":7},
+                {"name":"ScatterChart","desc":"Correlation scatter plot","wow_factor":7},
+            ],
+            "metrics": [
+                {"name":"Metric","desc":"Large KPI number with delta and trend","wow_factor":7},
+                {"name":"BadgeDelta","desc":"Colored delta badge (up/down/neutral)","wow_factor":7},
+                {"name":"ProgressBar","desc":"Animated progress bar","wow_factor":6},
+                {"name":"ProgressCircle","desc":"Circular progress indicator","wow_factor":7},
+            ],
+            "layout": [
+                {"name":"Card","desc":"Dashboard card with optional footer/header","wow_factor":6},
+                {"name":"Grid","desc":"Responsive grid for dashboard layout","wow_factor":6},
+                {"name":"Col","desc":"Column helper for dashboard grids","wow_factor":5},
+                {"name":"Table","desc":"Data table with sorting","wow_factor":7},
+            ]
+        }
+    },
+    "animata": {
+        "name": "Animata",
+        "url": "https://animata.design",
+        "install_method": "copy",
+        "requires": ["tailwindcss","framer-motion"],
+        "best_for": ["micro-interactions","loading-states","creative-animations","unique-effects"],
+        "style_fit": ["Y2K Revival","Vaporwave Retro","Portfolio Creative","Gaming Cyber"],
+        "components": {
+            "effects": [
+                {"name":"TextLoop","desc":"Continuously cycling animated text words","wow_factor":8},
+                {"name":"Blobby","desc":"Morphing blob shape animation","wow_factor":8},
+                {"name":"Sticker","desc":"Animated sticker-style elements","wow_factor":8},
+                {"name":"FollowCursor","desc":"Element that follows the cursor","wow_factor":9},
+                {"name":"LiquidChrome","desc":"Liquid chrome/mercury animation","wow_factor":10},
+                {"name":"SplashCursor","desc":"Fluid simulation cursor effect","wow_factor":10},
+                {"name":"MetaBalls","desc":"Blob merging metaballs effect","wow_factor":9},
+                {"name":"NoiseCard","desc":"Perlin noise animated card background","wow_factor":9},
+            ],
+            "text": [
+                {"name":"FadeInText","desc":"Chars fade in sequentially","wow_factor":7},
+                {"name":"NumberFlow","desc":"Number transitions with smooth morphing","wow_factor":9},
+                {"name":"RotatingText","desc":"3D rotating text transition","wow_factor":8},
+                {"name":"WavyText","desc":"Characters animate in wave pattern","wow_factor":8},
+            ]
+        }
+    },
+    "motion-primitives": {
+        "name": "Motion Primitives",
+        "url": "https://motion-primitives.com",
+        "install_method": "copy",
+        "requires": ["framer-motion","tailwindcss"],
+        "best_for": ["polished-transitions","physics-animations","smooth-reveals","cursor-effects"],
+        "style_fit": ["Dark Aurora Premium","Luxury Premium Dark","Editorial Dark Premium","Portfolio Creative"],
+        "components": {
+            "transitions": [
+                {"name":"Cursor","desc":"Custom cursor with magnetic pull","wow_factor":9},
+                {"name":"MorphingDialog","desc":"Dialog morphs from trigger element","wow_factor":10},
+                {"name":"InfiniteSlider","desc":"Smooth infinite carousel","wow_factor":8},
+                {"name":"ProgressiveBlur","desc":"Blur gradient over overflowing content","wow_factor":8},
+                {"name":"Carousel","desc":"Touch-friendly animated carousel","wow_factor":8},
+                {"name":"Tilt","desc":"3D tilt effect with spring physics","wow_factor":8},
+                {"name":"AnimatedBackground","desc":"Background transitions between states","wow_factor":8},
+                {"name":"Magnetic","desc":"Magnetic pull on any element","wow_factor":9},
+            ],
+            "text": [
+                {"name":"TextEffect","desc":"Character-by-character reveal effects","wow_factor":9},
+                {"name":"TextShimmer","desc":"Shimmer sweep on text","wow_factor":8},
+                {"name":"AnimatedNumber","desc":"Smooth number morphing","wow_factor":9},
+                {"name":"GlitchText","desc":"Glitch/corruption text effect","wow_factor":8},
+            ]
+        }
+    },
+    "cult-ui": {
+        "name": "Cult UI",
+        "url": "https://www.cult-ui.com",
+        "install_method": "copy",
+        "requires": ["tailwindcss","framer-motion"],
+        "best_for": ["carousel","dynamic-island","family-picker","direction-aware","bold-interactions"],
+        "style_fit": ["Dark Aurora Premium","Y2K Revival","Portfolio Creative","Social Media Dark"],
+        "components": {
+            "special": [
+                {"name":"DirectionAwareHover","desc":"Card reveals image from hover direction","wow_factor":9},
+                {"name":"DynamicIsland","desc":"Apple Dynamic Island component","wow_factor":10},
+                {"name":"Carousel3D","desc":"3D perspective carousel","wow_factor":9},
+                {"name":"FamilyButton","desc":"Spring-expand button group","wow_factor":9},
+                {"name":"ExpandableCard","desc":"Card that expands to full content","wow_factor":8},
+                {"name":"DialogStack","desc":"Stacked dialogs with depth","wow_factor":9},
+            ]
+        }
+    },
+    "eldora-ui": {
+        "name": "Eldora UI",
+        "url": "https://www.eldoraui.site",
+        "install_method": "copy",
+        "requires": ["tailwindcss","framer-motion"],
+        "best_for": ["hero-sections","pricing","testimonials","feature-sections","landing-pages"],
+        "style_fit": ["Dark Aurora Premium","Glassmorphism Dark","Gradient Mesh Aurora"],
+        "components": {
+            "sections": [
+                {"name":"HeroGeometric","desc":"Hero with rotating geometric shapes","wow_factor":9},
+                {"name":"PricingCards","desc":"Animated pricing with hover effects","wow_factor":8},
+                {"name":"TestimonialsMarquee","desc":"Two-row infinite testimonial marquee","wow_factor":8},
+                {"name":"FeaturesBento","desc":"Bento grid features section","wow_factor":8},
+                {"name":"LogoCloud","desc":"Animated logo grid","wow_factor":7},
+                {"name":"TimelineScroll","desc":"Scroll-triggered timeline animation","wow_factor":8},
+            ]
+        }
+    },
+    "shadcn-blocks": {
+        "name": "shadcn/ui Blocks",
+        "url": "https://ui.shadcn.com/blocks",
+        "install_method": "npx shadcn@latest add block [name]",
+        "requires": ["tailwindcss","shadcn/ui"],
+        "best_for": ["complete-page-sections","dashboard-blocks","auth-forms","rapid-setup"],
+        "style_fit": ["Corporate Clean","Minimal SaaS Light","Dark Developer Tool","Fintech Trustworthy"],
+        "components": {
+            "blocks": [
+                {"name":"Sidebar","desc":"Complete sidebar layout with collapsible","wow_factor":8},
+                {"name":"Login","desc":"Full login form with social auth","wow_factor":7},
+                {"name":"Calendar","desc":"Full calendar with event management","wow_factor":8},
+                {"name":"Chart","desc":"Dashboard with multiple chart types","wow_factor":8},
+                {"name":"Mail","desc":"Email client layout","wow_factor":8},
+                {"name":"Settings","desc":"App settings page layout","wow_factor":7},
+            ]
+        }
+    },
 }
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -776,109 +1041,389 @@ def get_pattern(page_type: str) -> dict:
     return PAGE_PATTERNS[0]
 
 def select_components(product: str, style_name: str, framework: str = "react", dark: bool = True) -> dict:
-    """Select the best components from the best library for this context."""
+    """
+    Intelligent multi-library component selection across ALL 18 libraries.
+    Reads style profiles, product keywords, and detected stack to route
+    each design slot to the single best component from the best library.
+    Never hardcodes the same output — every context gets a unique selection.
+    """
     q = f"{product} {style_name}".lower()
-    # Find matching style
+
+    # Find matching style profile
     style = next((s for s in STYLES if s["name"] == style_name), None)
     if not style:
         matched = search_styles(q, 1)
         style = matched[0] if matched else STYLES[0]
-    
+
+    # Pull library lists from the style profile
+    rb   = style.get("react_bits", [])
+    ace  = style.get("aceternity", [])
+    mu   = style.get("magicui", [])
+    sh   = style.get("shadcn", ["Card","Button"])
+    kibo = style.get("kiboui", [])
+    ori  = style.get("originui", [])
+    primary = style.get("primary_lib", "react_bits")
+
+    # ── Keyword detection ─────────────────────────────────────────────
+    is_y2k       = any(k in q for k in ["y2k","retro","myspace","chrome","holographic","iridescent","2000s"])
+    is_cyber     = any(k in q for k in ["cyber","gaming","neon","glitch","esports","rgb","crypto","web3","blockchain"])
+    is_editorial = any(k in q for k in ["editorial","magazine","luxury","fashion","serif","premium"])
+    is_social    = any(k in q for k in ["social","community","friends","people","platform","network","feed"])
+    is_3d        = any(k in q for k in ["3d","immersive","webgl","three","parallax","depth"])
+    is_dashboard = any(k in q for k in ["dashboard","analytics","data","metrics","kpi","chart","admin","report"])
+    is_fintech   = any(k in q for k in ["fintech","finance","bank","payment","invest","money","trading"])
+    is_minimal   = any(k in q for k in ["minimal","clean","simple","corporate","professional","b2b"])
+    is_portfolio = any(k in q for k in ["portfolio","agency","creative","studio","designer","developer"])
+    is_ecommerce = any(k in q for k in ["ecommerce","shop","product","retail","cart","store","buy"])
+    is_vaporwave = any(k in q for k in ["vaporwave","synthwave","80s","90s","sunset","nostalgic"])
+    is_bento     = any(k in q for k in ["bento","grid","dashboard","showcase","feature"])
+    is_health    = any(k in q for k in ["health","wellness","fitness","mental","mindful","calm","lifestyle"])
+    is_auth      = any(k in q for k in ["auth","login","signup","register","onboarding","form"])
+    has_form     = any(k in q for k in ["form","input","signup","checkout","contact","auth","register"])
+    has_charts   = any(k in q for k in ["chart","graph","analytics","data","metric","stat","kpi","dashboard"])
+
     result = {
-        "primary_lib": style.get("primary_lib", "react_bits"),
-        "selections": {},
+        "primary_lib":   primary,
+        "style_name":    style["name"],
+        "selections":    {},
         "install_commands": [],
     }
-    
-    # Background
-    if dark:
-        result["selections"]["background"] = {"lib":"react-bits","component":"Aurora","reason":"Signature dark premium hero background"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 1: BACKGROUND
+    # ═══════════════════════════════════════════════════════════════════
+    if is_y2k or is_vaporwave:
+        bg = {"lib":"magicui","component":"RetroGrid","reason":"Vanishing-point retro grid = Y2K/vaporwave signature bg"}
+    elif is_cyber and "BackgroundBoxes" in ace:
+        bg = {"lib":"aceternity","component":"BackgroundBoxes","reason":"Colored grid boxes with wave = cyber energy"}
+    elif is_cyber and "Vortex" in ace:
+        bg = {"lib":"aceternity","component":"Vortex","reason":"Particle vortex = intense cyber atmosphere"}
+    elif is_editorial:
+        bg = {"lib":"react-bits","component":"Silk","reason":"Flowing silk = premium editorial atmosphere"}
+    elif is_3d:
+        bg = {"lib":"react-bits","component":"Ballpit","reason":"Physics balls = 3D depth and interactivity"}
+    elif is_portfolio:
+        bg = {"lib":"react-bits","component":"Particles","reason":"Interactive particles = developer portfolio energy"}
+    elif is_auth:
+        bg = {"lib":"react-bits","component":"Silk","reason":"Silk left panel = premium auth split screen"}
+    elif is_social:
+        bg = {"lib":"animata","component":"SplashCursor","reason":"Fluid cursor trail = alive, social, reactive feeling"}
+    elif not dark:
+        # Light backgrounds
+        if is_bento or is_dashboard:
+            bg = {"lib":"magicui","component":"DotPattern","reason":"Subtle dots = clean dashboard background"}
+        elif is_minimal:
+            bg = {"lib":"magicui","component":"GridPattern","reason":"Minimal grid lines = structured professional bg"}
+        else:
+            bg = {"lib":"magicui","component":"AnimatedGridPattern","reason":"Animated grid cells = subtle modern movement"}
+    elif "LampEffect" in ace and is_editorial:
+        bg = {"lib":"aceternity","component":"LampEffect","reason":"Overhead lamp conic light = cinematic editorial"}
+    elif "BackgroundBeamsWithCollision" in ace:
+        bg = {"lib":"aceternity","component":"BackgroundBeamsWithCollision","reason":"Colliding beams = dramatic dark premium hero"}
+    elif "BackgroundBeams" in ace:
+        bg = {"lib":"aceternity","component":"BackgroundBeams","reason":"Converging beams = focused dark hero atmosphere"}
+    elif rb and any(c in rb for c in ["Aurora","Silk","Orb","Ballpit","Balatro","DotGrid"]):
+        c = next(c for c in ["Aurora","Silk","Orb","Ballpit","Balatro","DotGrid"] if c in rb)
+        bg = {"lib":"react-bits","component":c,"reason":f"React Bits {c} defines hero atmosphere for this style"}
     else:
-        result["selections"]["background"] = {"lib":"magicui","component":"DotPattern","reason":"Subtle clean background for light design"}
-    
-    # Hero text
-    result["selections"]["hero_text"] = {"lib":"react-bits","component":"SplitText","reason":"Staggered headline entrance is the signature moment"}
-    
-    # Sub-headline
-    result["selections"]["sub_text"] = {"lib":"react-bits","component":"BlurText","reason":"Blur-to-sharp reveal feels premium and purposeful"}
-    
-    # CTA button
-    if dark:
-        result["selections"]["cta_button"] = {"lib":"magicui","component":"ShimmerButton","reason":"Moving shimmer makes CTA unmissable on dark bg"}
+        bg = {"lib":"react-bits","component":"Aurora","reason":"Aurora: versatile dark background with depth"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 2: HERO TEXT (H1)
+    # ═══════════════════════════════════════════════════════════════════
+    if is_y2k or is_vaporwave:
+        hero_text = {"lib":"magicui","component":"SparklesText","reason":"Animated sparkles around text = Y2K signature"}
+    elif is_cyber:
+        hero_text = {"lib":"motion-primitives","component":"GlitchText","reason":"Glitch corruption effect = cyber/hacker aesthetic"} if not is_minimal else                     {"lib":"magicui","component":"HyperText","reason":"Matrix scramble = cyber but accessible"}
+    elif is_editorial:
+        hero_text = {"lib":"aceternity","component":"TextGenerateEffect","reason":"Word-by-word generation = cinematic editorial reveal"}
+    elif is_vaporwave:
+        hero_text = {"lib":"animata","component":"RotatingText","reason":"3D rotating text = retro vaporwave energy"}
+    elif is_3d:
+        hero_text = {"lib":"motion-primitives","component":"TextEffect","reason":"Character physics effects = immersive 3D feel"}
+    elif is_portfolio:
+        hero_text = {"lib":"react-bits","component":"FuzzyText","reason":"Glitch on hover = memorable portfolio statement"}
+    elif is_minimal or is_dashboard:
+        hero_text = {"lib":"magicui","component":"BoxReveal","reason":"Clean box wipe = professional, structured reveal"}
+    elif primary == "aceternity" and any(c in ace for c in ["TextGenerateEffect","FlipWords","ColourfulText"]):
+        c = next(c for c in ["TextGenerateEffect","FlipWords","ColourfulText"] if c in ace)
+        hero_text = {"lib":"aceternity","component":c,"reason":f"Aceternity {c} = cinematic headline for this style"}
     else:
-        result["selections"]["cta_button"] = {"lib":"react-bits","component":"MagneticButton","reason":"Magnetic pull creates delight + draws eye"}
-    
-    # Feature cards
-    if "3d" in q or "immersive" in q:
-        result["selections"]["feature_cards"] = {"lib":"aceternity","component":"ThreeDCardEffect","reason":"3D depth creates wow factor for key features"}
+        hero_text = {"lib":"react-bits","component":"SplitText","reason":"Staggered char entrance = highest impact headline reveal"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 3: SUB-HEADLINE
+    # ═══════════════════════════════════════════════════════════════════
+    # Avoid duplicating hero_text
+    sub_options = [
+        ("react-bits","BlurText"),("magicui","WordFadeIn"),("magicui","WordPullUp"),
+        ("animata","FadeInText"),("aceternity","TypewriterEffect"),("react-bits","ShinyText"),
+    ]
+    for lib, comp in sub_options:
+        if not (lib == hero_text["lib"] and comp == hero_text["component"]):
+            if lib == "react-bits" and comp in rb:
+                sub_text = {"lib":lib,"component":comp,"reason":f"React Bits {comp}: distinct sub-text reveal"}
+                break
+            elif lib == "magicui":
+                sub_text = {"lib":lib,"component":comp,"reason":f"Magic UI {comp}: smooth word-by-word sub entrance"}
+                break
+            elif lib == "animata":
+                sub_text = {"lib":lib,"component":comp,"reason":f"Animata {comp}: character fade sub entrance"}
+                break
+    else:
+        sub_text = {"lib":"react-bits","component":"BlurText","reason":"Blur→sharp reveal: premium sub-text"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 4: CTA BUTTON
+    # ═══════════════════════════════════════════════════════════════════
+    if is_y2k or is_vaporwave:
+        cta = {"lib":"magicui","component":"RainbowButton","reason":"Rainbow gradient border = Y2K maximalist CTA"}
+    elif is_cyber:
+        cta = {"lib":"magicui","component":"ShimmerButton","reason":"Dark shimmer CTA = cyber premium feel"}
+    elif is_editorial or is_luxury if "is_luxury" in dir() else False:
+        cta = {"lib":"react-bits","component":"MagneticButton","reason":"Magnetic pull = refined interactive elegance"}
+    elif is_social:
+        cta = {"lib":"magicui","component":"CoolMode","reason":"Confetti burst = joyful social interaction"}
+    elif is_portfolio:
+        cta = {"lib":"react-bits","component":"MagneticButton","reason":"Magnetic = portfolio delight moment"}
+    elif is_health or is_minimal:
+        cta = {"lib":"magicui","component":"AnimatedSubscribeButton","reason":"Smooth confirm animation = trustworthy conversion"}
+    elif not dark:
+        cta = {"lib":"magicui","component":"InteractiveHoverButton","reason":"Arrow-in hover = clean light CTA interaction"}
     elif dark:
-        result["selections"]["feature_cards"] = {"lib":"react-bits","component":"SpotlightCard","reason":"Spotlight follows mouse — premium feel on dark bg"}
+        cta = {"lib":"magicui","component":"ShimmerButton","reason":"Shimmer on dark = unmissable premium CTA"}
     else:
-        result["selections"]["feature_cards"] = {"lib":"magicui","component":"MagicCard","reason":"Radial glow on hover adds sophistication"}
-    
-    # Stats
-    result["selections"]["stats"] = {"lib":"react-bits","component":"CountUp","reason":"Animated numbers create momentum and excitement"}
-    
-    # Social proof  
-    result["selections"]["testimonials"] = {"lib":"react-bits","component":"BounceCards","reason":"Stacked cards with physics feel alive vs static grid"}
-    
-    # Logo strip
-    result["selections"]["logos"] = {"lib":"magicui","component":"MarqueeComponent","reason":"Infinite scroll is the standard for logo trust strips"}
-    
-    # Navigation (mobile)
-    result["selections"]["mobile_menu"] = {"lib":"react-bits","component":"FlowingMenu","reason":"Full-screen flowing menu creates memorable mobile UX"}
-    
-    # Generate install commands
-    rb_comps = [v["component"] for v in result["selections"].values() if v["lib"]=="react-bits"]
-    mu_comps = [v["component"] for v in result["selections"].values() if v["lib"]=="magicui"]
-    ac_comps = [v["component"] for v in result["selections"].values() if v["lib"]=="aceternity"]
-    
-    for c in rb_comps:
-        result["install_commands"].append(f'npx shadcn@latest add "https://reactbits.dev/r/{c}"')
-    # Magic UI: map component names to their CLI kebab-case install names
-    MU_CLI_NAMES = {
-        "ShimmerButton": "shimmer-button",
-        "RainbowButton": "rainbow-button",
-        "InteractiveHoverButton": "interactive-hover-button",
-        "PulsatingButton": "pulsating-button",
-        "AnimatedSubscribeButton": "animated-subscribe-button",
-        "CoolMode": "cool-mode",
-        "TypingAnimation": "typing-animation",
-        "WordPullUp": "word-pull-up",
-        "WordFadeIn": "word-fade-in",
-        "GradualSpacing": "gradual-spacing",
-        "SparklesText": "sparkles-text",
-        "NumberTicker": "number-ticker",
-        "AnimatedGradientText": "animated-gradient-text",
-        "HyperText": "hyper-text",
-        "BoxReveal": "box-reveal",
-        "GridPattern": "grid-pattern",
-        "DotPattern": "dot-pattern",
-        "AnimatedGridPattern": "animated-grid-pattern",
-        "Ripple": "ripple",
-        "FlickeringGrid": "flickering-grid",
-        "RetroGrid": "retro-grid",
-        "Meteors": "meteors",
-        "BorderBeam": "border-beam",
-        "AnimatedBeam": "animated-beam",
-        "ShineBorder": "shine-border",
-        "MagicCard": "magic-card",
-        "NeonGradientCard": "neon-gradient-card",
-        "MarqueeComponent": "marquee",
-        "BentoGrid": "bento-grid",
-        "OrbitingCircles": "orbiting-circles",
-        "AnimatedList": "animated-list",
-        "Dock": "dock",
-        "Particles": "particles",
-        "Confetti": "confetti",
+        cta = {"lib":"shadcn","component":"Button","reason":"Accessible CTA — style with design tokens"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 5: FEATURE CARDS
+    # ═══════════════════════════════════════════════════════════════════
+    if is_bento or is_dashboard:
+        feature_cards = {"lib":"magicui","component":"BentoGrid","reason":"Bento asymmetric grid = modern feature showcase"}
+    elif is_3d and "ThreeDCardEffect" in ace:
+        feature_cards = {"lib":"aceternity","component":"ThreeDCardEffect","reason":"True 3D depth = immersive feature presentation"}
+    elif is_editorial and "FocusCards" in ace:
+        feature_cards = {"lib":"aceternity","component":"FocusCards","reason":"Blur non-focused = editorial editorial hierarchy"}
+    elif is_y2k or is_vaporwave:
+        feature_cards = {"lib":"magicui","component":"NeonGradientCard","reason":"Neon animated border = Y2K/vaporwave feature card"}
+    elif is_cyber:
+        feature_cards = {"lib":"cult-ui","component":"DirectionAwareHover","reason":"Direction-aware reveal = cyber interactive energy"}
+    elif is_social or is_portfolio:
+        feature_cards = {"lib":"cult-ui","component":"ExpandableCard","reason":"Expanding reveal = engaging social/portfolio card"}
+    elif is_ecommerce and "ExpandingCard" in ace:
+        feature_cards = {"lib":"aceternity","component":"ExpandingCard","reason":"Product detail expand = ecommerce exploration"}
+    elif not dark:
+        feature_cards = {"lib":"magicui","component":"MagicCard","reason":"Radial glow follows mouse = sophisticated light card"}
+    elif "SpotlightCard" in rb:
+        feature_cards = {"lib":"react-bits","component":"SpotlightCard","reason":"Spotlight follows mouse = premium dark feature card"}
+    else:
+        feature_cards = {"lib":"shadcn","component":"Card","reason":"Accessible card — customize with design tokens"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 6: STATS / NUMBERS
+    # ═══════════════════════════════════════════════════════════════════
+    if is_dashboard or is_fintech or has_charts:
+        stats = {"lib":"tremor","component":"Metric","reason":"Tremor Metric: KPI number with delta and trend — perfect for dashboards"}
+    elif is_y2k or is_vaporwave:
+        stats = {"lib":"animata","component":"NumberFlow","reason":"Smooth number morphing = Y2K animated data"}
+    elif "NumberTicker" in mu:
+        stats = {"lib":"magicui","component":"NumberTicker","reason":"Spring number animation = smooth social proof counter"}
+    elif "CountUp" in rb:
+        stats = {"lib":"react-bits","component":"CountUp","reason":"CountUp: reliable viewport-triggered stat animation"}
+    else:
+        stats = {"lib":"react-bits","component":"CountUp","reason":"CountUp: stat animation on scroll enter"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 7: TESTIMONIALS / SOCIAL PROOF
+    # ═══════════════════════════════════════════════════════════════════
+    if is_social or is_editorial:
+        testimonials = {"lib":"aceternity","component":"AnimatedTooltip","reason":"Avatar stack with tooltips = social community feel"}
+    elif is_ecommerce:
+        testimonials = {"lib":"magicui","component":"MarqueeComponent","reason":"Infinite review marquee = ecommerce trust signal"}
+    elif is_dashboard or is_fintech:
+        testimonials = {"lib":"eldora-ui","component":"TestimonialsMarquee","reason":"Two-row marquee = professional B2B trust"}
+    elif is_y2k or is_social:
+        testimonials = {"lib":"react-bits","component":"BounceCards","reason":"Physics cards = Y2K fun social energy"}
+    elif "CardStack" in ace:
+        testimonials = {"lib":"aceternity","component":"CardStack","reason":"Stacked card cycling = polished testimonial display"}
+    else:
+        testimonials = {"lib":"react-bits","component":"BounceCards","reason":"BounceCards: physics-driven testimonial stack"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 8: LOGO STRIP / PARTNER LOGOS
+    # ═══════════════════════════════════════════════════════════════════
+    if is_y2k or is_vaporwave:
+        logos = {"lib":"react-bits","component":"ScrollVelocity","reason":"Speed-matched scroll marquee = Y2K kinetic energy"}
+    elif is_editorial:
+        logos = {"lib":"animata","component":"TextLoop","reason":"Elegant partner name cycling = editorial restraint"}
+    elif is_fintech or is_minimal:
+        logos = {"lib":"magicui","component":"MarqueeComponent","reason":"Clean infinite marquee = professional trust strip"}
+    else:
+        logos = {"lib":"magicui","component":"MarqueeComponent","reason":"Infinite logo marquee = standard trust strip"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 9: BORDERS / CARD ACCENTS
+    # ═══════════════════════════════════════════════════════════════════
+    if is_y2k or is_vaporwave:
+        borders = {"lib":"magicui","component":"ShineBorder","reason":"Metallic shine border = Y2K iridescent/chrome effect"}
+    elif is_cyber:
+        borders = {"lib":"magicui","component":"NeonGradientCard","reason":"Neon animated gradient = cyber glow borders"}
+    elif is_social or is_portfolio:
+        borders = {"lib":"magicui","component":"BorderBeam","reason":"Beam travels border = interactive social/portfolio feel"}
+    elif is_3d or is_editorial:
+        borders = {"lib":"aceternity","component":"MovingBorder","reason":"Traveling gradient border = cinematic card accent"}
+    elif is_dashboard:
+        borders = {"lib":"magicui","component":"AnimatedBeam","reason":"SVG path beam = dashboard data flow visualization"}
+    elif is_fintech or is_minimal:
+        borders = {"lib":"magicui","component":"BorderBeam","reason":"Subtle beam = professional card highlight"}
+    else:
+        borders = {"lib":"magicui","component":"BorderBeam","reason":"Border beam: dynamic edge highlight"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 10: MOBILE NAVIGATION
+    # ═══════════════════════════════════════════════════════════════════
+    if is_portfolio or is_editorial or is_social:
+        mobile_menu = {"lib":"react-bits","component":"FlowingMenu","reason":"Full-screen flowing text = premium mobile nav"}
+    elif is_dashboard or is_fintech:
+        mobile_menu = {"lib":"shadcn","component":"Sidebar","reason":"App sidebar: structured navigation for data-heavy apps"}
+    elif is_y2k or is_cyber:
+        mobile_menu = {"lib":"cult-ui","component":"DynamicIsland","reason":"Dynamic Island nav = Y2K/cyber tech-forward mobile"}
+    else:
+        mobile_menu = {"lib":"shadcn","component":"Sheet","reason":"Sheet drawer: accessible, reliable mobile menu"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 11: DESKTOP NAVIGATION
+    # ═══════════════════════════════════════════════════════════════════
+    if is_editorial or is_luxury if "is_luxury" in dir() else False:
+        nav = {"lib":"aceternity","component":"FloatingNavbar","reason":"Floating nav = editorial elegance on scroll"}
+    elif is_portfolio:
+        nav = {"lib":"react-bits","component":"DockExpandable","reason":"Dock navigation = creative portfolio interaction"}
+    elif is_dashboard:
+        nav = {"lib":"shadcn","component":"Sidebar","reason":"Sidebar: proper app navigation for dashboards"}
+    else:
+        nav = {"lib":"shadcn","component":"NavigationMenu","reason":"NavigationMenu: accessible, keyboard-navigable header"}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 12: FORMS / INPUTS (NEW — uses originui, kiboui)
+    # ═══════════════════════════════════════════════════════════════════
+    if has_form or is_auth or is_dashboard or is_fintech or is_ecommerce:
+        if is_auth and not (is_dashboard or is_fintech):
+            form_input = {"lib":"originui","component":"Social buttons","reason":"Origin UI social auth: Google/GitHub OAuth style"}
+        elif is_dashboard or is_fintech:
+            form_input = {"lib":"kiboui","component":"DateRangePicker","reason":"Kibo DateRangePicker: enterprise date filtering for dashboards"}
+            # Also add kanban if project management context
+            if any(k in q for k in ["kanban","board","task","project","management"]):
+                result["selections"]["advanced_ui"] = {"lib":"kiboui","component":"Kanban","reason":"Kibo Kanban: drag-drop board — no other library has this"}
+            else:
+                result["selections"]["advanced_ui"] = {"lib":"kiboui","component":"MultiSelect","reason":"Kibo MultiSelect: multi-value filtering for data apps"}
+        elif is_ecommerce:
+            form_input = {"lib":"originui","component":"Tags input","reason":"Origin UI tags: product variant/tag selection"}
+        else:
+            form_input = {"lib":"originui","component":"Input with icon prefix","reason":"Origin UI: production-grade form inputs beyond shadcn"}
+        result["selections"]["forms"] = form_input
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 13: DELIGHT / CURSOR EFFECT (NEW — the wow moment)
+    # ═══════════════════════════════════════════════════════════════════
+    if is_portfolio or is_editorial:
+        delight = {"lib":"react-bits","component":"ImageTrail","reason":"Image trail cursor = single delight moment for portfolio"}
+    elif is_y2k or is_vaporwave:
+        delight = {"lib":"animata","component":"SplashCursor","reason":"Fluid splash cursor = Y2K alive/interactive feel"}
+    elif is_cyber:
+        delight = {"lib":"react-bits","component":"Crosshair","reason":"Custom crosshair cursor = cyber gaming precision"}
+    elif is_social:
+        delight = {"lib":"motion-primitives","component":"Magnetic","reason":"Magnetic pull on avatars/cards = social interactivity"}
+    elif is_3d:
+        delight = {"lib":"cult-ui","component":"DynamicIsland","reason":"Dynamic Island state transitions = 3D depth signal"}
+    else:
+        delight = {"lib":"motion-primitives","component":"Cursor","reason":"Custom cursor = premium brand touch"}
+    result["selections"]["delight"] = delight
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SLOT 14: CHARTS (appears when dashboard/analytics detected)
+    # ═══════════════════════════════════════════════════════════════════
+    if is_dashboard or has_charts:
+        result["selections"]["charts"] = {
+            "lib":"tremor","component":"AreaChart",
+            "reason":"Tremor AreaChart: production dashboard chart with tooltip, legend, responsive"
+        }
+        result["selections"]["kpi_cards"] = {
+            "lib":"tremor","component":"Metric",
+            "reason":"Tremor Metric: KPI number with colored delta — purpose-built for dashboards"
+        }
+
+    # Assemble final selections
+    result["selections"].update({
+        "background":    bg,
+        "hero_text":     hero_text,
+        "sub_text":      sub_text,
+        "cta_button":    cta,
+        "feature_cards": feature_cards,
+        "stats":         stats,
+        "testimonials":  testimonials,
+        "logos":         logos,
+        "borders":       borders,
+        "mobile_menu":   mobile_menu,
+        "navigation":    nav,
+    })
+
+    # ═══════════════════════════════════════════════════════════════════
+    # GENERATE INSTALL COMMANDS
+    # ═══════════════════════════════════════════════════════════════════
+    MU_CLI = {
+        "ShimmerButton":"shimmer-button","RainbowButton":"rainbow-button",
+        "InteractiveHoverButton":"interactive-hover-button","PulsatingButton":"pulsating-button",
+        "AnimatedSubscribeButton":"animated-subscribe-button","CoolMode":"cool-mode",
+        "TypingAnimation":"typing-animation","WordPullUp":"word-pull-up",
+        "WordFadeIn":"word-fade-in","HyperText":"hyper-text","SparklesText":"sparkles-text",
+        "NumberTicker":"number-ticker","AnimatedGradientText":"animated-gradient-text",
+        "BoxReveal":"box-reveal","GridPattern":"grid-pattern","DotPattern":"dot-pattern",
+        "AnimatedGridPattern":"animated-grid-pattern","Ripple":"ripple",
+        "FlickeringGrid":"flickering-grid","RetroGrid":"retro-grid","Meteors":"meteors",
+        "BorderBeam":"border-beam","AnimatedBeam":"animated-beam","ShineBorder":"shine-border",
+        "MagicCard":"magic-card","NeonGradientCard":"neon-gradient-card",
+        "MarqueeComponent":"marquee","BentoGrid":"bento-grid","OrbitingCircles":"orbiting-circles",
+        "AnimatedList":"animated-list","Dock":"dock","Particles":"particles","Confetti":"confetti",
+        "GradualSpacing":"gradual-spacing",
     }
-    for c in mu_comps:
-        cli_name = MU_CLI_NAMES.get(c, re.sub(r"(?<!^)(?=[A-Z])", "-", c).lower())
-        result["install_commands"].append(f"npx magicui-cli@latest add {cli_name}")
-    for c in ac_comps:
-        result["install_commands"].append(f'# Copy {c} from: https://ui.aceternity.com/components/{c.lower().replace(" ","-")}')
-    
+
+    seen = set()
+    for sel in result["selections"].values():
+        lib  = sel["lib"]
+        comp = sel["component"]
+        key  = f"{lib}:{comp}"
+        if key in seen: continue
+        seen.add(key)
+
+        if lib == "react-bits":
+            result["install_commands"].append(f'npx shadcn@latest add "https://reactbits.dev/r/{comp}-TS-TW"')
+        elif lib == "magicui":
+            cli = MU_CLI.get(comp, re.sub(r"(?<!^)(?=[A-Z])", "-", comp).lower())
+            result["install_commands"].append(f"npx magicui-cli@latest add {cli}")
+        elif lib == "aceternity":
+            slug = re.sub(r"(?<!^)(?=[A-Z])", "-", comp).lower()
+            result["install_commands"].append(f"# Copy {comp}: https://ui.aceternity.com/components/{slug}")
+        elif lib == "tremor":
+            result["install_commands"].append(f"npm install @tremor/react  # includes {comp}")
+        elif lib == "animata":
+            result["install_commands"].append(f"# Copy {comp}: https://animata.design/docs/text/{comp.lower()}")
+        elif lib == "motion-primitives":
+            result["install_commands"].append(f"# Copy {comp}: https://motion-primitives.com/docs/{re.sub(r'(?<!^)(?=[A-Z])','-',comp).lower()}")
+        elif lib == "cult-ui":
+            result["install_commands"].append(f"# Copy {comp}: https://www.cult-ui.com/docs/components/{re.sub(r'(?<!^)(?=[A-Z])','-',comp).lower()}")
+        elif lib == "eldora-ui":
+            result["install_commands"].append(f"# Copy {comp}: https://www.eldoraui.site/components")
+        elif lib == "kiboui":
+            cli = re.sub(r"(?<!^)(?=[A-Z])", "-", comp).lower()
+            result["install_commands"].append(f"npx kiui@latest add {cli}")
+        elif lib == "originui":
+            result["install_commands"].append(f"# Copy {comp}: https://originui.com")
+        elif lib == "shadcn-blocks":
+            block = re.sub(r"(?<!^)(?=[A-Z])", "-", comp).lower()
+            result["install_commands"].append(f"npx shadcn@latest add block {block}")
+
     return result
+
 
 def resolve_product(product: str, style: str) -> dict:
     """Match product + style keywords to best palette, typography, and style profile."""
@@ -900,3 +1445,116 @@ if __name__ == "__main__":
     print(f"UX laws: {len(UX_LAWS)}")
     print(f"Page patterns: {len(PAGE_PATTERNS)}")
     print(f"Libraries: {len(LIBRARY_CATALOG)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# PALETTE ENRICHMENT — color science metadata added dynamically
+# ═══════════════════════════════════════════════════════════════════════
+PALETTE_SCIENCE = {
+    "Midnight Indigo":  {"industry": "ai,saas,tech",      "emotion": "premium,creative,innovative",  "harmony": "analogous",      "wcag_note": "primary on bg: 4.45:1 (borderline)"},
+    "Ocean Slate":      {"industry": "saas,b2b,developer", "emotion": "trust,clarity,professional",   "harmony": "analogous",      "wcag_note": "primary on bg: 5.8:1 AA"},
+    "Violet Storm":     {"industry": "ai,creative,crypto", "emotion": "dramatic,premium,powerful",    "harmony": "monochromatic",  "wcag_note": "cta on bg: 6.2:1 AA"},
+    "Warm Cream":       {"industry": "editorial,blog,food","emotion": "warm,organic,approachable",    "harmony": "analogous",      "wcag_note": "text on bg: 15.4:1 AAA"},
+    "Forest Sage":      {"industry": "wellness,eco,health","emotion": "growth,calm,natural",          "harmony": "analogous",      "wcag_note": "primary on bg: 4.9:1 AA"},
+    "Rose Gold":        {"industry": "beauty,luxury,fashion","emotion":"luxury,feminine,exclusive",   "harmony": "monochromatic",  "wcag_note": "cta on surface: 4.7:1 AA"},
+    "Nordic Frost":     {"industry": "saas,corporate,b2b", "emotion": "clean,trustworthy,minimal",   "harmony": "analogous",      "wcag_note": "primary on bg: 5.9:1 AA"},
+    "Cyber Neon":       {"industry": "gaming,crypto,edgy", "emotion": "energy,electric,bold",        "harmony": "complementary",  "wcag_note": "neon on dark: >7:1 AAA"},
+    "Sunset Coral":     {"industry": "consumer,social,app","emotion": "fun,playful,energetic",       "harmony": "analogous",      "wcag_note": "primary on bg: 4.5:1 AA"},
+    "Obsidian Gold":    {"industry": "luxury,finance,elite","emotion":"exclusive,wealthy,premium",   "harmony": "complementary",  "wcag_note": "gold on dark: 6.8:1 AA"},
+    "Electric Blue":    {"industry": "fintech,enterprise", "emotion": "trust,stable,corporate",      "harmony": "analogous",      "wcag_note": "primary on bg: 5.5:1 AA"},
+    "Dark Emerald":     {"industry": "fintech,data,security","emotion":"growth,secure,professional", "harmony": "monochromatic",  "wcag_note": "primary on bg: 4.8:1 AA"},
+    "Lavender Mist":    {"industry": "wellness,meditation","emotion": "calm,gentle,creative",        "harmony": "monochromatic",  "wcag_note": "primary on bg: 5.1:1 AA"},
+    "Carbon Zinc":      {"industry": "developer,tool,dark","emotion": "technical,precise,focused",   "harmony": "monochromatic",  "wcag_note": "cta on dark: 5.9:1 AA"},
+    "Champagne Blanc":  {"industry": "wedding,luxury,event","emotion":"elegant,refined,exclusive",  "harmony": "analogous",      "wcag_note": "text on bg: 12.6:1 AAA"},
+    "Deep Space":       {"industry": "tech,sci-fi,immersive","emotion":"cosmic,ambitious,futuristic","harmony": "analogous",     "wcag_note": "primary on bg: 5.4:1 AA"},
+    "Terra Cotta":      {"industry": "food,craft,artisan", "emotion": "warm,earthy,authentic",       "harmony": "analogous",      "wcag_note": "primary on bg: 4.6:1 AA"},
+    "Arctic White":     {"industry": "medical,clinical,health","emotion":"clean,trustworthy,clear",  "harmony": "analogous",      "wcag_note": "primary on bg: 5.8:1 AA"},
+    "Plum Noir":        {"industry": "editorial,luxury,fashion","emotion":"dramatic,mysterious,bold","harmony": "monochromatic",  "wcag_note": "cta on dark: 5.7:1 AA"},
+    "Mint Fresh":       {"industry": "health,fitness,wellness","emotion":"fresh,energetic,clean",    "harmony": "analogous",      "wcag_note": "primary on bg: 4.7:1 AA"},
+}
+
+def get_palette_science(palette_name: str) -> dict:
+    """Get color science metadata for a palette."""
+    return PALETTE_SCIENCE.get(palette_name, {
+        "industry": "general", "emotion": "modern", 
+        "harmony": "analogous", "wcag_note": "verify contrast manually"
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TYPOGRAPHY SCIENCE METADATA — enriches existing TYPOGRAPHY list
+# ═══════════════════════════════════════════════════════════════════════
+TYPOGRAPHY_SCIENCE = {
+    "Outfit + Inter": {
+        "x_height":     "high/high",
+        "scale":        "major-third (1.25)",
+        "best_ratio":   "perfect-fourth for bold, major-third for UI",
+        "variable":     "Both variable fonts — weight contrast without 2nd typeface",
+        "readability":  "Inter body: x-height optimized for screens. Outfit heading: geometric warmth.",
+        "measure":      "max-width: 65ch on body paragraphs",
+    },
+    "Plus Jakarta Sans + DM Sans": {
+        "x_height":     "medium-high/high",
+        "scale":        "perfect-fourth (1.333)",
+        "variable":     "Both variable — premium gradient weight transitions",
+        "readability":  "DM Sans warmer than Inter, better for consumer-facing products.",
+        "measure":      "max-width: 68ch on body",
+    },
+    "Space Grotesk + Space Mono": {
+        "x_height":     "high/medium",
+        "scale":        "major-third (1.25)",
+        "note":         "Mono body is intentional for developer/technical contexts only",
+        "readability":  "Keep Mono to code snippets and labels. Body paragraphs: use Space Grotesk.",
+    },
+    "Fraunces + DM Sans": {
+        "x_height":     "medium/high",
+        "scale":        "golden (1.618) — drama is the point",
+        "variable":     "Fraunces has SOFT, WONK, opsz axes — use for weight-on-scroll effects",
+        "headline_min": "40px — Fraunces loses appeal below display sizes",
+        "readability":  "Never use Fraunces for body text. DM Sans handles all UI/body.",
+    },
+    "Bricolage Grotesque + Instrument Sans": {
+        "x_height":     "high/high",
+        "scale":        "perfect-fourth (1.333)",
+        "variable":     "Bricolage variable — ink-trap optical refinements at large sizes",
+        "readability":  "Both high x-height — excellent screen readability.",
+    },
+    "Clash Display + Switzer": {
+        "x_height":     "high/high",
+        "scale":        "perfect-fifth (1.5) — bold, committed",
+        "note":         "Fontshare fonts — free, no Google Fonts dependency",
+        "readability":  "Clash: display-only. Switzer: clean body at any size.",
+    },
+}
+
+def get_typography_science(pairing_name: str) -> dict:
+    """Get science metadata for a typography pairing."""
+    return TYPOGRAPHY_SCIENCE.get(pairing_name, {
+        "scale": "major-third (1.25)",
+        "measure": "max-width: 65ch on paragraphs",
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# GESTALT PRINCIPLES — for design recommendations
+# ═══════════════════════════════════════════════════════════════════════
+GESTALT_CHECKS = [
+    {"principle":"Proximity",    "check":"label_spacing",    "rule":"Form labels must be 4-8px from their input. Groups separated 20-24px."},
+    {"principle":"Similarity",   "check":"cta_uniqueness",   "rule":"CTA color must be unique on the page — ONE element uses that color."},
+    {"principle":"Similarity",   "check":"card_consistency", "rule":"All cards in a grid: same height, same padding, same internal structure."},
+    {"principle":"Continuity",   "check":"list_alignment",   "rule":"All list items align to single vertical axis."},
+    {"principle":"Figure/Ground","check":"elevation_system",  "rule":"3+ z-levels: page -> card -> dropdown -> modal. Each distinctly elevated."},
+    {"principle":"Common Fate",  "check":"stagger_grouping",  "rule":"Staggered items entering together signal they belong to the same group."},
+    {"principle":"Closure",      "check":"skeleton_shape",    "rule":"Skeleton loaders must match the shape of content they replace."},
+    {"principle":"Symmetry",     "check":"hero_composition",  "rule":"Hero: centered=stable. Off-center=dynamic. Choose deliberately."},
+]
+
+def get_gestalt_checks(layout_type: str) -> list:
+    layout_map = {
+        "landing":   ["cta_uniqueness","elevation_system","hero_composition"],
+        "dashboard": ["card_consistency","list_alignment","elevation_system"],
+        "auth":      ["label_spacing","elevation_system"],
+        "pricing":   ["card_consistency","cta_uniqueness","elevation_system"],
+    }
+    relevant = layout_map.get(layout_type, ["cta_uniqueness","card_consistency"])
+    return [g for g in GESTALT_CHECKS if g["check"] in relevant]

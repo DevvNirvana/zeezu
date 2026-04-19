@@ -95,7 +95,7 @@ These agencies represent what's possible. Study them not to copy, but to interna
 
 ---
 
-## Color Trends 2024-2025
+## Color Trends 2026-2026
 
 ### Dominant now:
 - **AI Indigo** — #6366F1 → #8B5CF6. Every AI startup uses this. Consider differentiating.
@@ -110,7 +110,7 @@ These agencies represent what's possible. Study them not to copy, but to interna
 - Neumorphism (still impractical + low contrast)
 - Flat gradient backgrounds (unless strongly brand-justified)
 
-### Typography 2024-2025:
+### Typography 2026-2026:
 - **Oversized display** — 80-120px hero on desktop. The commitment to scale is the statement.
 - **Variable fonts in motion** — weight morphs on scroll/hover (Fraunces wght axis)
 - **Display serifs returning** — Fraunces, Melodrama, Playfair for editorial sections within tech sites
