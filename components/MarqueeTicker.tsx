@@ -46,11 +46,16 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
       align-items: center;
       overflow: hidden;
       z-index: 999;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    body.zee-immersive-scroll .zee-marquee-ticker {
+      transform: translateY(200%) !important;
     }
     /* On mobile — sit flush above the bottom dock, no gap */
     @media (max-width: 768px) {
       .zee-marquee-ticker {
-        bottom: var(--mobile-dock-height) !important;
+        bottom: calc(49px + env(safe-area-inset-bottom, 5px)) !important;
       }
     }
 

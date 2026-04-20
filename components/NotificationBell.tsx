@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -33,7 +33,8 @@ function getNotifUrl(notif: Notification, myZid: string | null): string | null {
     case "comment":
     case "reply":
     case "upvote":
-      return myZid ? `/u/${myZid}` : null;
+    case "zone_post":
+      return notif.reference_id ? `/post/${notif.reference_id}?actor=${notif.actor?.zid || ""}&type=${notif.type}` : "/zeewall";
     case "friend_request":
     case "friend_accept":
       return notif.actor?.zid ? `/u/${notif.actor.zid}` : null;
@@ -237,14 +238,7 @@ export default function NotificationBell() {
           </span>
         )}
 
-        {/* Live pulse ring — shows when realtime is active */}
-        {userId && (
-          <span className="
-            absolute -bottom-0.5 -right-0.5
-            w-2 h-2 bg-lime rounded-full
-            shadow-[0_0_6px_#B4FF00]
-          " />
-        )}
+
       </button>
 
       {/* ── DROPDOWN ── */}

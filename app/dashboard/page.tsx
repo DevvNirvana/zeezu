@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Zap, Activity, MessageCircle, Flame, Music, Search, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, Zap, Activity, MessageCircle, Flame, Music, Search, Plus, Trash2, Users, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
   syncUserSession, getCoreEight, getDashboardStats, searchFriends,
@@ -139,6 +140,9 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setResults] = useState<any[]>([]);
 
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // ── Init — logic UNCHANGED ──────────────────────────────────────────
   useEffect(() => {
     async function init() {
@@ -240,6 +244,13 @@ export default function Dashboard() {
     setResults([]);
   };
 
+  // ── Mobile Sidebar Event Listener ──────────────────────────────────────
+  useEffect(() => {
+    const handleOpen = () => setSidebarOpen(true);
+    window.addEventListener('zeezu:sidebar-open', handleOpen);
+    return () => window.removeEventListener('zeezu:sidebar-open', handleOpen);
+  }, []);
+
   // ── Loading ────────────────────────────────────────────────────────
   if (loading) return (
     <div
@@ -320,10 +331,318 @@ export default function Dashboard() {
 
 
 
+
+        {/* ══════════════════════════════════════════════════════════
+            MOBILE SIDEBAR
+        ══════════════════════════════════════════════════════════ */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <>
+              {/* BACKDROP */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,.6)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 1000,
+                  display: "block"
+                }}
+                className="md:hidden"
+              />
+
+              {/* SLIDING PANEL */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: "85vw",
+                  maxWidth: "340px",
+                  background: "var(--color-page-bg, #080E24)",
+                  borderRight: "1px solid rgba(255,45,135,.2)",
+                  boxShadow: "0 0 50px rgba(0,0,0,.8)",
+                  zIndex: 1001,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+                className="md:hidden"
+              >
+                {/* Header Strip */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <img
+                      src={userData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.zid}`}
+                      alt="avatar"
+                      style={{ width: "40px", height: "40px", borderRadius: "50%", border: "2px solid #FF2D87", objectFit: "cover" }}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "14px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "6px" }}>
+                        {userData?.display_name} {gen && <GenBadge gen={gen} size="icon" />}
+                      </span>
+                      <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,45,135,.7)", letterSpacing: "1px" }}>
+                        {userData?.zid} • {friendCount} FR
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSidebarOpen(false)}
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(255,255,255,.05)",
+                      border: "none",
+                      borderRadius: "12px",
+                      color: "#fff",
+                      cursor: "pointer",
+                      flexShrink: 0
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Sidebar Scrollable Content */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+{/* ── CORE 8 ─────────────────────────────────────────── */}
+            <PortalCard className="card-core8" accent="rgba(255,100,0,.2)">
+              <ModuleHeader
+                icon={<Flame size={13} />}
+                title="CORE 8"
+                accent="#FF6400"
+                right={
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Desktop: Hierarchy */}
+                    <span className="desktop-hierarchy" style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,100,0,.45)", letterSpacing: "1.5px" }}>
+                      HIERARCHY
+                    </span>
+                    {/* Mobile: Shiny Swipe Text */}
+                    <span className="mobile-swipe-text">
+                      SWIPE {">>>"}
+                    </span>
+                  </div>
+
+                }
+              />
+
+              <div style={{ padding: "14px" }}>
+                {/* 4×2 grid */}
+                {/* <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px" }}> */}
+                <div className="core-eight-container">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(spot => {
+                    const entry = coreEight.find(c => c.position === spot);
+                    const friend = entry?.friend;
+                    return (
+                      <div
+                        key={spot}
+                        onClick={() => { if (!friend) { setSelectedSlot(spot); setIsEditing(true); } }}
+                        style={{
+                          aspectRatio: "1",
+                          position: "relative",
+                          borderRadius: "12px",
+                          background: "rgba(0,0,0,.4)",
+                          border: "1px solid rgba(255,100,0,.15)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          overflow: "hidden",
+                          transition: "border-color .2s, box-shadow .2s",
+                        }}
+                        className="core-slot"
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.5)";
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 12px rgba(255,100,0,.2)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.15)";
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                        }}
+                      >
+                        {/* Slot number */}
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "3px",
+                            left: "5px",
+                            fontFamily: "'VT323',monospace",
+                            fontSize: "9px",
+                            color: "rgba(255,100,0,.4)",
+                          }}
+                        >
+                          0{spot}
+                        </span>
+
+                        {friend ? (
+                          <>
+                            <img
+                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`}
+                              style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1px solid rgba(255,100,0,.3)", marginBottom: "2px" }}
+                              alt={friend.display_name}
+                            />
+                            <span style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "7px", color: "rgba(255,255,255,.7)", textAlign: "center", width: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {friend.display_name}
+                            </span>
+                            {(() => {
+                              const isAgent = AGENT_IDS.has((friend as any).id ?? "") || !!(friend as any).agent_state;
+                              const fg = getGeneration((friend as any).birth_year, (friend as any).birth_month, (friend as any).birth_day, isAgent);
+                              return fg ? <GenBadge gen={fg} size="icon" /> : null;
+                            })()}
+
+                            {/* Remove button (hover) */}
+                            <button
+                              onClick={e => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
+                              style={{
+                                position: "absolute",
+                                top: "3px",
+                                right: "3px",
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
+                                background: "rgba(255,80,80,.8)",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                opacity: 0,
+                              }}
+                              className="remove-btn"
+                            >
+                              <Trash2 size={9} color="#fff" />
+                            </button>
+
+                            {/* Swap overlay (hover) */}
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedSlot(spot); setIsEditing(true); }}
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: "rgba(0,0,0,.55)",
+                                border: "none",
+                                borderRadius: "12px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                opacity: 0,
+                                fontFamily: "'VT323',monospace",
+                                fontSize: "10px",
+                                color: "#fff",
+                                letterSpacing: "1px",
+                              }}
+                              className="swap-overlay"
+                            >
+                              SWAP
+                            </button>
+                          </>
+                        ) : (
+                          <Plus size={16} style={{ color: "rgba(255,100,0,.35)", transition: "color .2s" }} className="plus-icon" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+
+                {/* Hover CSS (inline inject) */}
+                <style>{`
+                  .core-slot:hover .remove-btn  { opacity: 1 !important; }
+                  .core-slot:hover .swap-overlay { opacity: 1 !important; }
+                  .core-slot:hover .plus-icon    { color: rgba(255,100,0,.8) !important; }
+                `}</style>
+              </div>
+            </PortalCard>
+{/* ── MY ZONES ───────────────────────────────────────── */}
+            <PortalCard className="card-zones" accent="rgba(0,229,255,.18)">
+              <ModuleHeader
+                icon={<Activity size={13} />}
+                title="MY ZONES"
+                accent="#00E5FF"
+                right={
+                  <button
+                    onClick={() => router.push("/zones")}
+                    style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(0,229,255,.5)", letterSpacing: "1px", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                  >
+                    EXPLORE →
+                  </button>
+                }
+              />
+              <div style={{ padding: "10px 14px" }}>
+                {myZones.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "14px 0" }}>
+                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,255,255,.2)", letterSpacing: "1.5px", margin: "0 0 10px 0" }}>
+                      YOU HAVEN'T TUNED INTO ANY ZONES
+                    </p>
+                    <button
+                      onClick={() => router.push("/zones")}
+                      style={{ padding: "5px 14px", borderRadius: "8px", background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.25)", color: "#00E5FF", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer" }}
+                    >
+                      FIND ZONES
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="my-zones-list" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {myZones.slice(0, 6).map(zone => (
+                        <button
+                          key={zone.id}
+                          className="my-zones-chip"
+                          onClick={() => router.push(`/zones/${zone.slug}`)}
+                          style={{ display: "flex", alignItems: "center", gap: "9px", padding: "6px 8px", borderRadius: "8px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.12s", width: "100%" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.04)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <span style={{ fontSize: "16px", lineHeight: "1", flexShrink: 0, filter: `drop-shadow(0 0 4px ${zone.accent_color}60)` }}>{zone.icon_emoji}</span>
+                          <div className="my-zones-chip-text" style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{zone.name}</div>
+                            <div style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.25)", letterSpacing: "0.5px" }}>z/{zone.slug} · {zone.member_count} members</div>
+                          </div>
+                          <div className="my-zones-chip-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: zone.accent_color, boxShadow: `0 0 4px ${zone.accent_color}`, flexShrink: 0 }} />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => router.push("/zones")}
+                      style={{ marginTop: "4px", padding: "5px", borderRadius: "8px", background: "transparent", border: "1px dashed rgba(0,229,255,.18)", color: "rgba(0,229,255,.4)", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", width: "100%" }}
+                    >
+                      + EXPLORE MORE ZONES
+                    </button>
+                  </>
+                )}
+              </div>
+            </PortalCard>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         {/* ══════════════════════════════════════════════════════════
             MAIN LAYOUT GRID
         ══════════════════════════════════════════════════════════ */}
-        <div
+        <motion.div
+          animate={{
+            scale: sidebarOpen && window.innerWidth <= 768 ? 0.95 : 1,
+            opacity: sidebarOpen && window.innerWidth <= 768 ? 0.4 : 1,
+            borderRadius: sidebarOpen && window.innerWidth <= 768 ? "24px" : "0px",
+            x: sidebarOpen && window.innerWidth <= 768 ? "120px" : "0px",
+          }}
+          transition={{ type: "spring", damping: 24, stiffness: 200 }}
           style={{
             maxWidth: "1100px",
             margin: "0 auto",
@@ -331,13 +650,15 @@ export default function Dashboard() {
             display: "grid",
             gridTemplateColumns: "320px 1fr",
             gap: "20px",
+            pointerEvents: sidebarOpen && typeof window !== "undefined" && window.innerWidth <= 768 ? "none" : "auto",
+            transformOrigin: "center right",
           }}
           className="dashboard-grid"
         >
           {/* ══════════════════════════════════════════════════════
               LEFT SIDEBAR
           ══════════════════════════════════════════════════════ */}
-          <div className="col-wrapper" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="col-wrapper hidden md:flex" style={{ flexDirection: "column", gap: "16px" }}>
 
             {/* ── IDENTITY CARD ──────────────────────────────────── */}
             <PortalCard className="card-profile" style={{ display: "none" }}>
@@ -791,7 +1112,7 @@ export default function Dashboard() {
             </PortalCard>
 
           </div>
-        </div>
+        </motion.div>
 
         {/* ══════════════════════════════════════════════════════════
             CORE 8 EDIT MODAL — Y2K portal popup

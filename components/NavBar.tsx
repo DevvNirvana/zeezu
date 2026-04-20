@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Search, Disc3, Activity, BookOpen } from "lucide-react";
+import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Search, Disc3, Activity, BookOpen, Menu } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import NotificationBell from "./NotificationBell";
 import Dock from "./Dock";
@@ -147,12 +147,20 @@ const NAV_STYLES = `
 
   /* ── Mobile Nav Cleanup ── */
   @media (max-width: 768px) {
-    /* Shrink the online pill to just a dot */
-    .zee-online-pill span:last-child { display: none !important; }
-    .zee-online-pill { padding: 5px !important; border-radius: 50% !important; }
+    /* Hide non-essential pills to make room */
+    .zee-online-pill, .zee-buzz-pill, .zee-fm-disc { display: none !important; }
+    
+    /* Center logo absolutely */
+    .zee-nav-logo {
+      position: absolute !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+    }
+  }
 
-    /* Hide the FM disc to make room for Buzzes and Bell */
-    .zee-fm-disc { display: none !important; }
+  /* Hamburger only visible on mobile */
+  @media (min-width: 769px) {
+    .zee-nav-hamburger { display: none !important; }
   }
 
   /* ── RESPONSIVE DOCK TOGGLE ──────────────────────────────────── */
@@ -255,6 +263,7 @@ const OnlinePill = memo(function OnlinePill() {
       <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6BCB77", display: "inline-block", flexShrink: 0, animation: "zee-online 2.2s ease-in-out infinite", boxShadow: "0 0 5px rgba(107,203,119,0.8)" }} />
       <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "#6BCB77", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
         {count.toLocaleString()} online
+
       </span>
     </div>
   );
@@ -283,6 +292,48 @@ export default function NavBar() {
   const [buzzCount, setBuzzCount] = useState(0);
   const [userZid, setUserZid] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Immersive Mobile Scroll
+  const [isHidden, setIsHidden] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerWidth > 768) return; // Only mobile
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+        setIsHidden(true);
+      } else if (currentScrollY < lastScrollY.current) {
+        setIsHidden(false);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    
+    let ticking = false;
+    const scrollListener = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", scrollListener, { passive: true });
+    return () => window.removeEventListener("scroll", scrollListener);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.classList.toggle("zee-immersive-scroll", isHidden);
+    }
+  }, [isHidden]);
+
+  const toggleSidebar = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) try { navigator.vibrate(25); } catch(e) {}
+    window.dispatchEvent(new CustomEvent('zeezu:sidebar-open'));
+  };
 
   // ── Fetch Nav Data ──────────────────────────────────
   const fetchNavData = useCallback(async () => {
@@ -447,38 +498,55 @@ export default function NavBar() {
         backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.011) 3px,rgba(255,255,255,0.011) 4px)",
         // overflow visible so labels can drop below the nav bar
         overflow: "visible",
+        transform: isHidden ? "translateY(-100%)" : "translateY(0)",
+        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
 
-        {/* ── LEFT: Logo ──────────────────────────────────────── */}
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "7px", textDecoration: "none", flexShrink: 0 }}>
-          <svg width="20" height="16" viewBox="0 0 70 58" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#FF2D87" />
-            <path d="M 37,5 Q 53,2 68,2 L 68,27 Q 53,26 37,25 Z" fill="#00E5FF" />
-            <path d="M 33,33 Q 17,32 2,31 L 2,56 Q 17,56 33,53 Z" fill="#5B21B6" />
-            <path d="M 37,33 Q 53,32 68,31 L 68,56 Q 53,56 37,53 Z" fill="#0EA5E9" />
-          </svg>
-          <span style={{
-            fontFamily: "'Orbitron', sans-serif",
-            fontSize: "16px",
-            fontWeight: 900,
-            color: "#fff",
-            letterSpacing: "-1px",
-            lineHeight: "1",
-            textShadow: "0 0 14px rgba(0,229,255,0.28)",
-          }}>
-            zeezu
-          </span>
-          <span style={{
-            fontFamily: "'VT323', monospace",
-            fontSize: "10px",
-            color: "#00E5FF",
-            letterSpacing: "3px",
-            opacity: 0.7,
-            marginLeft: "2px",
-          }}>
-            NET
-          </span>
-        </Link>
+        {/* ── LEFT: Hamburger + Logo ──────────────────────────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+          <button
+            className="zee-nav-hamburger"
+            onClick={toggleSidebar}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: "44px", height: "44px", background: "none", border: "none",
+              color: "#fff", cursor: "pointer", marginLeft: "-12px",
+            }}
+            aria-label="Toggle Sidebar"
+          >
+            <Menu size={22} />
+          </button>
+          
+          <Link href="/dashboard" className="zee-nav-logo" style={{ display: "flex", alignItems: "center", gap: "7px", textDecoration: "none", flexShrink: 0 }}>
+            <svg width="20" height="16" viewBox="0 0 70 58" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <path d="M 33,5 Q 17,2 2,2 L 2,27 Q 17,26 33,25 Z" fill="#FF2D87" />
+              <path d="M 37,5 Q 53,2 68,2 L 68,27 Q 53,26 37,25 Z" fill="#00E5FF" />
+              <path d="M 33,33 Q 17,32 2,31 L 2,56 Q 17,56 33,53 Z" fill="#5B21B6" />
+              <path d="M 37,33 Q 53,32 68,31 L 68,56 Q 53,56 37,53 Z" fill="#0EA5E9" />
+            </svg>
+            <span style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: "16px",
+              fontWeight: 900,
+              color: "#fff",
+              letterSpacing: "-1px",
+              lineHeight: "1",
+              textShadow: "0 0 14px rgba(0,229,255,0.28)",
+            }}>
+              zeezu
+            </span>
+            <span style={{
+              fontFamily: "'VT323', monospace",
+              fontSize: "10px",
+              color: "#00E5FF",
+              letterSpacing: "3px",
+              opacity: 0.7,
+              marginLeft: "2px",
+            }}>
+              NET
+            </span>
+          </Link>
+        </div>
 
         {/* ── CENTER: Desktop Dock ─────────────────────────────── */}
         <div
@@ -511,6 +579,7 @@ export default function NavBar() {
           {/* ── ADDED: BUZZ PILL ── */}
           {buzzCount > 0 && (
             <button
+              className="zee-buzz-pill"
               onClick={() => router.push("/messages")}
               style={{
                 display: "flex", alignItems: "center", gap: "4px",
@@ -543,7 +612,13 @@ export default function NavBar() {
       </nav>
 
       {/* ── MOBILE: Bottom Dock ────────────────────────────────── */}
-      <div className="zee-nav-dock zee-mobile-dock">
+      <div 
+        className="zee-nav-dock zee-mobile-dock"
+        style={{
+          transform: isHidden ? "translateY(150%)" : "translateY(0)",
+          transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+        }}
+      >
         <Dock
           items={dockItems}
           panelHeight={48}

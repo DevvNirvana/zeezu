@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { toggleZap, getMyZaps } from "@/lib/supabase/queries";
 import {
-    Zap, MessageSquare, Loader2, Send, Trash2, Globe, Users,
+    Zap, MessageSquare, Send, Trash2, Globe, Users,
     Radio, Plus, Pin, XCircle, Palette, Share2,
     ArrowUp, ArrowDown, ChevronDown, ChevronUp, Hash, Reply, CornerDownRight,
     Image as ImageIcon, BarChart3, Flame, Clock, BookOpen, Star, Music,
@@ -18,6 +18,7 @@ import EmbedPreview, { stripEmbedUrls } from "@/components/EmbedPreview";
 import { confirmModal } from "@/components/ConfirmModal";
 import ShareSheet from "@/components/ShareSheet";
 import GenBadge from "@/components/GenBadge";
+import PostSkeleton from "@/components/PostSkeleton";
 import { getGeneration } from "@/lib/generation";
 import { AGENT_IDS } from "@/lib/agents";
 
@@ -142,7 +143,8 @@ if (typeof document !== "undefined" && !document.getElementById(FEED_STYLE_ID)) 
     .mood-tag { animation: moodFloat 3s ease-in-out infinite; }
     .share-check { animation: zapPop 0.3s cubic-bezier(0.68,-0.55,0.27,1.55); }
     .thread-line { position:relative; }
-    .thread-line::before { content:''; position:absolute; left:11px; top:28px; bottom:0; width:1.5px; background:linear-gradient(180deg,rgba(0,247,255,0.2),transparent); border-radius:1px; }
+    .thread-line::before { content:''; position:absolute; left:11px; top:28px; bottom:0; width:1.5px; background:linear-gradient(180deg,rgba(0,247,255,0.15),transparent); border-radius:1px; transition: all 0.3s ease; }
+    .thread-container:hover .thread-line::before { background:linear-gradient(180deg,rgba(0,229,255,0.9),transparent); box-shadow: 0 0 12px rgba(0,229,255,0.7); }
   `;
     document.head.appendChild(s);
 }
@@ -288,7 +290,7 @@ interface PostCardProps {
 }
 
 const PostCard = memo(function PostCard({
-    post, idx, isNew, isZapped, isZapping, isExpanded, commentCount, postComments,
+    post, idx, isNew, isZapped, isZapping, isExpanded, isSinglePostView, commentCount, postComments,
     myCommentText, currentReply, isPostingComment, expandedReplies, myVotes,
     activeTopic, topics, userId, userZid, wallOwnerId, commentInputRefs,
     onZap, onDelete, onShare, onToggleComment, onPostComment,
@@ -298,10 +300,23 @@ const PostCard = memo(function PostCard({
     const { mood, text: postText } = parseMood(post.content);
     const { topLevel, replyMap } = getThreaded(postComments);
 
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--m-x", `${e.clientX - rect.left}px`);
+        e.currentTarget.style.setProperty("--m-y", `${e.clientY - rect.top}px`);
+    };
+
     return (
-        <div className={`feed-post-card post-card-hover transition-all ${isNew ? "new-glow" : ""}`}
+        <div className={`feed-post-card post-card-hover group relative transition-all ${isNew ? "new-glow" : ""}`}
+            onMouseMove={handleMouseMove}
             style={{ animationDelay: `${Math.min(idx * 30, 300)}ms`, animationFillMode: "both" }}>
-            <div className="px-4 py-3.5">
+            
+            {/* Phase 3: Magnetic Hover Effect */}
+            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
+                 style={{ background: "radial-gradient(400px circle at var(--m-x, 50%) var(--m-y, 50%), rgba(0,229,255,0.06), transparent 40%)" }} />
+
+            {/* Phase 2: Sticky Context Header for Single Posts */}
+            <div className={`px-4 py-3.5 relative z-10 transition-all ${isSinglePostView ? "sticky top-0 bg-[#0a0d14]/90 backdrop-blur-xl border-b border-gray-800/60 shadow-[0_4px_30px_rgba(0,0,0,0.5)] z-20" : ""}`}>
                 <div className="flex gap-3">
                     <Link href={`/u/${post.author?.zid || "unknown"}`} className="flex-shrink-0 group/avatar">
                         <div className="relative">
@@ -384,7 +399,7 @@ const PostCard = memo(function PostCard({
                             const showReplies = expandedReplies.has(c.id);
 
                             return (
-                                <div key={c.id} className="comment-enter mb-2" style={{ animationDelay: `${ci * 40}ms` }}>
+                                <div key={c.id} id={`comment-${c.id}`} className="comment-enter mb-2 thread-container" style={{ animationDelay: `${ci * 40}ms` }}>
                                     <div className={`flex gap-2 ${replies.length > 0 ? "thread-line" : ""}`}>
                                         <img src={getAvatar(c.author.zid)} alt="" className="w-6 h-6 rounded-md border border-gray-800 bg-gray-900 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1 min-w-0">
@@ -430,7 +445,7 @@ const PostCard = memo(function PostCard({
                                             {replies.map((r, ri) => {
                                                 const rNet = r.upvotes - r.downvotes;
                                                 return (
-                                                    <div key={r.id} className="reply-enter flex gap-2" style={{ animationDelay: `${ri * 30}ms` }}>
+                                                    <div key={r.id} id={`comment-${r.id}`} className="reply-enter flex gap-2" style={{ animationDelay: `${ri * 30}ms` }}>
                                                         <img src={getAvatar(r.author.zid)} alt="" className="w-5 h-5 rounded-md border border-gray-800 bg-gray-900 flex-shrink-0 mt-0.5" />
                                                         <div className="flex-1 min-w-0">
                                                             <div className="bg-gray-900/30 rounded-lg px-2.5 py-1.5 border border-gray-800/30">
@@ -494,7 +509,7 @@ const PostCard = memo(function PostCard({
                                 <button onClick={() => onPostComment(post.id)}
                                     disabled={!myCommentText.trim() || isPostingComment}
                                     className="p-1.5 rounded-lg text-gray-600 hover:text-cyan hover:bg-cyan/10 transition-all disabled:opacity-30">
-                                    {isPostingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                    {isPostingComment ? <div className="w-3.5 h-3.5 animate-spin border-2 border-cyan border-t-transparent rounded-full" /> : <Send className="w-3.5 h-3.5" />}
                                 </button>
                             </div>
                         </div>
@@ -506,8 +521,8 @@ const PostCard = memo(function PostCard({
 });
 
 // ── GLOBAL FEED ──────────────────────────────────────────
-export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer, zoneId, zoneName }: {
-    userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean; zoneId?: string; zoneName?: string;
+export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer, zoneId, zoneName, singlePostId, targetActorZid, targetAction }: {
+    userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean; zoneId?: string; zoneName?: string; singlePostId?: number; targetActorZid?: string; targetAction?: string;
 }) {
     const [mode, setMode] = useState<FeedMode>("all");
     const [posts, setPosts] = useState<Post[]>([]);
@@ -519,6 +534,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [newPostIds, setNewPostIds] = useState<Set<number>>(new Set());
+    const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
     const [sharingPost, setSharingPost] = useState<Post | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const LIMIT = 15;
@@ -582,8 +598,9 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
         if (sort === "top") query = query.order("zaps", { ascending: false }).order("created_at", { ascending: false });
         else query = query.order("created_at", { ascending: false });
         query = query.range(from, to);
-        if (topicId !== null) query = query.eq("topic_id", topicId);
-        if (zoneId) {
+        if (singlePostId) {
+            query = query.eq("id", singlePostId);
+        } else if (zoneId) {
             query = query.eq("zone_id", zoneId);
         } else if (wallOwnerId) {
             query = query.eq("owner_id", wallOwnerId).is("zone_id", null);
@@ -613,7 +630,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     }, [userId, zoneId, wallOwnerId]);
 
     const fetchActivityEvents = useCallback(async (feedMode: FeedMode) => {
-        if (wallOwnerId || zoneId) return;
+        if (wallOwnerId || zoneId || singlePostId) return;
         let query = supabase.from("activity_events")
             .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(display_name, zid)")
             .neq("actor_id", userId)
@@ -631,6 +648,8 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
     useEffect(() => { setPage(0); fetchPosts(0, mode, activeTopic, sortMode); fetchActivityEvents(mode); }, [mode, activeTopic, sortMode, fetchPosts, fetchActivityEvents]);
     useEffect(() => { (async () => { const z = await getMyZaps(); setMyZaps(new Set(z)); })(); }, []);
+    
+
 
     // ── Fetch comments ───────────────────────────────────
     const fetchComments = useCallback(async (postId: number) => {
@@ -675,6 +694,45 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
         });
     }, [userId]);
 
+    // Auto-expand comment section on single post view
+    useEffect(() => {
+        if (singlePostId) {
+            setExpandedComments(new Set([singlePostId]));
+            fetchComments(singlePostId);
+        }
+    }, [singlePostId, fetchComments]);
+
+    // Handle scroll to targeted comment
+    useEffect(() => {
+        if (!singlePostId || !targetActorZid || !comments[singlePostId]) return;
+        const postCmts = comments[singlePostId] || [];
+        if (postCmts.length === 0) return;
+        
+        let targetId: number | null = null;
+        let parentToExpand: number | null = null;
+        
+        if (targetAction === "comment" || targetAction === "reply") {
+            const commentByActor = [...postCmts].reverse().find(c => c.author.zid === targetActorZid);
+            if (commentByActor) {
+                targetId = commentByActor.id;
+                if (commentByActor.parent_id) parentToExpand = commentByActor.parent_id;
+            }
+        }
+        
+        if (targetId) {
+            if (parentToExpand) {
+                setExpandedReplies(prev => new Set(prev).add(parentToExpand));
+            }
+            setTimeout(() => {
+                const el = document.getElementById(`comment-${targetId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el.style.animation = "newGlow 2s ease-out";
+                }
+            }, 300);
+        }
+    }, [singlePostId, targetActorZid, targetAction, comments]);
+
     // ── Realtime ─────────────────────────────────────────
     useEffect(() => {
         const ch = supabase.channel("global_feed_rt")
@@ -694,9 +752,13 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                         if (!count) return;
                     }
                 }
-                setPosts(prev => prev.some(x => x.id === t.id) ? prev : [t, ...prev]);
-                setNewPostIds(prev => new Set(prev).add(t.id));
-                setTimeout(() => setNewPostIds(prev => { const n = new Set(prev); n.delete(t.id); return n; }), 3000);
+                if (window.scrollY > 200) {
+                    setPendingPosts(prev => prev.some(x => x.id === t.id) ? prev : [t, ...prev]);
+                } else {
+                    setPosts(prev => prev.some(x => x.id === t.id) ? prev : [t, ...prev]);
+                    setNewPostIds(prev => new Set(prev).add(t.id));
+                    setTimeout(() => setNewPostIds(prev => { const n = new Set(prev); n.delete(t.id); return n; }), 3000);
+                }
             })
             .on("postgres_changes", { event: "UPDATE", schema: "public", table: "zeewall" }, (p: any) => {
                 setPosts(prev => prev.map(x => x.id === p.new.id ? { ...x, zaps: p.new.zaps } : x));
@@ -787,6 +849,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     // ── Post ─────────────────────────────────────────────
     const handlePost = useCallback(async () => {
         if (!newPostText.trim() || posting) return;
+        if (typeof navigator !== "undefined" && navigator.vibrate) try { navigator.vibrate([20, 30, 20]); } catch(e) {}
         setPosting(true);
         const moodLine = moodText ? `[mood: ${moodText}]\n` : "";
         const insertData: any = {
@@ -805,6 +868,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
     // ── Zap ──────────────────────────────────────────────
     const handleZap = useCallback(async (pid: number) => {
+        if (typeof navigator !== "undefined" && navigator.vibrate) try { navigator.vibrate(15); } catch(e) {}
         setZappingPost(pid);
         const already = myZapsRef.current.has(pid);
         setPosts(prev => prev.map(p => p.id === pid ? { ...p, zaps: p.zaps + (already ? -1 : 1) } : p));
@@ -957,7 +1021,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     return (
         <div>
             {/* ── TOPIC BAR ── */}
-            {!wallOwnerId && !zoneId && (
+            {!wallOwnerId && !zoneId && !singlePostId && (
                 <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-800/60 overflow-x-auto topic-scroll">
                     <button onClick={() => setActiveTopic(null)}
                         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all border ${activeTopic === null ? "bg-electric/15 border-electric/40 text-electric" : "text-gray-600 border-gray-800 hover:border-gray-600"}`}>
@@ -990,7 +1054,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
             )}
 
             {/* ── BROADCASTER ── */}
-            {(!wallOwnerId || !hideComposer) && (
+            {(!wallOwnerId || !hideComposer) && !singlePostId && (
                 <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(255,45,135,0.04) 0%, transparent 100%)" }}>
                     {!wallOwnerId && !zoneId && (
                         <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
@@ -1062,7 +1126,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                                         <button onClick={handlePost} disabled={!newPostText.trim() || posting}
                                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide transition-all disabled:opacity-20"
                                             style={{ background: newPostText.trim() ? "linear-gradient(135deg,#FF2D87,#CC1F70)" : "rgba(255,255,255,0.02)", color: newPostText.trim() ? "#fff" : "#333", boxShadow: newPostText.trim() ? "0 0 14px rgba(255,45,135,0.3)" : "none" }}>
-                                            {posting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} BROADCAST
+                                            {posting ? <div className="w-3 h-3 animate-spin border-2 border-white border-t-transparent rounded-full" /> : <Send className="w-3 h-3" />} BROADCAST
                                         </button>
                                     </div>
                                 </div>
@@ -1096,8 +1160,9 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
             )}
 
             {/* ── SORT TABS ── */}
-            <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-gray-800/40 bg-black/10">
-                <button onClick={() => setSortMode("new")}
+            {!singlePostId && (
+                <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-gray-800/40 bg-black/10">
+                    <button onClick={() => setSortMode("new")}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold tracking-wide transition-all ${sortMode === "new" ? "bg-electric/10 text-electric" : "text-gray-600 hover:text-gray-400"}`}>
                     <Clock className="w-3 h-3" /> NEW
                 </button>
@@ -1106,13 +1171,41 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                     <Flame className="w-3 h-3" /> TOP
                 </button>
             </div>
+            )}
 
             {/* ── FEED ── */}
-            <div>
+            <div className="relative">
+                {pendingPosts.length > 0 && (
+                    <div className="sticky top-4 z-50 flex justify-center pointer-events-none mb-[-36px]">
+                        <button
+                            onClick={() => {
+                                if (typeof navigator !== "undefined" && navigator.vibrate) try { navigator.vibrate(20); } catch(e){}
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                setPosts(prev => {
+                                    const combined = [...pendingPosts, ...prev];
+                                    return combined.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+                                });
+                                const newIds = pendingPosts.map(p => p.id);
+                                setNewPostIds(prev => new Set([...Array.from(prev), ...newIds]));
+                                setTimeout(() => setNewPostIds(prev => { const n = new Set(prev); newIds.forEach(id => n.delete(id)); return n; }), 3000);
+                                setPendingPosts([]);
+                            }}
+                            className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[#0E0B0D]/90 backdrop-blur-xl border border-cyan/40 rounded-full shadow-[0_0_20px_rgba(0,229,255,0.2)] text-cyan text-[10px] font-bold tracking-widest hover:bg-cyan/10 transition-all hover:scale-105 active:scale-95"
+                            style={{ animation: "zapPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards" }}
+                        >
+                            <ArrowUp className="w-3 h-3" /> {pendingPosts.length} NEW BROADCAST{pendingPosts.length > 1 ? "S" : ""}
+                        </button>
+                    </div>
+                )}
                 {loading && feedItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-3">
-                        <Loader2 className="w-6 h-6 text-electric animate-spin" />
-                        <span className="text-[9px] font-mono text-gray-700 uppercase tracking-widest">Tuning in...</span>
+                    <div className="flex flex-col w-full animate-fade-in">
+                        <PostSkeleton />
+                        <PostSkeleton />
+                        <PostSkeleton />
+                        <div className="flex items-center justify-center py-6 gap-2 opacity-50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-electric animate-pulse" />
+                            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Tuning in...</span>
+                        </div>
                     </div>
                 ) : feedItems.length === 0 ? (
                     <div className="text-center py-16 px-6">
@@ -1133,6 +1226,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                                 isZapped={myZaps.has(item.data.id)}
                                 isZapping={zappingPost === item.data.id}
                                 isExpanded={expandedComments.has(item.data.id)}
+                                isSinglePostView={!!singlePostId}
                                 commentCount={commentCounts[item.data.id] || 0}
                                 postComments={comments[item.data.id] || []}
                                 myCommentText={newComment[item.data.id] || ""}
