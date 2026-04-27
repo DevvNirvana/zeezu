@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
   syncUserSession, getCoreEight, getDashboardStats, searchFriends,
-  addToCoreEight, removeFromCoreEight, getFriendCount, getMyZones, type SyncedUser, type Zone,
+  addToCoreEight, removeFromCoreEight, swapCoreEightPositions, getFriendCount, getMyZones, type SyncedUser, type Zone,
 } from "@/lib/supabase/queries";
 import GlobalFeed from "@/components/GlobalFeed";
 import NavBar from "@/components/NavBar";
@@ -133,6 +133,7 @@ export default function Dashboard() {
   const [customization, setCustom] = useState<ThemeConfig | null>(null);
   const [friendCount, setFriendCount] = useState(0);
   const [myZones, setMyZones] = useState<Zone[]>([]);
+  const [onlineBuddies, setOnlineBuddies] = useState<{ id: string; display_name: string; zid: string; avatar_url: string | null; status_message: string | null; last_seen_at: string | null }[]>([]);
 
   // Core 8 edit modal
   const [isEditing, setIsEditing] = useState(false);
@@ -142,6 +143,7 @@ export default function Dashboard() {
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedCoreSlot, setSelectedCoreSlot] = useState<number | null>(null);
 
   // ── Init — logic UNCHANGED ──────────────────────────────────────────
   useEffect(() => {
@@ -149,17 +151,8 @@ export default function Dashboard() {
       const identity = await syncUserSession();
       if (!identity) { router.push("/login"); return; }
 
-      // Redirect to onboarding if:
-      // 1. Brand new user (_isNew)
-      // 2. No birth_year = no Generation Badge = onboarding never properly completed
-      //    This self-heals broken signups without any SQL migration needed.
-      // 3. onboarding_complete column exists and is explicitly false
-      // 4. Pre-migration fallback: column null AND no avatar_url
-      const needsOnboarding =
-        (identity as SyncedUser)._isNew ||
-        !identity.birth_year ||
-        identity.onboarding_complete === false ||
-        (identity.onboarding_complete == null && !identity.avatar_url);
+      // DOB is mandatory — birth_year is the single authority for onboarding completion.
+      const needsOnboarding = !identity.birth_year;
       if (needsOnboarding) { router.push("/onboarding"); return; }
       setUserData(identity);
 
@@ -175,12 +168,20 @@ export default function Dashboard() {
       const shouldBoot = !onboardingJustDone && (freshLogin || !bootSeen);
 
       try {
-        const [top8, dashStats, { data: customData }, fCount, zones] = await Promise.all([
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+        const [top8, dashStats, { data: customData }, fCount, zones, { data: buddyData }] = await Promise.all([
           getCoreEight(identity.id),
           getDashboardStats(),
           supabase.from("profile_customization").select("*").eq("user_id", identity.id).single(),
           getFriendCount(identity.id),
           getMyZones(),
+          supabase
+            .from("users")
+            .select("id, display_name, zid, avatar_url, status_message, last_seen_at")
+            .neq("id", identity.id)
+            .gte("last_seen_at", twoHoursAgo)
+            .order("last_seen_at", { ascending: false })
+            .limit(8),
         ]);
 
         setCoreEight(top8 || []);
@@ -188,6 +189,7 @@ export default function Dashboard() {
         if (customData) setCustom(customData as ThemeConfig);
         setFriendCount(fCount);
         setMyZones(zones);
+        setOnlineBuddies(buddyData || []);
 
         if (shouldBoot) {
           localStorage.removeItem("zeezu_fresh_login");
@@ -242,6 +244,37 @@ export default function Dashboard() {
     setIsEditing(false);
     setSearchQuery("");
     setResults([]);
+  };
+
+  const handleCoreSlotTap = async (spot: number) => {
+    const entry = coreEight.find(c => c.position === spot);
+    const friend = entry?.friend;
+
+    if (selectedCoreSlot === null) {
+      if (friend) {
+        setSelectedCoreSlot(spot);
+      } else {
+        setSidebarOpen(false);
+        setSelectedCoreSlot(null);
+        setTimeout(() => { setSelectedSlot(spot); setIsEditing(true); }, 320);
+      }
+    } else {
+      if (selectedCoreSlot === spot) {
+        setSelectedCoreSlot(null);
+      } else {
+        // Optimistic swap
+        const from = selectedCoreSlot;
+        const to = spot;
+        setSelectedCoreSlot(null);
+        setCoreEight(prev => prev.map(c => {
+          if (c.position === from) return { ...c, position: to };
+          if (c.position === to) return { ...c, position: from };
+          return c;
+        }));
+        await swapCoreEightPositions(from, to);
+        if (userData) setCoreEight(await getCoreEight(userData.id) || []);
+      }
+    }
   };
 
   // ── Mobile Sidebar Event Listener ──────────────────────────────────────
@@ -335,6 +368,14 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════════════════
             MOBILE SIDEBAR
         ══════════════════════════════════════════════════════════ */}
+        <style>{`
+          .sb-scroll::-webkit-scrollbar{display:none}
+          .sb-scroll{scrollbar-width:none;-ms-overflow-style:none}
+          .c8-slot{transition:transform .15s,box-shadow .15s,border-color .15s,background .15s}
+          .c8-slot:active{transform:scale(.94)}
+          @keyframes sb-glow-ring{0%,100%{opacity:.7}50%{opacity:1}}
+          @keyframes sb-selected-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,100,0,.4)}50%{box-shadow:0 0 0 6px rgba(255,100,0,0)}}
+        `}</style>
         <AnimatePresence>
           {sidebarOpen && (
             <>
@@ -343,16 +384,9 @@ export default function Dashboard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(0,0,0,.6)",
-                  backdropFilter: "blur(4px)",
-                  zIndex: 1000,
-                  display: "block"
-                }}
+                transition={{ duration: 0.22 }}
+                onClick={() => { setSidebarOpen(false); setSelectedCoreSlot(null); }}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", backdropFilter: "blur(6px)", zIndex: 1000 }}
                 className="md:hidden"
               />
 
@@ -361,271 +395,283 @@ export default function Dashboard() {
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                transition={{ type: "spring", damping: 28, stiffness: 220 }}
+                drag="x"
+                dragConstraints={{ left: -400, right: 0 }}
+                dragElastic={0}
+                dragMomentum={false}
+                onDragEnd={(_e, info) => { if (info.offset.x < -72 || info.velocity.x < -450) { setSidebarOpen(false); setSelectedCoreSlot(null); } }}
                 style={{
-                  position: "fixed",
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  width: "85vw",
-                  maxWidth: "340px",
-                  background: "var(--color-page-bg, #080E24)",
-                  borderRight: "1px solid rgba(255,45,135,.2)",
-                  boxShadow: "0 0 50px rgba(0,0,0,.8)",
-                  zIndex: 1001,
-                  display: "flex",
-                  flexDirection: "column",
+                  position: "fixed", top: 0, left: 0, bottom: 0,
+                  width: "88vw", maxWidth: "360px",
+                  background: "linear-gradient(160deg, #0D1428 0%, #080E24 50%, #0A0D1F 100%)",
+                  borderRight: "1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 18%, transparent)",
+                  boxShadow: "4px 0 60px rgba(0,0,0,.9), inset -1px 0 0 color-mix(in srgb, var(--color-electric, #FF2D87) 8%, transparent)",
+                  zIndex: 1001, display: "flex", flexDirection: "column",
                 }}
                 className="md:hidden"
               >
-                {/* Header Strip */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <img
-                      src={userData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.zid}`}
-                      alt="avatar"
-                      style={{ width: "40px", height: "40px", borderRadius: "50%", border: "2px solid #FF2D87", objectFit: "cover" }}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "14px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "6px" }}>
-                        {userData?.display_name} {gen && <GenBadge gen={gen} size="icon" />}
-                      </span>
-                      <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,45,135,.7)", letterSpacing: "1px" }}>
-                        {userData?.zid} • {friendCount} FR
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setSidebarOpen(false)}
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(255,255,255,.05)",
-                      border: "none",
-                      borderRadius: "12px",
-                      color: "#fff",
-                      cursor: "pointer",
-                      flexShrink: 0
-                    }}
-                  >
-                    <X size={20} />
+                {/* ── IDENTITY HEADER ───────────────────────────────── */}
+                <div style={{
+                  position: "relative", overflow: "hidden", flexShrink: 0,
+                  padding: "calc(env(safe-area-inset-top, 0px) + 20px) 16px 18px",
+                  background: "linear-gradient(160deg, color-mix(in srgb, var(--color-electric, #FF2D87) 12%, transparent) 0%, color-mix(in srgb, var(--color-electric, #FF2D87) 4%, transparent) 60%, transparent 100%)",
+                  borderBottom: "1px solid rgba(255,255,255,.06)",
+                }}>
+                  {/* ambient glow */}
+                  <div style={{ position: "absolute", top: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--color-electric, #FF2D87) 15%, transparent) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+                  {/* close button */}
+                  <button onClick={() => { setSidebarOpen(false); setSelectedCoreSlot(null); }}
+                    style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", right: "14px", width: 36, height: 36, borderRadius: "10px", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.08)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,.6)" }}>
+                    <X size={16} />
                   </button>
+
+                  {/* avatar + info row */}
+                  <button
+                    onClick={() => { router.push(`/u/${userData?.zid}`); setSidebarOpen(false); setSelectedCoreSlot(null); }}
+                    style={{ display: "flex", alignItems: "center", gap: "14px", background: "transparent", border: "none", cursor: "pointer", padding: 0, textAlign: "left", width: "calc(100% - 52px)" }}
+                  >
+                    {/* avatar with glow ring */}
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <div style={{ position: "absolute", inset: -3, borderRadius: "50%", background: "conic-gradient(var(--color-electric, #FF2D87), var(--color-accent, #FFD700), var(--color-cyan, #00E5FF), var(--color-electric, #FF2D87))", animation: "sb-glow-ring 3s ease-in-out infinite", opacity: .7 }} />
+                      <img
+                        src={userData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.zid}`}
+                        alt="avatar"
+                        style={{ position: "relative", width: 54, height: 54, borderRadius: "50%", objectFit: "cover", border: "2px solid #080E24", display: "block" }}
+                      />
+                      <span style={{ position: "absolute", bottom: 1, right: 1, width: 12, height: 12, borderRadius: "50%", background: "#6BCB77", boxShadow: "0 0 6px #6BCB77", border: "2px solid #080E24", animation: "zee-online 2s ease-in-out infinite" }} />
+                    </div>
+
+                    {/* name + stats */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "15px", fontWeight: 900, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "140px" }}>{userData?.display_name}</span>
+                        {gen && <GenBadge gen={gen} size="icon" />}
+                      </div>
+                      <div style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "var(--color-electric, #FF2D87)", opacity: .75, letterSpacing: "1px", marginBottom: "6px" }}>@{userData?.zid}</div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <span style={{ padding: "2px 8px", borderRadius: "20px", background: "color-mix(in srgb, var(--color-electric, #FF2D87) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-electric, #FF2D87) 20%, transparent)", fontFamily: "'VT323',monospace", fontSize: "11px", color: "var(--color-electric, #FF2D87)", opacity: .9, letterSpacing: "0.5px" }}>{friendCount} FR</span>
+                        <span style={{ padding: "2px 8px", borderRadius: "20px", background: "rgba(255,200,0,.08)", border: "1px solid rgba(255,200,0,.18)", fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,200,0,.75)", letterSpacing: "0.5px" }}>{stats.zaps} ZPS</span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* status message */}
+                  {userData?.status_message && (
+                    <div style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "10px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.06)" }}>
+                      <span style={{ fontFamily: "'VT323',monospace", fontSize: "13px", color: "rgba(255,255,255,.5)", letterSpacing: "0.5px", fontStyle: "italic" }}>"{userData.status_message}"</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Sidebar Scrollable Content */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-{/* ── CORE 8 ─────────────────────────────────────────── */}
-            <PortalCard className="card-core8" accent="rgba(255,100,0,.2)">
-              <ModuleHeader
-                icon={<Flame size={13} />}
-                title="CORE 8"
-                accent="#FF6400"
-                right={
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {/* Desktop: Hierarchy */}
-                    <span className="desktop-hierarchy" style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,100,0,.45)", letterSpacing: "1.5px" }}>
-                      HIERARCHY
-                    </span>
-                    {/* Mobile: Shiny Swipe Text */}
-                    <span className="mobile-swipe-text">
-                      SWIPE {">>>"}
-                    </span>
+                {/* ── SCROLLABLE BODY ───────────────────────────────── */}
+                <div className="sb-scroll" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+                  {/* ── CORE 8 ──────────────────────────────────────── */}
+                  <div style={{ padding: "18px 16px 16px" }}>
+                    {/* section header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ width: "3px", height: "18px", background: "linear-gradient(180deg, #FF6400, rgba(255,100,0,.1))", borderRadius: "2px" }} />
+                        <Flame size={13} color="#FF6400" />
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: "#fff", letterSpacing: "0.5px" }}>CORE 8</span>
+                        <span style={{ padding: "1px 7px", borderRadius: "20px", background: "rgba(255,100,0,.12)", border: "1px solid rgba(255,100,0,.25)", fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,100,0,.8)" }}>{coreEight.length}/8</span>
+                      </div>
+                      {selectedCoreSlot !== null ? (
+                        <button onClick={() => setSelectedCoreSlot(null)} style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,100,0,.6)", background: "rgba(255,100,0,.08)", border: "1px solid rgba(255,100,0,.2)", borderRadius: "8px", padding: "2px 8px", cursor: "pointer", letterSpacing: "0.5px" }}>CANCEL</button>
+                      ) : (
+                        <span style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(255,255,255,.2)", letterSpacing: "0.5px" }}>TAP TO SELECT · SWAP</span>
+                      )}
+                    </div>
+
+                    {/* hint banner when slot selected */}
+                    {selectedCoreSlot !== null && (
+                      <div style={{ marginBottom: "10px", padding: "7px 12px", borderRadius: "10px", background: "rgba(255,100,0,.08)", border: "1px solid rgba(255,100,0,.2)", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "14px" }}>✦</span>
+                        <span style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,100,0,.85)", letterSpacing: "0.5px" }}>
+                          SLOT {String(selectedCoreSlot).padStart(2,"0")} SELECTED — TAP ANOTHER TO SWAP
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 4×2 grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+                      {[1,2,3,4,5,6,7,8].map(spot => {
+                        const entry = coreEight.find(c => c.position === spot);
+                        const friend = entry?.friend;
+                        const isSelected = selectedCoreSlot === spot;
+                        const hasSelection = selectedCoreSlot !== null;
+                        const isSwapTarget = hasSelection && !isSelected;
+
+                        return (
+                          <div
+                            key={spot}
+                            className="c8-slot"
+                            onClick={() => handleCoreSlotTap(spot)}
+                            style={{
+                              aspectRatio: "1", position: "relative", borderRadius: "14px",
+                              background: isSelected
+                                ? "rgba(255,100,0,.18)"
+                                : friend ? "rgba(255,100,0,.07)" : "rgba(255,255,255,.025)",
+                              border: isSelected
+                                ? "2px solid rgba(255,100,0,.8)"
+                                : isSwapTarget && friend ? "1px dashed rgba(255,100,0,.45)"
+                                : isSwapTarget && !friend ? "1px dashed rgba(255,255,255,.2)"
+                                : friend ? "1px solid rgba(255,100,0,.2)" : "1px solid rgba(255,255,255,.06)",
+                              boxShadow: isSelected ? "0 0 16px rgba(255,100,0,.35), inset 0 0 12px rgba(255,100,0,.08)" : "none",
+                              cursor: "pointer", display: "flex", flexDirection: "column",
+                              alignItems: "center", justifyContent: "center", overflow: "hidden",
+                              transform: isSelected ? "scale(1.05)" : "scale(1)",
+                            }}
+                          >
+                            <span style={{ position: "absolute", top: "3px", left: "4px", fontFamily: "'VT323',monospace", fontSize: "8px", color: isSelected ? "rgba(255,100,0,.7)" : "rgba(255,100,0,.28)" }}>
+                              {String(spot).padStart(2,"0")}
+                            </span>
+
+                            {friend ? (
+                              <>
+                                <img
+                                  src={friend.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`}
+                                  style={{ width: "33px", height: "33px", borderRadius: "50%", border: `1.5px solid ${isSelected ? "rgba(255,100,0,.7)" : "rgba(255,100,0,.3)"}`, marginBottom: "3px" }}
+                                  alt={friend.display_name}
+                                />
+                                <span style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "7px", color: "rgba(255,255,255,.8)", textAlign: "center", width: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {friend.display_name}
+                                </span>
+                                {!isSelected && !hasSelection && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
+                                    style={{ position: "absolute", top: "2px", right: "2px", width: "16px", height: "16px", borderRadius: "50%", background: "rgba(220,40,40,.9)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                  >
+                                    <X size={8} color="#fff" />
+                                  </button>
+                                )}
+                                {/* subtle swap badge at bottom — does NOT cover the avatar */}
+                                {isSwapTarget && (
+                                  <div style={{ position: "absolute", bottom: "3px", left: "50%", transform: "translateX(-50%)", background: "rgba(255,100,0,.85)", borderRadius: "4px", padding: "1px 5px" }}>
+                                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "8px", color: "#fff", letterSpacing: "0.3px" }}>SWAP</span>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {isSwapTarget ? (
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
+                                    <span style={{ fontSize: "14px", opacity: .5 }}>→</span>
+                                    <span style={{ fontFamily: "'VT323',monospace", fontSize: "7px", color: "rgba(255,255,255,.3)", letterSpacing: "0.5px" }}>MOVE</span>
+                                  </div>
+                                ) : (
+                                  <Plus size={13} color="rgba(255,100,0,.28)" />
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                }
-              />
+                  {/* ── DIVIDER ─────────────────────────────────────── */}
+                  <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent)", margin: "0 16px" }} />
 
-              <div style={{ padding: "14px" }}>
-                {/* 4×2 grid */}
-                {/* <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px" }}> */}
-                <div className="core-eight-container">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(spot => {
-                    const entry = coreEight.find(c => c.position === spot);
-                    const friend = entry?.friend;
-                    return (
-                      <div
-                        key={spot}
-                        onClick={() => { if (!friend) { setSelectedSlot(spot); setIsEditing(true); } }}
-                        style={{
-                          aspectRatio: "1",
-                          position: "relative",
-                          borderRadius: "12px",
-                          background: "rgba(0,0,0,.4)",
-                          border: "1px solid rgba(255,100,0,.15)",
-                          cursor: "pointer",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          overflow: "hidden",
-                          transition: "border-color .2s, box-shadow .2s",
-                        }}
-                        className="core-slot"
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.5)";
-                          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 12px rgba(255,100,0,.2)";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,100,0,.15)";
-                          (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                        }}
-                      >
-                        {/* Slot number */}
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: "3px",
-                            left: "5px",
-                            fontFamily: "'VT323',monospace",
-                            fontSize: "9px",
-                            color: "rgba(255,100,0,.4)",
-                          }}
-                        >
-                          0{spot}
-                        </span>
+                  {/* ── MY ZONES ────────────────────────────────────── */}
+                  <div style={{ padding: "16px 16px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ width: "3px", height: "18px", background: "linear-gradient(180deg, #00E5FF, rgba(0,229,255,.1))", borderRadius: "2px" }} />
+                        <Activity size={13} color="#00E5FF" />
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: "#fff", letterSpacing: "0.5px" }}>MY ZONES</span>
+                      </div>
+                      <button onClick={() => { router.push("/zones"); setSidebarOpen(false); }} style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(0,229,255,.5)", background: "transparent", border: "none", cursor: "pointer", letterSpacing: "0.5px" }}>ALL →</button>
+                    </div>
 
-                        {friend ? (
-                          <>
-                            <img
-                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.zid}`}
-                              style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1px solid rgba(255,100,0,.3)", marginBottom: "2px" }}
-                              alt={friend.display_name}
-                            />
-                            <span style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: "7px", color: "rgba(255,255,255,.7)", textAlign: "center", width: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {friend.display_name}
-                            </span>
-                            {(() => {
-                              const isAgent = AGENT_IDS.has((friend as any).id ?? "") || !!(friend as any).agent_state;
-                              const fg = getGeneration((friend as any).birth_year, (friend as any).birth_month, (friend as any).birth_day, isAgent);
-                              return fg ? <GenBadge gen={fg} size="icon" /> : null;
-                            })()}
-
-                            {/* Remove button (hover) */}
-                            <button
-                              onClick={e => { e.stopPropagation(); handleRemoveFromSlot(spot); }}
-                              style={{
-                                position: "absolute",
-                                top: "3px",
-                                right: "3px",
-                                width: "16px",
-                                height: "16px",
-                                borderRadius: "50%",
-                                background: "rgba(255,80,80,.8)",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                opacity: 0,
-                              }}
-                              className="remove-btn"
-                            >
-                              <Trash2 size={9} color="#fff" />
-                            </button>
-
-                            {/* Swap overlay (hover) */}
-                            <button
-                              onClick={e => { e.stopPropagation(); setSelectedSlot(spot); setIsEditing(true); }}
-                              style={{
-                                position: "absolute",
-                                inset: 0,
-                                background: "rgba(0,0,0,.55)",
-                                border: "none",
-                                borderRadius: "12px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                opacity: 0,
-                                fontFamily: "'VT323',monospace",
-                                fontSize: "10px",
-                                color: "#fff",
-                                letterSpacing: "1px",
-                              }}
-                              className="swap-overlay"
-                            >
-                              SWAP
-                            </button>
-                          </>
-                        ) : (
-                          <Plus size={16} style={{ color: "rgba(255,100,0,.35)", transition: "color .2s" }} className="plus-icon" />
+                    {myZones.length === 0 ? (
+                      <button onClick={() => { router.push("/zones"); setSidebarOpen(false); }}
+                        style={{ width: "100%", padding: "14px", borderRadius: "12px", background: "rgba(0,229,255,.04)", border: "1px dashed rgba(0,229,255,.15)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                        <Plus size={13} color="rgba(0,229,255,.4)" />
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "9px", fontWeight: 700, color: "rgba(0,229,255,.45)", letterSpacing: "1px" }}>FIND ZONES</span>
+                      </button>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        {myZones.slice(0, 6).map(zone => (
+                          <button key={zone.id} onClick={() => { router.push(`/zones/${zone.slug}`); setSidebarOpen(false); }}
+                            style={{ display: "flex", alignItems: "center", gap: "12px", padding: "9px 10px", borderRadius: "12px", background: "rgba(255,255,255,.02)", border: "1px solid transparent", cursor: "pointer", textAlign: "left", width: "100%", transition: "all .15s" }}
+                            onTouchStart={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,229,255,.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,229,255,.1)"; }}
+                            onTouchEnd={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.02)"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,229,255,.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,229,255,.1)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.02)"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; }}
+                          >
+                            <div style={{ width: 36, height: 36, borderRadius: "10px", background: `${zone.accent_color}18`, border: `1px solid ${zone.accent_color}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>
+                              {zone.icon_emoji}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: "13px", fontWeight: 700, color: "rgba(255,255,255,.85)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{zone.name}</div>
+                              <div style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(255,255,255,.2)", letterSpacing: "0.3px" }}>{zone.member_count} members</div>
+                            </div>
+                            <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: zone.accent_color, boxShadow: `0 0 8px ${zone.accent_color}`, flexShrink: 0 }} />
+                          </button>
+                        ))}
+                        {myZones.length > 6 && (
+                          <button onClick={() => { router.push("/zones"); setSidebarOpen(false); }}
+                            style={{ padding: "8px", borderRadius: "10px", background: "transparent", border: "1px dashed rgba(0,229,255,.12)", color: "rgba(0,229,255,.35)", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", width: "100%", marginTop: "4px" }}>
+                            +{myZones.length - 6} MORE
+                          </button>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-
-
-                {/* Hover CSS (inline inject) */}
-                <style>{`
-                  .core-slot:hover .remove-btn  { opacity: 1 !important; }
-                  .core-slot:hover .swap-overlay { opacity: 1 !important; }
-                  .core-slot:hover .plus-icon    { color: rgba(255,100,0,.8) !important; }
-                `}</style>
-              </div>
-            </PortalCard>
-{/* ── MY ZONES ───────────────────────────────────────── */}
-            <PortalCard className="card-zones" accent="rgba(0,229,255,.18)">
-              <ModuleHeader
-                icon={<Activity size={13} />}
-                title="MY ZONES"
-                accent="#00E5FF"
-                right={
-                  <button
-                    onClick={() => router.push("/zones")}
-                    style={{ fontFamily: "'VT323',monospace", fontSize: "10px", color: "rgba(0,229,255,.5)", letterSpacing: "1px", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                  >
-                    EXPLORE →
-                  </button>
-                }
-              />
-              <div style={{ padding: "10px 14px" }}>
-                {myZones.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "14px 0" }}>
-                    <p style={{ fontFamily: "'VT323',monospace", fontSize: "12px", color: "rgba(255,255,255,.2)", letterSpacing: "1.5px", margin: "0 0 10px 0" }}>
-                      YOU HAVEN'T TUNED INTO ANY ZONES
-                    </p>
-                    <button
-                      onClick={() => router.push("/zones")}
-                      style={{ padding: "5px 14px", borderRadius: "8px", background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.25)", color: "#00E5FF", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer" }}
-                    >
-                      FIND ZONES
-                    </button>
+                    )}
                   </div>
-                ) : (
-                  <>
-                    <div className="my-zones-list" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {myZones.slice(0, 6).map(zone => (
-                        <button
-                          key={zone.id}
-                          className="my-zones-chip"
-                          onClick={() => router.push(`/zones/${zone.slug}`)}
-                          style={{ display: "flex", alignItems: "center", gap: "9px", padding: "6px 8px", borderRadius: "8px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.12s", width: "100%" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.04)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          <span style={{ fontSize: "16px", lineHeight: "1", flexShrink: 0, filter: `drop-shadow(0 0 4px ${zone.accent_color}60)` }}>{zone.icon_emoji}</span>
-                          <div className="my-zones-chip-text" style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{zone.name}</div>
-                            <div style={{ fontFamily: "'VT323',monospace", fontSize: "9px", color: "rgba(255,255,255,.25)", letterSpacing: "0.5px" }}>z/{zone.slug} · {zone.member_count} members</div>
+
+                  {/* ── WHO'S ONLINE ────────────────────────────────── */}
+                  {onlineBuddies.length > 0 && (
+                    <>
+                      <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent)", margin: "0 16px" }} />
+                      <div style={{ padding: "16px 16px 14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "3px", height: "18px", background: "linear-gradient(180deg, #6BCB77, rgba(107,203,119,.1))", borderRadius: "2px" }} />
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6BCB77", boxShadow: "0 0 8px #6BCB77", display: "inline-block", animation: "zee-online 2s ease-in-out infinite", flexShrink: 0 }} />
+                            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "11px", fontWeight: 700, color: "#fff", letterSpacing: "0.5px" }}>WHO'S ON</span>
                           </div>
-                          <div className="my-zones-chip-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: zone.accent_color, boxShadow: `0 0 4px ${zone.accent_color}`, flexShrink: 0 }} />
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => router.push("/zones")}
-                      style={{ marginTop: "4px", padding: "5px", borderRadius: "8px", background: "transparent", border: "1px dashed rgba(0,229,255,.18)", color: "rgba(0,229,255,.4)", fontFamily: "'Orbitron',sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "1px", cursor: "pointer", width: "100%" }}
-                    >
-                      + EXPLORE MORE ZONES
-                    </button>
-                  </>
-                )}
-              </div>
-            </PortalCard>
+                          <span style={{ padding: "1px 7px", borderRadius: "20px", background: "rgba(107,203,119,.1)", border: "1px solid rgba(107,203,119,.22)", fontFamily: "'VT323',monospace", fontSize: "11px", color: "rgba(107,203,119,.8)" }}>{onlineBuddies.length} ONLINE</span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          {onlineBuddies.map(buddy => {
+                            const minsAgo = buddy.last_seen_at ? Math.floor((Date.now() - new Date(buddy.last_seen_at).getTime()) / 60000) : 999;
+                            const isOnline = minsAgo < 15;
+                            const isAway = minsAgo < 60;
+                            const dotColor = isOnline ? "#6BCB77" : isAway ? "#FFD700" : "rgba(255,255,255,.2)";
+                            const statusLabel = buddy.status_message
+                              ? buddy.status_message.slice(0, 22) + (buddy.status_message.length > 22 ? "…" : "")
+                              : isOnline ? "online now" : isAway ? `away · ${minsAgo}m` : `${minsAgo}m ago`;
+                            return (
+                              <button key={buddy.id}
+                                onClick={() => { router.push(`/u/${buddy.zid}`); setSidebarOpen(false); }}
+                                style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 10px", borderRadius: "12px", background: "rgba(255,255,255,.02)", border: "1px solid transparent", cursor: "pointer", textAlign: "left", width: "100%", transition: "all .15s" }}
+                                onTouchStart={e => { (e.currentTarget as HTMLElement).style.background = "rgba(107,203,119,.07)"; }}
+                                onTouchEnd={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.02)"; }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(107,203,119,.07)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.02)"; }}
+                              >
+                                <div style={{ position: "relative", flexShrink: 0 }}>
+                                  <img src={buddy.avatar_url || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${buddy.zid}`} alt="" style={{ width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${dotColor}35`, display: "block" }} />
+                                  <span style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: dotColor, boxShadow: isOnline ? `0 0 6px ${dotColor}` : "none", border: "2px solid #080E24", animation: isOnline ? "zee-online 2s ease-in-out infinite" : "none" }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: "13px", fontWeight: 700, color: "rgba(255,255,255,.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{buddy.display_name || buddy.zid}</div>
+                                  <div style={{ fontFamily: "'VT323',monospace", fontSize: "11px", color: dotColor, opacity: .85, letterSpacing: "0.3px" }}>{statusLabel}</div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── BOTTOM SAFE AREA ────────────────────────────── */}
+                  <div style={{ height: "calc(env(safe-area-inset-bottom, 0px) + 24px)", flexShrink: 0 }} />
                 </div>
               </motion.div>
             </>
@@ -1052,6 +1098,7 @@ export default function Dashboard() {
               </div>
             </PortalCard>
 
+
           </div>
 
           {/* ══════════════════════════════════════════════════════
@@ -1124,7 +1171,7 @@ export default function Dashboard() {
               inset: 0,
               background: "rgba(0,0,0,.82)",
               backdropFilter: "blur(8px)",
-              zIndex: 100,
+              zIndex: 2000,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1369,13 +1416,13 @@ export default function Dashboard() {
           /* Strip the column wrappers so cards can be reordered */
           .col-wrapper { display: contents; }
 
-          /* Reorder cards for perfect UX */
+          /* Hide sidebar cards from the main grid — scoped so they still show inside the slide-out sidebar panel */
           .card-profile { display: none !important; }
-          .card-core8   { order: 1; margin-bottom: 8px; } /* Stories pinned top! */
-          .card-buzz    { order: 2; margin-bottom: 8px; } /* Alert right below stories */
-          .card-feed    { order: 3; } /* Main feed right below */
-          .card-theme   { order: 4; } /* Theme pushed to bottom */
-          .card-zones   { order: 5; } /* Zones below feed on mobile */
+          .dashboard-grid .card-core8 { display: none !important; }
+          .dashboard-grid .card-zones { display: none !important; }
+          .card-buzz    { order: 1; margin-bottom: 8px; }
+          .card-feed    { order: 2; }
+          .card-theme   { order: 3; }
 
           /* My Zones — horizontal chip scroll on mobile */
           .my-zones-list {

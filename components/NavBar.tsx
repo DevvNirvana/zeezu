@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Zap, Users, MessageSquare, LayoutDashboard, UserCircle, Search, Disc3, Activity, BookOpen, Menu } from "lucide-react";

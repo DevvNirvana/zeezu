@@ -598,11 +598,8 @@ export default function OnboardingPage() {
       ]);
 
       if (data) {
-        // Gate: user is "done" if they have a birth_year (= Generation Badge assigned).
-        // Mirrors dashboard gate exactly. Also respects explicit onboarding_complete flag.
-        const isDone =
-          !!data.birth_year ||
-          data.onboarding_complete === true;
+        // DOB is mandatory — birth_year is the single authority for onboarding completion.
+        const isDone = !!data.birth_year;
         if (isDone) { router.push("/dashboard"); return; }
 
         // ── Prefill everything the user already set ──────────────────────

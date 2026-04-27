@@ -272,6 +272,34 @@ export async function removeFromCoreEight(position: number) {
   if (error) console.error("Error removing from Core 8:", error);
 }
 
+export async function swapCoreEightPositions(posA: number, posB: number) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: rows } = await supabase
+    .from("core_eight")
+    .select("friend_id, position")
+    .eq("user_id", user.id)
+    .in("position", [posA, posB]);
+
+  if (!rows || rows.length === 0) return;
+
+  const entryA = rows.find((r: any) => r.position === posA);
+  const entryB = rows.find((r: any) => r.position === posB);
+
+  // Delete both then re-insert swapped to avoid unique constraint conflicts
+  await supabase.from("core_eight").delete().eq("user_id", user.id).in("position", [posA, posB]);
+
+  const inserts: any[] = [];
+  if (entryA) inserts.push({ user_id: user.id, friend_id: entryA.friend_id, position: posB });
+  if (entryB) inserts.push({ user_id: user.id, friend_id: entryB.friend_id, position: posA });
+
+  if (inserts.length > 0) {
+    const { error } = await supabase.from("core_eight").insert(inserts);
+    if (error) console.error("Error swapping Core 8:", error);
+  }
+}
+
 // ── FRIENDS ──────────────────────────────────────────────────
 
 export type FriendshipStatus = {

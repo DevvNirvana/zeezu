@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, ArrowRight, Terminal } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import Win98Cursor from "@/components/Win98Cursor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  COMMUNITY COLLAGE  — scattered friend-bubble data
@@ -214,6 +215,7 @@ export default function LoginPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
+      <Win98Cursor />
       {/* ── Global keyframes + fonts ─────────────────────────────────────── */}
       <style>{KEYFRAMES}</style>
 

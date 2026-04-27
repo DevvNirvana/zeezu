@@ -1779,10 +1779,12 @@ export default function PublicProfile() {
           transform: translateY(-100%);
           transition: transform .2s ease;
           pointer-events: none;
+          display: none !important;
         }
         .profile-mini-header.visible {
           transform: translateY(0);
           pointer-events: auto;
+          display: flex;
         }
 
         /* ── STATION CONTENT ── */

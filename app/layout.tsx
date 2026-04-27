@@ -5,6 +5,7 @@ import ToastProvider from "@/components/ToastProvider";
 import ConfirmModal from "@/components/ConfirmModal";
 import PwaRegister from "./pwa-register";
 import SmoothScroll from "@/components/SmoothScroll";
+import PageTransition from "@/components/PageTransition";
 // If you want NavBar on every single page, you could import it here:
 // import NavBar from "@/components/NavBar";
 
@@ -50,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             flexDirection: "column"
           }}
         >
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
 
         <RadioPlayer />

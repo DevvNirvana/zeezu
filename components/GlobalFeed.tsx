@@ -8,7 +8,7 @@ import {
     Zap, MessageSquare, Send, Trash2, Globe, Users,
     Radio, Plus, Pin, XCircle, Palette, Share2,
     ArrowUp, ArrowDown, ChevronDown, ChevronUp, Hash, Reply, CornerDownRight,
-    Image as ImageIcon, BarChart3, Flame, Clock, BookOpen, Star, Music,
+    Image as ImageIcon, BarChart3, Flame, Clock, Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import GifPicker from "@/components/GifPicker";
@@ -17,8 +17,10 @@ import PollDisplay from "@/components/PollDisplay";
 import EmbedPreview, { stripEmbedUrls } from "@/components/EmbedPreview";
 import { confirmModal } from "@/components/ConfirmModal";
 import ShareSheet from "@/components/ShareSheet";
-import GenBadge from "@/components/GenBadge";
 import PostSkeleton from "@/components/PostSkeleton";
+import AvatarWithGenRing from "@/components/AvatarWithGenRing";
+import AnthemMiniPlayer from "@/components/AnthemMiniPlayer";
+import GenBadge from "@/components/GenBadge";
 import { getGeneration } from "@/lib/generation";
 import { AGENT_IDS } from "@/lib/agents";
 
@@ -40,6 +42,7 @@ type Post = {
         birth_year?: number | null;
         birth_month?: number | null;
         birth_day?: number | null;
+        online_status?: "online" | "away" | "busy" | "offline" | null;
     } | null;
 };
 
@@ -63,13 +66,24 @@ type ActivityEvent = {
     actor_id: string;
     actor: { display_name: string; zid: string; avatar_url?: string | null; birth_year?: number | null; birth_month?: number | null; birth_day?: number | null; } | null;
     target_user_id?: string | null;
-    target_user?: { display_name: string; zid: string } | null;
+    target_user?: { id: string; display_name: string; zid: string; theme_track_url?: string | null; theme_track_title?: string | null; theme_track_artist?: string | null; } | null;
     reference_id?: string | null;
     meta: Record<string, any>;
     created_at: string;
 };
 
-type FeedItem = { kind: "post"; data: Post } | { kind: "activity"; data: ActivityEvent };
+type GroupedActivityEvent = {
+    id: string;
+    event_type: ActivityEvent["event_type"];
+    actors: ActivityEvent["actor"][];
+    target_user: ActivityEvent["target_user"];
+    reference_id: ActivityEvent["reference_id"];
+    meta: Record<string, any>;
+    created_at: string;
+    count: number;
+};
+
+type FeedItem = { kind: "post"; data: Post } | { kind: "activity"; data: GroupedActivityEvent };
 
 // ── PURE HELPERS — defined outside component, never recreated ────────────────
 const getAvatar = (zid: string, url?: string | null) =>
@@ -162,43 +176,37 @@ const ACTIVITY_COLORS: Record<string, string> = {
     anthem_stolen: "#FF6B35",
 };
 
-const ActivityCard = memo(function ActivityCard({ event }: { event: ActivityEvent }) {
-    const actor = event.actor;
-    const target = event.target_user as { display_name: string; zid: string } | null;
+
+const ActivityCard = memo(function ActivityCard({ event, viewerId }: { event: GroupedActivityEvent; viewerId?: string }) {
+    const actors = event.actors.filter(Boolean);
+    const firstActor = actors[0];
+    const target = event.target_user;
     const meta = event.meta || {};
     const color = ACTIVITY_COLORS[event.event_type] || "#8A2EFF";
-    const avatarSrc = actor ? getAvatar(actor.zid, actor.avatar_url) : "";
 
-    const actorEl = actor
-        ? <Link href={`/u/${actor.zid}`} className="font-bold text-white hover:underline">{actor.display_name}</Link>
-        : <span className="font-bold text-gray-400">Someone</span>;
+    const actorsLabel = () => {
+        if (actors.length === 0) return "Someone";
+        if (actors.length === 1) return firstActor!.display_name;
+        if (actors.length === 2) return `${actors[0]!.display_name} & ${actors[1]!.display_name}`;
+        return `${actors[0]!.display_name} & ${actors.length - 1} others`;
+    };
 
-    const targetEl = target
-        ? <Link href={`/u/${target.zid}`} className="font-bold text-white hover:underline">{target.display_name}</Link>
+    const targetLink = target
+        ? <Link href={`/u/${target.zid}`} className="font-black text-white hover:text-electric transition-colors">{target.display_name}</Link>
         : null;
 
-    const actionText = () => {
+    const actionPhrase = (): React.ReactNode => {
         switch (event.event_type) {
-            case "zap":
-                return <>{actorEl} <span className="text-gray-500">zapped</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
-            case "comment":
-                return <>{actorEl} <span className="text-gray-500">commented on</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
-            case "reply":
-                return <>{actorEl} <span className="text-gray-500">replied in a thread on</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">a post</span>}</>;
-            case "core8_change":
-                return <>{actorEl} <span className="text-gray-500">added</span> {targetEl} <span className="text-gray-500">to their Core 8</span>{meta.slot ? <span className="text-gray-700 font-mono text-[9px]"> · slot #{meta.slot}</span> : null}</>;
-            case "zlog_published":
-                return <>{actorEl} <span className="text-gray-500">published a Zlog</span></>;
-            case "zone_created":
-                return <>{actorEl} <span className="text-gray-500">started a new Zone</span></>;
-            case "zone_post":
-                return <>{actorEl} <span className="text-gray-500">posted in</span> {meta.zone_slug ? <Link href={`/zones/${meta.zone_slug}`} className="font-bold hover:underline" style={{ color }}>#{meta.zone_name}</Link> : <span className="text-gray-500">a zone</span>}</>;
-            case "vibes_rated":
-                return <>{actorEl} <span className="text-gray-500">rated</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s Vibes</span></> : <span className="text-gray-500">someone&apos;s Vibes</span>}</>;
-            case "anthem_stolen":
-                return <>{actorEl} <span className="text-gray-500">stole</span> {targetEl ? <>{targetEl}<span className="text-gray-500">&apos;s anthem</span></> : <span className="text-gray-500">an anthem</span>}{meta.track_title ? <span className="text-gray-600 font-mono text-[9px]"> · {meta.track_title}</span> : null}</>;
-            default:
-                return <>{actorEl} <span className="text-gray-500">was active</span></>;
+            case "zap": return target ? <><span className="text-gray-500">zapped </span>{targetLink}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">zapped a post</span>;
+            case "comment": return target ? <><span className="text-gray-500">commented on </span>{targetLink}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">commented on a post</span>;
+            case "reply": return target ? <><span className="text-gray-500">replied in a thread on </span>{targetLink}<span className="text-gray-500">&apos;s post</span></> : <span className="text-gray-500">replied in a thread</span>;
+            case "core8_change": return target ? <><span className="text-gray-500">added </span>{targetLink}<span className="text-gray-500"> to their Core 8</span></> : <span className="text-gray-500">updated their Core 8</span>;
+            case "zlog_published": return <span className="text-gray-500">published a Zlog{meta.title ? ` · "${meta.title}"` : ""}</span>;
+            case "zone_created": return <span className="text-gray-500">started a new Zone{meta.zone_name ? ` · #${meta.zone_name}` : ""}</span>;
+            case "zone_post": return <span className="text-gray-500">posted in {meta.zone_name ? `#${meta.zone_name}` : "a zone"}</span>;
+            case "vibes_rated": return target ? <><span className="text-gray-500">rated </span>{targetLink}<span className="text-gray-500">&apos;s Vibes</span></> : <span className="text-gray-500">rated someone&apos;s Vibes</span>;
+            case "anthem_stolen": return target ? <><span className="text-gray-500">stole </span>{targetLink}<span className="text-gray-500">&apos;s anthem</span></> : <span className="text-gray-500">stole an anthem</span>;
+            default: return <span className="text-gray-500">was active</span>;
         }
     };
 
@@ -206,49 +214,100 @@ const ActivityCard = memo(function ActivityCard({ event }: { event: ActivityEven
         ? meta.comment_snippet
         : event.event_type === "zap" || event.event_type === "zone_post"
             ? meta.post_snippet
-            : event.event_type === "zlog_published"
-                ? meta.title
-                : null;
+            : null;
 
-    const EventIcon = () => {
-        if (event.event_type === "zap") return <Zap className="w-2.5 h-2.5" style={{ color }} />;
-        if (event.event_type === "comment" || event.event_type === "reply") return <MessageSquare className="w-2.5 h-2.5" style={{ color }} />;
-        if (event.event_type === "core8_change") return <Users className="w-2.5 h-2.5" style={{ color }} />;
-        if (event.event_type === "zlog_published") return <BookOpen className="w-2.5 h-2.5" style={{ color }} />;
-        if (event.event_type === "vibes_rated") return <Star className="w-2.5 h-2.5" style={{ color }} />;
-        if (event.event_type === "anthem_stolen") return <Music className="w-2.5 h-2.5" style={{ color }} />;
-        return <Hash className="w-2.5 h-2.5" style={{ color }} />;
-    };
+    const refLink = (() => {
+        if (!event.reference_id) return null;
+        if (event.event_type === "zlog_published" && meta.slug) return `/zlogger/${meta.slug}`;
+        if (event.event_type === "zone_created" && meta.zone_slug) return `/zones/${meta.zone_slug}`;
+        if (event.event_type === "zone_post" && meta.zone_slug) return `/zones/${meta.zone_slug}`;
+        if (["zap", "comment", "reply"].includes(event.event_type)) return `/post/${event.reference_id}`;
+        return null;
+    })();
 
     return (
-        <div className="flex gap-3 px-4 py-3 hover:bg-white/[0.015] transition-colors" style={{ borderLeft: `2px solid ${color}25` }}>
-            <div className="flex-shrink-0 pt-0.5">
-                <Link href={actor ? `/u/${actor.zid}` : "#"}>
-                    <img src={avatarSrc} alt="" className="w-7 h-7 rounded-lg border border-gray-800/60 object-cover" />
-                </Link>
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-[11px] leading-snug text-gray-400 flex flex-wrap items-baseline gap-x-1">{actionText()}</p>
-                {snippet && (
-                    <p className="text-[10px] text-gray-600 font-mono mt-1 truncate">&ldquo;{snippet}&rdquo;</p>
-                )}
-                {event.event_type === "zlog_published" && meta.slug && (
-                    <Link href={`/zlogger/${meta.slug}`} className="text-[9px] font-mono mt-1 inline-block hover:underline" style={{ color }}>
-                        {meta.reading_time ? `${meta.reading_time} min read →` : "Read Zlog →"}
-                    </Link>
-                )}
-                {event.event_type === "zone_created" && meta.zone_slug && (
-                    <Link href={`/zones/${meta.zone_slug}`} className="text-[9px] font-mono mt-1 inline-block hover:underline" style={{ color }}>
-                        Visit #{meta.zone_name} →
-                    </Link>
-                )}
-                <p className="text-[9px] font-mono text-gray-700 mt-1">
-                    {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
-                </p>
-            </div>
-            <div className="flex-shrink-0 self-start mt-0.5">
-                <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: `${color}12` }}>
-                    <EventIcon />
+        <div
+            className="px-4 py-3 transition-colors hover:bg-white/[0.02]"
+            style={{ background: `${color}05`, borderLeft: `3px solid ${color}35` }}
+        >
+            <div className="flex gap-3 items-start">
+                {/* Avatar stack with gen rings */}
+                <div className="flex-shrink-0 flex" style={{ minWidth: 36 }}>
+                    {actors.slice(0, 2).map((a, i) => (
+                        <AvatarWithGenRing
+                            key={i}
+                            src={a?.avatar_url}
+                            zid={a?.zid || "?"}
+                            size={i === 0 ? 36 : 28}
+                            birthYear={a?.birth_year}
+                            birthMonth={a?.birth_month}
+                            birthDay={a?.birth_day}
+                            isAgent={false}
+                            shape="rounded"
+                            showTab={i === 0}
+                            href={a ? `/u/${a.zid}` : undefined}
+                            style={{ marginLeft: i > 0 ? -8 : 0, zIndex: 2 - i, marginTop: i > 0 ? 4 : 0 }}
+                        />
+                    ))}
+                    {actors.length > 2 && (
+                        <div style={{ width: 22, height: 22, borderRadius: 6, background: `${color}20`, border: `1.5px solid ${color}35`, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6, marginTop: 7, zIndex: 0, position: "relative" }}>
+                            <span style={{ fontSize: 8, fontFamily: "monospace", fontWeight: 700, color }}>+{actors.length - 2}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[12px] leading-snug">
+                                {firstActor ? (
+                                    <Link href={`/u/${firstActor.zid}`} className="font-black text-white hover:text-electric transition-colors">
+                                        {actorsLabel()}
+                                    </Link>
+                                ) : (
+                                    <span className="font-black text-gray-400">{actorsLabel()}</span>
+                                )}
+                                {" "}
+                                {actionPhrase()}
+                            </p>
+                            {snippet && (
+                                <p className="text-[10px] text-gray-600 font-mono mt-1 truncate">&ldquo;{snippet}&rdquo;</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1.5">
+                                <span className="text-[9px] font-mono text-gray-700">{formatTime(event.created_at)}</span>
+                                {refLink && (
+                                    <Link href={refLink} className="text-[9px] font-mono font-bold hover:underline" style={{ color }}>
+                                        VIEW →
+                                    </Link>
+                                )}
+                            </div>
+                            {event.event_type === "anthem_stolen" && target?.theme_track_url && (
+                                <div className="mt-2">
+                                    <AnthemMiniPlayer
+                                        trackUrl={target.theme_track_url}
+                                        trackTitle={target.theme_track_title ?? null}
+                                        trackArtist={target.theme_track_artist ?? null}
+                                        fromUserId={target.id}
+                                        fromDisplayName={target.display_name}
+                                        viewerId={viewerId}
+                                        primary="#FF6B35"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        {/* Small event icon — same as before */}
+                        <div className="flex-shrink-0 self-start mt-0.5 w-5 h-5 rounded-md flex items-center justify-center" style={{ background: `${color}12` }}>
+                            {event.event_type === "zap" && <Zap className="w-2.5 h-2.5" style={{ color }} />}
+                            {(event.event_type === "comment" || event.event_type === "reply") && <MessageSquare className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "core8_change" && <Users className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "zlog_published" && <Hash className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "zone_created" && <Hash className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "zone_post" && <Hash className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "vibes_rated" && <Zap className="w-2.5 h-2.5" style={{ color }} />}
+                            {event.event_type === "anthem_stolen" && <Radio className="w-2.5 h-2.5" style={{ color }} />}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -263,6 +322,7 @@ interface PostCardProps {
     isZapped: boolean;
     isZapping: boolean;
     isExpanded: boolean;
+    isSinglePostView: boolean;
     commentCount: number;
     postComments: CommentRaw[];
     myCommentText: string;
@@ -318,22 +378,22 @@ const PostCard = memo(function PostCard({
             {/* Phase 2: Sticky Context Header for Single Posts */}
             <div className={`px-4 py-3.5 relative z-10 transition-all ${isSinglePostView ? "sticky top-0 bg-[#0a0d14]/90 backdrop-blur-xl border-b border-gray-800/60 shadow-[0_4px_30px_rgba(0,0,0,0.5)] z-20" : ""}`}>
                 <div className="flex gap-3">
-                    <Link href={`/u/${post.author?.zid || "unknown"}`} className="flex-shrink-0 group/avatar">
-                        <div className="relative">
-                            <img src={getAvatar(post.author?.zid || "?", post.author?.avatar_url)} alt=""
-                                className="w-10 h-10 rounded-xl border border-gray-800 group-hover/avatar:border-electric/50 transition-all bg-gray-900" />
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0E0B0D] bg-lime" style={{ boxShadow: "0 0 4px #B4FF00" }} />
-                        </div>
-                    </Link>
+                    <AvatarWithGenRing
+                        src={post.author?.avatar_url}
+                        zid={post.author?.zid || "?"}
+                        size={40}
+                        birthYear={post.author?.birth_year}
+                        birthMonth={post.author?.birth_month}
+                        birthDay={post.author?.birth_day}
+                        isAgent={AGENT_IDS.has(post.author?.id ?? "") || !!(post.author as any)?.agent_state}
+                        shape="rounded"
+                        href={`/u/${post.author?.zid || "unknown"}`}
+                    />
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <Link href={`/u/${post.author?.zid || ""}`} className="font-black text-[13px] text-white hover:text-electric transition-colors">{post.author?.display_name || "Unknown"}</Link>
                             <span className="text-[9px] font-mono text-gray-700">{post.author?.zid}</span>
-                            {(() => {
-                                const isAgent = AGENT_IDS.has(post.author?.id ?? '') || !!(post.author as any)?.agent_state;
-                                const gen = getGeneration(post.author?.birth_year, post.author?.birth_month, post.author?.birth_day, isAgent);
-                                return gen ? <GenBadge gen={gen} size="sm" /> : null;
-                            })()}
+                            {(() => { const isAgent = AGENT_IDS.has(post.author?.id ?? '') || !!(post.author as any)?.agent_state; const gen = getGeneration(post.author?.birth_year, post.author?.birth_month, post.author?.birth_day, isAgent); return (gen && isAgent) ? <GenBadge gen={gen} size="sm" /> : null; })()}
                             {postTopic && activeTopic === null && !wallOwnerId && (
                                 <button onClick={() => onSetActiveTopic(postTopic.id)} className="text-[8px] font-mono text-cyan/60 hover:text-cyan bg-cyan/5 px-1.5 py-0.5 rounded">
                                     #{postTopic.title.toLowerCase()}
@@ -525,6 +585,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     userId: string; userZid?: string; wallOwnerId?: string; hideComposer?: boolean; zoneId?: string; zoneName?: string; singlePostId?: number; targetActorZid?: string; targetAction?: string;
 }) {
     const [mode, setMode] = useState<FeedMode>("all");
+    const [hasNewActivity, setHasNewActivity] = useState(false);
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [posting, setPosting] = useState(false);
@@ -562,6 +623,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
     const commentInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
     const [myVotes, setMyVotes] = useState<Map<number, "up" | "down">>(new Map());
     const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+    const [composerExpanded, setComposerExpanded] = useState(false);
 
     const notifiedZaps = useRef<Set<number>>(new Set());
     const notifiedVotes = useRef<Set<string>>(new Set());
@@ -594,7 +656,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
         const from = pageNum * LIMIT;
         const to = from + LIMIT - 1;
         let query = supabase.from("zeewall")
-            .select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))");
+            .select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, online_status, agent_state(agent_id))");
         if (sort === "top") query = query.order("zaps", { ascending: false }).order("created_at", { ascending: false });
         else query = query.order("created_at", { ascending: false });
         query = query.range(from, to);
@@ -631,20 +693,20 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
     const fetchActivityEvents = useCallback(async (feedMode: FeedMode) => {
         if (wallOwnerId || zoneId || singlePostId) return;
-        let query = supabase.from("activity_events")
-            .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(display_name, zid)")
+        // GLOBAL = pure post discovery, no activity noise
+        if (feedMode === "all") { setActivityEvents([]); return; }
+        // NETWORK = friend activity only
+        const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+        const ids = (fr || []).map((r: any) => r.sender_id === userId ? r.receiver_id : r.sender_id);
+        if (ids.length === 0) { setActivityEvents([]); return; }
+        const { data } = await supabase.from("activity_events")
+            .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(id, display_name, zid, theme_track_url, theme_track_title, theme_track_artist)")
             .neq("actor_id", userId)
+            .in("actor_id", ids)
             .order("created_at", { ascending: false })
-            .limit(50);
-        if (feedMode === "friends") {
-            const { data: fr } = await supabase.from("friend_requests").select("sender_id, receiver_id").eq("status", "accepted").or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-            const ids = (fr || []).map((r: any) => r.sender_id === userId ? r.receiver_id : r.sender_id);
-            if (ids.length === 0) { setActivityEvents([]); return; }
-            query = query.in("actor_id", ids);
-        }
-        const { data } = await query;
+            .limit(60);
         setActivityEvents((data || []) as unknown as ActivityEvent[]);
-    }, [userId, zoneId, wallOwnerId]);
+    }, [userId, zoneId, wallOwnerId, singlePostId]);
 
     useEffect(() => { setPage(0); fetchPosts(0, mode, activeTopic, sortMode); fetchActivityEvents(mode); }, [mode, activeTopic, sortMode, fetchPosts, fetchActivityEvents]);
     useEffect(() => { (async () => { const z = await getMyZaps(); setMyZaps(new Set(z)); })(); }, []);
@@ -742,7 +804,7 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                 if (!zoneId && !wallOwnerId && p.new.zone_id != null) return;
                 if (!zoneId && wallOwnerId && p.new.owner_id !== wallOwnerId) return;
                 if (activeTopic !== null && p.new.topic_id !== activeTopic) return;
-                const { data } = await supabase.from("zeewall").select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, agent_state(agent_id))").eq("id", p.new.id).single();
+                const { data } = await supabase.from("zeewall").select("id, content, zaps, created_at, owner_id, topic_id, gif_url, poll_data, author:users!author_id(id, display_name, zid, avatar_url, birth_year, birth_month, birth_day, online_status, agent_state(agent_id))").eq("id", p.new.id).single();
                 if (!data) return;
                 const t = data as unknown as Post;
                 if (mode === "friends") {
@@ -805,15 +867,17 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
         const activityCh = supabase.channel("global_activity_rt")
             .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_events" }, async (p: any) => {
-                if (wallOwnerId || zoneId || p.new.actor_id === userId) return;
-                if (mode === "friends") {
-                    const { count } = await supabase.from("friend_requests").select("id", { count: "exact", head: true }).eq("status", "accepted").or(`and(sender_id.eq.${userId},receiver_id.eq.${p.new.actor_id}),and(sender_id.eq.${p.new.actor_id},receiver_id.eq.${userId})`);
-                    if (!count) return;
-                }
+                // Only show friend activity; never show own actions; only in NETWORK mode
+                if (wallOwnerId || zoneId || p.new.actor_id === userId || mode !== "friends") return;
+                const { count } = await supabase.from("friend_requests").select("id", { count: "exact", head: true }).eq("status", "accepted").or(`and(sender_id.eq.${userId},receiver_id.eq.${p.new.actor_id}),and(sender_id.eq.${p.new.actor_id},receiver_id.eq.${userId})`);
+                if (!count) return;
                 const { data } = await supabase.from("activity_events")
-                    .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(display_name, zid)")
+                    .select("id, event_type, actor_id, target_user_id, reference_id, meta, created_at, actor:users!actor_id(display_name, zid, avatar_url, birth_year, birth_month, birth_day), target_user:users!target_user_id(id, display_name, zid, theme_track_url, theme_track_title, theme_track_artist)")
                     .eq("id", p.new.id).single();
-                if (data) setActivityEvents(prev => [data as unknown as ActivityEvent, ...prev.slice(0, 49)]);
+                if (data) {
+                    setActivityEvents(prev => [data as unknown as ActivityEvent, ...prev.slice(0, 59)]);
+                    if (mode !== "friends") setHasNewActivity(true);
+                }
             })
             .subscribe();
 
@@ -1012,10 +1076,42 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
 
     const feedItems = useMemo((): FeedItem[] => {
         if (wallOwnerId || zoneId) return posts.map(p => ({ kind: "post", data: p }));
+
+        // Group activity events by (event_type + reference_id) to avoid duplicate cards
+        const grouped = new Map<string, GroupedActivityEvent>();
+        for (const e of activityEvents) {
+            const key = `${e.event_type}::${e.reference_id ?? e.id}`;
+            const existing = grouped.get(key);
+            if (existing) {
+                // Only add unique actors
+                if (!existing.actors.some(a => a?.zid === e.actor?.zid)) {
+                    existing.actors.push(e.actor);
+                    existing.count++;
+                }
+            } else {
+                grouped.set(key, {
+                    id: e.id,
+                    event_type: e.event_type,
+                    actors: [e.actor],
+                    target_user: e.target_user,
+                    reference_id: e.reference_id,
+                    meta: e.meta,
+                    created_at: e.created_at,
+                    count: 1,
+                });
+            }
+        }
+
+        const actItems = Array.from(grouped.values()).map(e => ({ kind: "activity" as const, data: e, ts: new Date(e.created_at).getTime() }));
+
+        if (sortMode === "top") {
+            // Posts already sorted by zaps DESC from DB — preserve that order; hide activity noise
+            return posts.map(p => ({ kind: "post" as const, data: p }));
+        }
+
         const postItems = posts.map(p => ({ kind: "post" as const, data: p, ts: new Date(p.created_at).getTime() }));
-        const actItems = activityEvents.map(e => ({ kind: "activity" as const, data: e, ts: new Date(e.created_at).getTime() }));
         return [...postItems, ...actItems].sort((a, b) => b.ts - a.ts);
-    }, [posts, activityEvents, wallOwnerId, zoneId]);
+    }, [posts, activityEvents, wallOwnerId, zoneId, sortMode]);
 
     // ── RENDER ───────────────────────────────────────────
     return (
@@ -1056,103 +1152,245 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
             {/* ── BROADCASTER ── */}
             {(!wallOwnerId || !hideComposer) && !singlePostId && (
                 <div className="border-b border-gray-800/60" style={{ background: "linear-gradient(180deg, rgba(255,45,135,0.04) 0%, transparent 100%)" }}>
+                    {/* ── GLOBAL / NETWORK TABS ── */}
                     {!wallOwnerId && !zoneId && (
-                        <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
-                            <button onClick={() => setMode("all")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "all" ? "bg-electric/10 text-electric" : "text-gray-700 hover:text-gray-400"}`}>
-                                <Globe className="w-2.5 h-2.5" /> GLOBAL</button>
-                            <button onClick={() => setMode("friends")} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black tracking-wider transition-all ${mode === "friends" ? "bg-cyan/10 text-cyan" : "text-gray-700 hover:text-gray-400"}`}>
-                                <Users className="w-2.5 h-2.5" /> NETWORK</button>
-                            {activeTopicName && <span className="ml-auto text-[9px] font-mono text-gray-700">#{activeTopicName.toLowerCase()}</span>}
+                        <div className="flex items-center px-3 pt-3 pb-1">
+
+                            {/* ══ PREMIUM SLIDING SIGNAL CAPSULE ══════════════════════
+                                Spring-animated pill · Live dot · Floating badge
+                            ══════════════════════════════════════════════════════════ */}
+                            <div style={{
+                                position: "relative",
+                                display: "inline-flex",
+                                background: "rgba(8,14,36,0.75)",
+                                backdropFilter: "blur(16px)",
+                                WebkitBackdropFilter: "blur(16px)",
+                                borderRadius: "100px",
+                                border: "1px solid rgba(255,255,255,.07)",
+                                boxShadow: [
+                                    "inset 0 1px 0 rgba(255,255,255,.06)",
+                                    "inset 0 -1px 0 rgba(0,0,0,.3)",
+                                    "0 4px 24px rgba(0,0,0,.5)",
+                                    "0 0 0 1px rgba(0,0,0,.25)",
+                                ].join(","),
+                                padding: "3px",
+                            }}>
+
+                                {/* Spring-animated sliding pill */}
+                                <div style={{
+                                    position: "absolute",
+                                    top: "3px", bottom: "3px", left: "3px",
+                                    width: "116px",
+                                    transform: mode === "friends" ? "translateX(116px)" : "translateX(0px)",
+                                    transition: [
+                                        "transform 0.36s cubic-bezier(0.34,1.56,0.64,1)",
+                                        "background 0.3s ease",
+                                        "border-color 0.3s ease",
+                                        "box-shadow 0.3s ease",
+                                    ].join(","),
+                                    background: mode === "all"
+                                        ? "linear-gradient(135deg,rgba(255,45,135,0.22) 0%,rgba(255,45,135,0.07) 100%)"
+                                        : "linear-gradient(135deg,rgba(0,229,255,0.18) 0%,rgba(0,229,255,0.06) 100%)",
+                                    borderRadius: "100px",
+                                    border: `1px solid ${mode === "all" ? "rgba(255,45,135,0.38)" : "rgba(0,229,255,0.28)"}`,
+                                    boxShadow: mode === "all"
+                                        ? "0 0 22px rgba(255,45,135,0.22),inset 0 1px 0 rgba(255,255,255,.14)"
+                                        : "0 0 22px rgba(0,229,255,0.18),inset 0 1px 0 rgba(255,255,255,.1)",
+                                    pointerEvents: "none",
+                                }} />
+
+                                {/* ── GLOBAL tab ── */}
+                                <button
+                                    onClick={() => setMode("all")}
+                                    style={{
+                                        position: "relative", zIndex: 1,
+                                        width: "116px", height: "34px",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        gap: "6px",
+                                        background: "none", border: "none",
+                                        borderRadius: "100px",
+                                        cursor: "pointer", outline: "none",
+                                        fontFamily: "'Orbitron', sans-serif",
+                                        fontSize: "9px", fontWeight: 900,
+                                        letterSpacing: mode === "all" ? "2px" : "1.2px",
+                                        color: mode === "all" ? "var(--color-electric, #FF2D87)" : "rgba(255,255,255,.28)",
+                                        textShadow: mode === "all" ? "0 0 14px color-mix(in srgb, var(--color-electric, #FF2D87) 75%, transparent)" : "none",
+                                        transition: "color .3s ease, letter-spacing .3s ease, text-shadow .3s ease",
+                                    }}
+                                >
+                                    {/* Pulsing live broadcast dot */}
+                                    <div
+                                        className={mode === "all" ? "broadcast-pulse" : ""}
+                                        style={{
+                                            width: "5px", height: "5px",
+                                            borderRadius: "50%",
+                                            flexShrink: 0,
+                                            background: mode === "all" ? "#FF2D87" : "rgba(255,255,255,.16)",
+                                            boxShadow: mode === "all" ? "0 0 8px rgba(255,45,135,0.95)" : "none",
+                                            transition: "background .3s ease, box-shadow .3s ease",
+                                        }}
+                                    />
+                                    GLOBAL
+                                </button>
+
+                                {/* ── NETWORK tab ── */}
+                                <button
+                                    onClick={() => { setMode("friends"); setHasNewActivity(false); }}
+                                    style={{
+                                        position: "relative", zIndex: 1,
+                                        width: "116px", height: "34px",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        gap: "6px",
+                                        background: "none", border: "none",
+                                        borderRadius: "100px",
+                                        cursor: "pointer", outline: "none",
+                                        fontFamily: "'Orbitron', sans-serif",
+                                        fontSize: "9px", fontWeight: 900,
+                                        letterSpacing: mode === "friends" ? "2px" : "1.2px",
+                                        color: mode === "friends" ? "var(--color-cyan, #00E5FF)" : "rgba(255,255,255,.28)",
+                                        textShadow: mode === "friends" ? "0 0 14px color-mix(in srgb, var(--color-cyan, #00E5FF) 75%, transparent)" : "none",
+                                        transition: "color .3s ease, letter-spacing .3s ease, text-shadow .3s ease",
+                                    }}
+                                >
+                                    <Users size={10} style={{ flexShrink: 0 }} />
+                                    NETWORK
+                                    {/* New activity dot — only appears when realtime fires while on GLOBAL */}
+                                    {hasNewActivity && (
+                                        <div style={{
+                                            position: "absolute",
+                                            top: "5px", right: "12px",
+                                            width: "6px", height: "6px",
+                                            borderRadius: "50%",
+                                            background: "var(--color-cyan, #00E5FF)",
+                                            boxShadow: "0 0 6px color-mix(in srgb, var(--color-cyan, #00E5FF) 90%, transparent)",
+                                            animation: "broadcast-pulse 1.8s ease-in-out infinite",
+                                        }} />
+                                    )}
+                                </button>
+
+                            </div>
+
+                            {activeTopicName && (
+                                <span className="ml-auto text-[9px] font-mono text-gray-700">
+                                    #{activeTopicName.toLowerCase()}
+                                </span>
+                            )}
                         </div>
                     )}
+
+                    {/* ── COMPOSER ── */}
                     {!hideComposer && (
-                        <div className="px-3 pb-3">
-                            <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(255,45,135,0.08)]">
-                                <div className="flex gap-2.5">
-                                    <img src={getAvatar(userZid || userId)} alt="" className="w-8 h-8 rounded-lg border border-gray-800 object-cover flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Radio className="w-3 h-3 text-electric broadcast-pulse" />
-                                            <span className="text-[8px] font-mono text-electric/60 uppercase tracking-[0.15em]">
-                                                Broadcast {zoneName ? `to z/${zoneName}` : activeTopicName ? `to #${activeTopicName.toLowerCase()}` : "to the grid"}
-                                            </span>
-                                        </div>
-                                        <textarea ref={textareaRef} value={newPostText} onChange={e => setNewPostText(e.target.value.slice(0, 500))}
-                                            onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handlePost(); }}
-                                            placeholder="Drop a signal..." className="w-full bg-transparent border-none outline-none resize-none text-sm text-white placeholder:text-gray-700 min-h-[24px] max-h-[120px] leading-relaxed" rows={1} />
-                                        {moodText && (
-                                            <div className="flex items-center gap-1.5 mt-1">
-                                                <span className="mood-tag inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono"
-                                                    style={{ background: getMoodStyle(moodText).bg, borderWidth: 1, borderStyle: "solid", borderColor: getMoodStyle(moodText).border, color: getMoodStyle(moodText).text }}>
-                                                    {moodText}
-                                                    <button onClick={() => setMoodText("")} className="ml-0.5 hover:text-white"><XCircle className="w-2.5 h-2.5" /></button>
-                                                </span>
-                                            </div>
-                                        )}
-                                        {attachedGif && (
-                                            <div className="relative mt-2 inline-block">
-                                                <img src={attachedGif} alt="GIF" className="max-h-[120px] rounded-lg border border-gray-800/40" />
-                                                <button onClick={() => setAttachedGif(null)}
-                                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white">
-                                                    <XCircle className="w-3 h-3" />
+                        <div className="px-3 pb-3 pt-2">
+                            {/* Mobile collapsed state — tap to expand */}
+                            {!composerExpanded && (
+                                <button
+                                    onClick={() => setComposerExpanded(true)}
+                                    className="md:hidden w-full flex items-center gap-3 bg-black/30 border border-gray-800/80 rounded-xl px-3 py-2.5 hover:border-electric/30 transition-colors"
+                                >
+                                    <img src={getAvatar(userZid || userId)} alt="" className="w-7 h-7 rounded-lg border border-gray-800 object-cover flex-shrink-0" />
+                                    <span className="flex-1 text-left text-[12px] text-gray-700">Drop a signal...</span>
+                                    <Radio className="w-3.5 h-3.5 text-electric/40 broadcast-pulse flex-shrink-0" />
+                                </button>
+                            )}
+                            {/* Full composer — always visible on md+, shown on mobile when expanded */}
+                            <div className={`${composerExpanded ? "block" : "hidden"} md:block`}>
+                                <div className="bg-black/30 border border-gray-800/80 rounded-xl p-3 hover:border-gray-700 transition-colors focus-within:border-electric/40 focus-within:shadow-[0_0_20px_rgba(255,45,135,0.08)]">
+                                    <div className="flex gap-2.5">
+                                        <img src={getAvatar(userZid || userId)} alt="" className="w-8 h-8 rounded-lg border border-gray-800 object-cover flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Radio className="w-3 h-3 text-electric broadcast-pulse" />
+                                                    <span className="text-[8px] font-mono text-electric/60 uppercase tracking-[0.15em]">
+                                                        Broadcast {zoneName ? `to z/${zoneName}` : activeTopicName ? `to #${activeTopicName.toLowerCase()}` : "to the grid"}
+                                                    </span>
+                                                </div>
+                                                {/* Mobile close button */}
+                                                <button
+                                                    onClick={() => { setComposerExpanded(false); setActivePanel(null); }}
+                                                    className="md:hidden text-gray-700 hover:text-white transition-colors"
+                                                >
+                                                    <XCircle className="w-3.5 h-3.5" />
                                                 </button>
                                             </div>
-                                        )}
-                                        {attachedPoll && (
-                                            <div className="mt-2 bg-black/20 border border-cyan/20 rounded-lg px-3 py-2 flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <BarChart3 className="w-3 h-3 text-cyan" />
-                                                    <span className="text-[9px] font-mono text-cyan">Poll attached • {attachedPoll.options.length} options</span>
+                                            <textarea ref={textareaRef} value={newPostText} onChange={e => setNewPostText(e.target.value.slice(0, 500))}
+                                                onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handlePost(); }}
+                                                placeholder="Drop a signal..." className="w-full bg-transparent border-none outline-none resize-none text-sm text-white placeholder:text-gray-700 min-h-[24px] max-h-[120px] leading-relaxed" rows={1}
+                                                autoFocus={composerExpanded} />
+                                            {moodText && (
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    <span className="mood-tag inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono"
+                                                        style={{ background: getMoodStyle(moodText).bg, borderWidth: 1, borderStyle: "solid", borderColor: getMoodStyle(moodText).border, color: getMoodStyle(moodText).text }}>
+                                                        {moodText}
+                                                        <button onClick={() => setMoodText("")} className="ml-0.5 hover:text-white"><XCircle className="w-2.5 h-2.5" /></button>
+                                                    </span>
                                                 </div>
-                                                <button onClick={() => setAttachedPoll(null)} className="text-gray-600 hover:text-white"><XCircle className="w-3 h-3" /></button>
-                                            </div>
-                                        )}
+                                            )}
+                                            {attachedGif && (
+                                                <div className="relative mt-2 inline-block">
+                                                    <img src={attachedGif} alt="GIF" className="max-h-[120px] rounded-lg border border-gray-800/40" />
+                                                    <button onClick={() => setAttachedGif(null)}
+                                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white">
+                                                        <XCircle className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {attachedPoll && (
+                                                <div className="mt-2 bg-black/20 border border-cyan/20 rounded-lg px-3 py-2 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <BarChart3 className="w-3 h-3 text-cyan" />
+                                                        <span className="text-[9px] font-mono text-cyan">Poll attached • {attachedPoll.options.length} options</span>
+                                                    </div>
+                                                    <button onClick={() => setAttachedPoll(null)} className="text-gray-600 hover:text-white"><XCircle className="w-3 h-3" /></button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-800/30">
-                                    <div className="flex items-center gap-0.5">
-                                        <button onClick={() => setActivePanel(activePanel === "mood" ? null : "mood")}
-                                            className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1 rounded-md transition-all ${activePanel === "mood" || moodText ? "text-electric bg-electric/10" : "text-gray-700 hover:text-gray-400"}`}
-                                            title="Set Mood"><Palette className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => { setActivePanel(activePanel === "gif" ? null : "gif"); setAttachedPoll(null); }}
-                                            className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1 rounded-md transition-all ${activePanel === "gif" || attachedGif ? "text-lime bg-lime/10" : "text-gray-700 hover:text-gray-400"}`}
-                                            title="Attach GIF"><ImageIcon className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => { setActivePanel(activePanel === "poll" ? null : "poll"); setAttachedGif(null); }}
-                                            className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1 rounded-md transition-all ${activePanel === "poll" || attachedPoll ? "text-cyan bg-cyan/10" : "text-gray-700 hover:text-gray-400"}`}
-                                            title="Create Poll"><BarChart3 className="w-3.5 h-3.5" /></button>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {newPostText.length > 0 && <span className={`text-[8px] font-mono ${newPostText.length > 450 ? "text-magenta" : "text-gray-800"}`}>{newPostText.length}/500</span>}
-                                        <button onClick={handlePost} disabled={!newPostText.trim() || posting}
-                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide transition-all disabled:opacity-20"
-                                            style={{ background: newPostText.trim() ? "linear-gradient(135deg,#FF2D87,#CC1F70)" : "rgba(255,255,255,0.02)", color: newPostText.trim() ? "#fff" : "#333", boxShadow: newPostText.trim() ? "0 0 14px rgba(255,45,135,0.3)" : "none" }}>
-                                            {posting ? <div className="w-3 h-3 animate-spin border-2 border-white border-t-transparent rounded-full" /> : <Send className="w-3 h-3" />} BROADCAST
-                                        </button>
-                                    </div>
-                                </div>
-                                {activePanel === "mood" && (
-                                    <div className="mt-2 pt-2 border-t border-gray-800/30 space-y-2">
-                                        <div className="flex flex-wrap gap-1">
-                                            {QUICK_MOODS.map((m, i) => (
-                                                <button key={i} onClick={() => { setMoodText(m); setActivePanel(null); }}
-                                                    className={`px-2 py-0.5 rounded-md text-[9px] transition-all border ${moodText === m ? "bg-electric/10 border-electric/30 text-white" : "border-gray-800/60 text-gray-600 hover:text-white hover:border-gray-600"}`}>{m}</button>
-                                            ))}
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-800/30">
+                                        <div className="flex items-center gap-0.5">
+                                            <button onClick={() => setActivePanel(activePanel === "mood" ? null : "mood")}
+                                                className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1.5 rounded-md transition-all ${activePanel === "mood" || moodText ? "text-electric bg-electric/10" : "text-gray-700 hover:text-gray-400"}`}
+                                                title="Set Mood"><Palette className="w-3.5 h-3.5" /></button>
+                                            <button onClick={() => { setActivePanel(activePanel === "gif" ? null : "gif"); setAttachedPoll(null); }}
+                                                className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1.5 rounded-md transition-all ${activePanel === "gif" || attachedGif ? "text-lime bg-lime/10" : "text-gray-700 hover:text-gray-400"}`}
+                                                title="Attach GIF"><ImageIcon className="w-3.5 h-3.5" /></button>
+                                            <button onClick={() => { setActivePanel(activePanel === "poll" ? null : "poll"); setAttachedGif(null); }}
+                                                className={`flex items-center gap-1 text-[9px] font-mono px-2 py-1.5 rounded-md transition-all ${activePanel === "poll" || attachedPoll ? "text-cyan bg-cyan/10" : "text-gray-700 hover:text-gray-400"}`}
+                                                title="Create Poll"><BarChart3 className="w-3.5 h-3.5" /></button>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <input type="text" value={moodText} onChange={e => setMoodText(e.target.value.slice(0, 30))}
-                                                onKeyDown={e => { if (e.key === "Enter") setActivePanel(null); }}
-                                                placeholder="Or type your own..."
-                                                className="flex-1 bg-black/30 border border-gray-800/60 rounded-md px-2.5 py-1 text-[10px] text-white outline-none placeholder:text-gray-700 focus:border-electric/30" />
-                                            <span className="text-[8px] font-mono text-gray-700">{moodText.length}/30</span>
+                                            {newPostText.length > 0 && <span className={`text-[8px] font-mono ${newPostText.length > 450 ? "text-magenta" : "text-gray-800"}`}>{newPostText.length}/500</span>}
+                                            <button onClick={() => { handlePost(); setComposerExpanded(false); }} disabled={!newPostText.trim() || posting}
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide transition-all disabled:opacity-20"
+                                                style={{ background: newPostText.trim() ? "linear-gradient(135deg,var(--color-electric,#FF2D87),color-mix(in srgb,var(--color-electric,#FF2D87) 70%,#000))" : "rgba(255,255,255,0.02)", color: newPostText.trim() ? "#fff" : "#333", boxShadow: newPostText.trim() ? "0 0 14px rgba(255,45,135,0.3)" : "none" }}>
+                                                {posting ? <div className="w-3 h-3 animate-spin border-2 border-white border-t-transparent rounded-full" /> : <Send className="w-3 h-3" />} BROADCAST
+                                            </button>
                                         </div>
                                     </div>
-                                )}
-                                {activePanel === "gif" && (
-                                    <GifPicker onSelect={(url) => { setAttachedGif(url); setActivePanel(null); }} onClose={() => setActivePanel(null)} />
-                                )}
-                                {activePanel === "poll" && (
-                                    <PollCreator onSubmit={(poll) => { setAttachedPoll(poll); setActivePanel(null); }} onClose={() => setActivePanel(null)} />
-                                )}
+                                    {activePanel === "mood" && (
+                                        <div className="mt-2 pt-2 border-t border-gray-800/30 space-y-2">
+                                            <div className="flex flex-wrap gap-1">
+                                                {QUICK_MOODS.map((m, i) => (
+                                                    <button key={i} onClick={() => { setMoodText(m); setActivePanel(null); }}
+                                                        className={`px-2 py-0.5 rounded-md text-[9px] transition-all border ${moodText === m ? "bg-electric/10 border-electric/30 text-white" : "border-gray-800/60 text-gray-600 hover:text-white hover:border-gray-600"}`}>{m}</button>
+                                                ))}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input type="text" value={moodText} onChange={e => setMoodText(e.target.value.slice(0, 30))}
+                                                    onKeyDown={e => { if (e.key === "Enter") setActivePanel(null); }}
+                                                    placeholder="Or type your own..."
+                                                    className="flex-1 bg-black/30 border border-gray-800/60 rounded-md px-2.5 py-1 text-[10px] text-white outline-none placeholder:text-gray-700 focus:border-electric/30" />
+                                                <span className="text-[8px] font-mono text-gray-700">{moodText.length}/30</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {activePanel === "gif" && (
+                                        <GifPicker onSelect={(url) => { setAttachedGif(url); setActivePanel(null); }} onClose={() => setActivePanel(null)} />
+                                    )}
+                                    {activePanel === "poll" && (
+                                        <PollCreator onSubmit={(poll) => { setAttachedPoll(poll); setActivePanel(null); }} onClose={() => setActivePanel(null)} />
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1209,14 +1447,28 @@ export default function GlobalFeed({ userId, userZid, wallOwnerId, hideComposer,
                     </div>
                 ) : feedItems.length === 0 ? (
                     <div className="text-center py-16 px-6">
-                        <div className="text-3xl mb-3">📡</div>
-                        <p className="text-sm font-bold text-gray-500 mb-1">{wallOwnerId ? "No wall posts yet" : mode === "friends" ? "Your network is quiet" : activeTopicName ? `No posts in #${activeTopicName.toLowerCase()}` : "The grid awaits"}</p>
-                        <p className="text-[10px] text-gray-700 font-mono">{wallOwnerId ? "Be the first to write something" : "Be the first to broadcast"}</p>
+                        {mode === "friends" && !wallOwnerId ? (
+                            <>
+                                <div className="text-3xl mb-3">👥</div>
+                                <p className="text-[13px] font-black text-gray-500 mb-1 tracking-wide">YOUR NETWORK IS QUIET</p>
+                                <p className="text-[10px] text-gray-700 font-mono mb-4">Add friends to see their posts and activity here</p>
+                                <a href="/search" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black tracking-wider transition-all"
+                                    style={{ background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.25)", color: "#00E5FF" }}>
+                                    <Users className="w-3 h-3" /> FIND FRIENDS →
+                                </a>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-3xl mb-3">📡</div>
+                                <p className="text-sm font-bold text-gray-500 mb-1">{wallOwnerId ? "No wall posts yet" : activeTopicName ? `No posts in #${activeTopicName.toLowerCase()}` : "The grid awaits"}</p>
+                                <p className="text-[10px] text-gray-700 font-mono">{wallOwnerId ? "Be the first to write something" : "Be the first to broadcast"}</p>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-800/30">
                         {feedItems.map((item, idx) => item.kind === "activity" ? (
-                            <ActivityCard key={`act-${item.data.id}`} event={item.data} />
+                            <ActivityCard key={`act-${item.data.id}`} event={item.data} viewerId={userId} />
                         ) : (
                             <PostCard
                                 key={`post-${item.data.id}`}
